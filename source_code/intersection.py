@@ -181,34 +181,34 @@ def get_polygon_from_lane(lane, fc='#808080', ec='w', alpha=1.0, linestyle='dash
     elif lane['direction'] == 'from_intersection':
         fc = '#00994C'
 
-    #if lane['lane_id'] == '1L':
-        #fc = 'r'
-
     if lane['left_shaped_border'] is not None and lane['left_shaped_border'] is not None and 'L' in lane['lane_id']:
         polygon_sequence = lane['left_shaped_border'] + lane['right_shaped_border'][::-1]
     else:
         polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
 
     return Polygon(polygon_sequence,
-                      closed=True,
-                      fc=fc,
-                      ec=ec,
-                      alpha=alpha,
-                      linestyle=linestyle,
-                      joinstyle=joinstyle
-                      )
+                   closed=True,
+                   fc=fc,
+                   ec=ec,
+                   alpha=alpha,
+                   linestyle=linestyle,
+                   joinstyle=joinstyle
+                   )
 
 
-def plot_lanes(lanes, fig=None, ax=None, cropped_intersection=None,
-                           fig_height=15,
-                           fig_width=15,
-                           axis_off=False,
-                           edge_linewidth=1,
-                           margin=0.02,
-                           bgcolor='#CCFFE5',
-                           edge_color='#FF9933',
-                           alpha=1.0
-                        ):
+def plot_lanes(lanes,
+               fig=None,
+               ax=None,
+               cropped_intersection=None,
+               fig_height=15,
+               fig_width=15,
+               axis_off=False,
+               edge_linewidth=1,
+               margin=0.02,
+               bgcolor='#CCFFE5',
+               edge_color='#FF9933',
+               alpha=1.0
+               ):
     """
     Plot lanes for existing street plot
     :param lanes:
@@ -222,6 +222,7 @@ def plot_lanes(lanes, fig=None, ax=None, cropped_intersection=None,
     :param margin:
     :param bgcolor:
     :param edge_color:
+    :param alpha:
     :return:
     """
 
@@ -309,26 +310,26 @@ def graph_from_jsons(response_jsons, network_type='all_private', simplify=True,
 
     if clean_periphery and simplify:
 
-        G_buffered = ox.create_graph(response_jsons, name=name, retain_all=True, network_type=network_type)
+        g_buffered = ox.create_graph(response_jsons, name=name, retain_all=True, network_type=network_type)
 
         # simplify the graph topology
-        G = ox.simplify_graph(G_buffered)
+        g = ox.simplify_graph(g_buffered)
 
         # count how many street segments in buffered graph emanate from each
         # intersection in un-buffered graph, to retain true counts for each
         # intersection, even if some of its neighbors are outside the polygon
-        G.graph['streets_per_node'] = ox.count_streets_per_node(G, nodes=G.nodes())
+        g.graph['streets_per_node'] = ox.count_streets_per_node(G, nodes=G.nodes())
 
     else:
 
         # create the graph from the downloaded data
-        G = ox.create_graph(response_jsons, name=name, retain_all=True, network_type=network_type)
+        g = ox.create_graph(response_jsons, name=name, retain_all=True, network_type=network_type)
 
         # simplify the graph topology as the last step. don't truncate after
         # simplifying or you may have simplified out to an endpoint beyond the
         # truncation distance, in which case you will then strip out your entire
         # edge
         if simplify:
-            G = ox.simplify_graph(G)
+            g = ox.simplify_graph(g)
 
-    return G
+    return g

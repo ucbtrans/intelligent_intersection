@@ -154,7 +154,6 @@ def get_shaped_lane_width(width, n=10):
 def create_lane(p, nodes_dict,
                 left_border=None,
                 right_border=None,
-                left_shaped_border=None,
                 right_shaped_border=None,
                 lane_id=1,
                 lane_type='',
@@ -199,7 +198,7 @@ def create_lane(p, nodes_dict,
 
     lane['name'] = name
     lane['nodes'] = p['nodes']
-    lane['nodes_coordinates'] = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in lane['nodes'] ]
+    lane['nodes_coordinates'] = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in lane['nodes']]
     lane['right_shaped_border'] = None
     lane['left_shaped_border'] = None
 
@@ -474,4 +473,16 @@ def merge_lanes(lanes):
                     merged_lanes.append(merged_lane)
 
     set_lane_bearing(merged_lanes)
+    set_approach_ids(merged_lanes)
     return merged_lanes
+
+
+def set_approach_ids(merged_lanes):
+    """
+    Set approach ids for a list of merged lanes.  
+    Approaches are numbered separately for each intersection starting from zero.
+    :param merged_lanes: list of dictionaries
+    :return: None
+    """
+    for n, m in enumerate(merged_lanes):
+        m['approach_id'] = n

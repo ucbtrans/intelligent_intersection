@@ -11,6 +11,9 @@ import math
 import shapely.geometry as geom
 
 
+rhumbs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+
+
 def get_distance_between_nodes(nodes_d, id1, id2):
     return ox.great_circle_vec(nodes_d[id1]['y'], nodes_d[id1]['x'], nodes_d[id2]['y'], nodes_d[id2]['x'])
 
@@ -218,17 +221,33 @@ def get_lane_bearing(lane):
 
 
 def to_rad(degree):
+    """
+    Covert radiance to degrees
+    :param degree: float
+    :return: float
+    """
     return degree/360.0*2.0*math.pi
+
+
+def get_compass_rhumb(compass_bearing):
+    """
+    Convert bearing in degrees to an 8-point compass rhumb
+    :param compass_bearing: float
+    :return: string
+    """
+    interval = 360.0/len(rhumbs)
+    return rhumbs[int(float(compass_bearing)/interval + 0.5) % len(rhumbs)]
 
 
 def set_lane_bearing(lanes):
     """
-    Set compass bearings for a list of lanes
+    Set compass bearings and rhumbs for a list of lanes
     :param lanes: list of dictionaries
     :return: None
     """
     for lane in lanes:
         lane['bearing'] = get_lane_bearing(lane)
+        lane['compass'] = get_compass_rhumb(lane['bearing'])
 
 
 def normalized_compass(starting_compass, turn_angle):

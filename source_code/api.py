@@ -7,11 +7,13 @@
 #######################################################################
 
 
+import copy
 import osmnx as ox
 from intersection import get_nodes_dict, get_intersection_data, plot_lanes
-from street import insert_street_names
+from street import insert_street_names, get_intersections_for_a_street
 from lane import get_lanes, merge_lanes, shorten_lanes
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways
+from city import get_city_name_from_address
 
 
 def get_city(city_name):
@@ -20,8 +22,11 @@ def get_city(city_name):
     :param city_name: city name like 'Campbell, California, USA'
     :return: a tuple of list of paths and a nodes dictionary
     """
-    city_boundaries = ox.gdf_from_place(city_name)
-    city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type="drive")
+    try:
+        city_boundaries = ox.gdf_from_place(city_name)
+        city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type="drive")
+    except KeyError:
+        return None
     nodes_dict = get_nodes_dict(city_paths_nodes)
     paths = [p for p in city_paths_nodes[0]['elements'] if p['type'] != 'node']
     city = {
@@ -106,6 +111,79 @@ def get_intersection(street_tuple, city, size=500.0, crop_radius=150.0):
     }
 
     return intersection_data
+
+
+def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
+    """
+    Get a list of intersections defined by their addresses, 
+    e.g. ["San Pablo and University, Berkeley, California", "Van Ness and Geary, San Francisco, Califocrnia", ...]
+    Please spell out California instead of CA, because CA can be interpreted as Canada
+    :param list_of_addresses: list of strings
+    :param size: float in meters
+    :param crop_radius: float in meters
+    :return: list of dictionaries
+    """
+
+    cities = {}
+
+    if not isinstance(list_of_addresses, list):
+        list_of_addresses = [list_of_addresses]
+
+    for address in list_of_addresses:
+        city_name = get_city_name_from_address(address)
+        if city_name not in cities:
+            city = get_city(city_name)
+            cities[city_name] = {}
+            cities[city_name]['city_data'] = city
+            cities[city_name]['intersecting_streets'] = None
+            cities[city_name]['intersections'] = set()
+            if city is None:
+                cities[city_name]['intersecting_streets'] = None
+            else:
+                cities[city_name]['intersecting_streets'] = get_intersecting_streets(city)
+
+        if cities[city_name]['intersecting_streets'] is None:
+            continue
+
+        intersection_candidates = set(copy.deepcopy(cities[city_name]['intersecting_streets']))
+        for street in [s.strip() for s in (address.split(',')[0]).split('and')]:
+            intersection_candidates = get_intersections_for_a_street(street, intersection_candidates)
+
+        cities[city_name]['intersections'] = cities[city_name]['intersections'] | intersection_candidates
+
+    result = []
+    for city_name in cities:
+        for x_name in cities[city_name]['intersections']:
+            result.append(get_intersection(x_name, cities[city_name]['city_data'], size=size, crop_radius=crop_radius))
+
+    return result
+
+
+def get_approaches(intersection_data):
+    """
+    Return a list of approaches for an intersection.  
+    An approach is a dictionary defining a lane approaching an intersection.
+
+    'name' - street name
+    'approach_id' - approach number (zero based) for a given intersection 
+    'bearing' - compass bearing in degrees,
+    'compass' - compass point: 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'
+    'lane_id' - a string identifying a lane, for example: '1', '2', '1R', '1L', '2L'.  Numbers are from right to left
+    'direction' - direction: 'to_intersection', 'from_intersection', 'undefined'
+    'cycleway' - presence of a bicycle lane
+    'sidewalk' - presence of a sidewalk if applicable
+    'hov' - presence of HOV lanes
+    'maxspeed' - speed limit if applicable
+    'width' - list of lane widths in meters
+    'num_of_trunk_lanes' - number of main lanes
+    'num_of_right_lanes' - number of right turn lanes
+    'num_of_left_lanes' - number of left turn lanes
+    'crosswalk_width' - assumed width of a crosswalk in meters (crosswalk presence is not recorded in the input data)
+
+    :param intersection_data: dictionary
+    :return: list of dictionaries
+    """
+    return [m for m in intersection_data['merged_lanes'] if m['direction'] == 'to_intersection']
 
 
 def get_intersection_image(intersection_data):

@@ -20,8 +20,9 @@
 import math
 import shapely.geometry as geom
 import osmnx as ox
-from lane import extend_origin_left_border, extend_destination_left_border, get_turn_type
-from border import extend_vector, cut_border_by_distance, get_compass_bearing, get_compass, shift_vector, shift_list_of_nodes, to_rad
+from lane import extend_origin_left_border, extend_destination_left_border
+from border import extend_vector, cut_border_by_distance, get_compass_bearing, get_compass, shift_vector, \
+    shift_list_of_nodes, to_rad
 from matplotlib.patches import Polygon
 from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
     get_direct_right_turn_border, get_destination_lanes_for_right_turn
@@ -166,6 +167,7 @@ def get_left_turn_guideways(all_lanes, angle_delta=2.5):
     """
     Compile a list of guideways for all legal left turns
     :param all_lanes: list of dictionaries
+    :param angle_delta: float in degrees
     :return: list of dictionaries
     """
 
@@ -173,8 +175,13 @@ def get_left_turn_guideways(all_lanes, angle_delta=2.5):
     for origin_lane in all_lanes:
         if 'L' in origin_lane['lane_id']:
             for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes):
-                guideway = get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='left', angle_delta=angle_delta)
-                #guideway = create_left_turn_guideway(origin_lane, destination_lane, all_lanes)
+                guideway = get_direct_right_turn_guideway(origin_lane,
+                                                          destination_lane,
+                                                          all_lanes,
+                                                          turn_type='left',
+                                                          angle_delta=angle_delta
+                                                          )
+                # guideway = create_left_turn_guideway(origin_lane, destination_lane, all_lanes)
                 if guideway is not None:
                     guideways.append(guideway)
     return guideways
@@ -241,6 +248,7 @@ def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, tur
     :param destination_lane: dictionary
     :param all_lanes: list of dictionaries
     :param turn_type: string: 'right' for a right turn, left' a for left one
+    :param angle_delta: float in degrees
     :return: dictionary
     """
 
@@ -292,7 +300,7 @@ def get_direct_right_turn_guideways(all_lanes):
     :return: list of dictionaries
     """
     guideways = []
-    for origin_lane in  [l for l in all_lanes if is_right_turn_allowed(l, all_lanes)]:
+    for origin_lane in [l for l in all_lanes if is_right_turn_allowed(l, all_lanes)]:
         for destination_lane in get_destination_lanes_for_right_turn(origin_lane, all_lanes):
             guideway = get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes)
             if guideway is not None:

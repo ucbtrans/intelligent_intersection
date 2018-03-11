@@ -53,3 +53,20 @@ def get_adjacent_streets(node, nodes_dict):
         if 'street_name' in n:
             streets.extend(list(n['street_name']))
     return sorted(list(set(streets)))
+
+
+def get_intersections_for_a_street(street, intersecting_streets):
+    """
+    Takes twop parameters: a list of intersecting streets and a street name.
+    Returns a subset of intersecting streets where the given street is a part of.
+    :param street: string
+    :param intersecting_streets: list of tuples
+    :return: set of dictionaries
+    """
+    result = set()
+    for x in intersecting_streets:
+        for s in x:
+            if street in s:
+                result.add(x)
+                break
+    return result
