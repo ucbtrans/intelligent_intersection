@@ -9,55 +9,57 @@
 
 import copy
 import osmnx as ox
-from intersection import get_nodes_dict, get_intersection_data, plot_lanes
+from intersection import get_intersection_data, plot_lanes
 from street import insert_street_names, get_intersections_for_a_street
 from lane import get_lanes, merge_lanes, shorten_lanes
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways
 from city import get_city_name_from_address
+from node import get_nodes_dict
 
 
-def get_city(city_name):
+def get_city(city_name, network_type="drive"):
     """
     Get street structure of a city
     :param city_name: city name like 'Campbell, California, USA'
+    :param network_type: string: {'walk', 'bike', 'drive', 'drive_service', 'all', 'all_private', 'none'}
     :return: a tuple of list of paths and a nodes dictionary
     """
     try:
         city_boundaries = ox.gdf_from_place(city_name)
-        city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type="drive")
+        city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type=network_type)
     except KeyError:
         return None
     nodes_dict = get_nodes_dict(city_paths_nodes)
     paths = [p for p in city_paths_nodes[0]['elements'] if p['type'] != 'node']
-    city = {
+    city_data = {
         'name': city_name,
         'paths': paths,
         'nodes': nodes_dict
     }
-    return insert_street_names(city)
+    return insert_street_names(city_data)
 
 
-def get_streets(city):
+def get_streets(city_data):
     """
     Get set of streets from a city structure
-    :param city: dictionary
+    :param city_data: dictionary
     :return: return a set of street names
     """
 
-    return set([p['tags']['name'] for p in city['paths'] if 'name' in p['tags']])
+    return set([p['tags']['name'] for p in city_data['paths'] if 'name' in p['tags']])
 
 
-def get_intersecting_streets(city):
+def get_intersecting_streets(city_data):
     """
     Get a list of intersecting street.  Each element is a tuple of two or more street names.
-    :param city: dictionary
+    :param city_data: dictionary
     :return: list of tuples
     """
     intersecting_streets = set()
 
-    for node in city['nodes']:
-        if 'street_name' in city['nodes'][node] and len(city['nodes'][node]['street_name']) > 1:
-            intersecting_streets.add(tuple(sorted(list(city['nodes'][node]['street_name']))))
+    for node in city_data['nodes']:
+        if 'street_name' in city_data['nodes'][node] and len(city_data['nodes'][node]['street_name']) > 1:
+            intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node]['street_name']))))
 
     duplicates = set()
     for x in intersecting_streets:
@@ -82,28 +84,28 @@ def get_intersecting_streets(city):
     return sorted(list(intersecting_streets - duplicates))
 
 
-def get_intersection(street_tuple, city, size=500.0, crop_radius=150.0):
+def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     """
     Get a dictionary with all data related to an intersection.
     :param street_tuple: tuple of strings
-    :param city: dictionary
+    :param city_data: dictionary
     :param size: initial size of the surrounding area in meters
     :param crop_radius: the data will be cropped to the specified radius in meters
     :return: dictionary
     """
-    cleaned_intersection_paths, cropped_intersection = get_intersection_data(city['paths'],
-                                                                             city['nodes'],
+    cleaned_intersection_paths, cropped_intersection = get_intersection_data(city_data['paths'],
+                                                                             city_data['nodes'],
                                                                              street_tuple,
                                                                              size=size,
                                                                              crop_radius=crop_radius
                                                                              )
 
-    lanes = get_lanes(cleaned_intersection_paths, city['nodes'])
+    lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
     merged_lanes = merge_lanes(lanes)
     shorten_lanes(merged_lanes)
 
     intersection_data = {
-        'city': city['name'],
+        'city': city_data['name'],
         'streets': street_tuple,
         'lanes': lanes,
         'merged_lanes': merged_lanes,
@@ -132,15 +134,15 @@ def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
     for address in list_of_addresses:
         city_name = get_city_name_from_address(address)
         if city_name not in cities:
-            city = get_city(city_name)
+            city_data = get_city(city_name)
             cities[city_name] = {}
-            cities[city_name]['city_data'] = city
+            cities[city_name]['city_data'] = city_data
             cities[city_name]['intersecting_streets'] = None
             cities[city_name]['intersections'] = set()
-            if city is None:
+            if city_data is None:
                 cities[city_name]['intersecting_streets'] = None
             else:
-                cities[city_name]['intersecting_streets'] = get_intersecting_streets(city)
+                cities[city_name]['intersecting_streets'] = get_intersecting_streets(city_data)
 
         if cities[city_name]['intersecting_streets'] is None:
             continue
@@ -171,6 +173,8 @@ def get_approaches(intersection_data):
     'lane_id' - a string identifying a lane, for example: '1', '2', '1R', '1L', '2L'.  Numbers are from right to left
     'direction' - direction: 'to_intersection', 'from_intersection', 'undefined'
     'cycleway' - presence of a bicycle lane
+    'cycleway:left' - location of a bicycle lane
+    'cycleway:right' - location of a bicycle lane
     'sidewalk' - presence of a sidewalk if applicable
     'hov' - presence of HOV lanes
     'maxspeed' - speed limit if applicable

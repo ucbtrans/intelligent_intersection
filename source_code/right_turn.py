@@ -8,7 +8,7 @@
 
 
 import shapely.geometry as geom
-from border import extend_vector, cut_border_by_distance, shift_list_of_nodes
+from border import cut_border_by_distance
 from lane import get_lane_index_from_right, get_turn_type, intersects
 from turn import construct_turn_arc, shorten_border_for_crosswalk
 
@@ -159,5 +159,5 @@ def get_direct_right_turn_border(origin_lane,
     destination_line = geom.LineString(destination_border)
     landing_point = destination_line.project(geom.Point(turn_arc[-1]))
     landing_border = cut_border_by_distance(destination_line, landing_point)[1]
-    #return turn_arc
+
     return origin_border[:-1] + turn_arc + list(landing_border.coords)[1:]

@@ -9,20 +9,20 @@
 from border import get_distance_between_nodes
 
 
-def insert_street_names(city):
+def insert_street_names(city_data):
     """
     Insert street names into each node dictionary in the city data structure
-    :param city: dictionary
+    :param city_data: dictionary
     :return: dictionary
     """
-    for path in city['paths']:
+    for path in city_data['paths']:
         if 'name' in path['tags'] and path['tags']['name'] != 'no_name':
-            for node in path['nodes']:
-                if 'street_name' not in city['nodes'][node]:
-                    city['nodes'][node]['street_name'] = set()
-                city['nodes'][node]['street_name'].add(path['tags']['name'])
+            for node_id in path['nodes']:
+                if 'street_name' not in city_data['nodes'][node_id]:
+                    city_data['nodes'][node_id]['street_name'] = set()
+                    city_data['nodes'][node_id]['street_name'].add(path['tags']['name'])
 
-    return city
+    return city_data
 
 
 def select_close_nodes(nodes_d, nodes, too_far=50.0):
@@ -41,32 +41,32 @@ def select_close_nodes(nodes_d, nodes, too_far=50.0):
     return set([n for n in nodes if get_distance_between_nodes(nodes_d, first_node, n) <= too_far])
 
 
-def get_adjacent_streets(node, nodes_dict):
+def get_adjacent_streets(node_data, nodes_dict):
     """
     Get all streets within a short distance from the given node
-    :param node: dictionary
+    :param node_data: dictionary
     :param nodes_dict: dictionary
     :return: tupple of street names
     """
     streets = []
-    for n in select_close_nodes(nodes_dict, [node]):
+    for n in select_close_nodes(nodes_dict, [node_data]):
         if 'street_name' in n:
             streets.extend(list(n['street_name']))
     return sorted(list(set(streets)))
 
 
-def get_intersections_for_a_street(street, intersecting_streets):
+def get_intersections_for_a_street(street_data, intersecting_streets):
     """
     Takes twop parameters: a list of intersecting streets and a street name.
     Returns a subset of intersecting streets where the given street is a part of.
-    :param street: string
+    :param street_data: string
     :param intersecting_streets: list of tuples
     :return: set of dictionaries
     """
     result = set()
     for x in intersecting_streets:
         for s in x:
-            if street in s:
+            if street_data in s:
                 result.add(x)
                 break
     return result

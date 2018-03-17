@@ -2,17 +2,19 @@
 # -*- coding: utf-8 -*-
 #######################################################################
 #
-#   This module creates lanes for the intersection
+#   This module provides path level functions
 #
 #######################################################################
 
 from border import shift_list_of_nodes
 import copy
+import osmnx as ox
 
-def get_num_of_lanes(path):
+
+def get_num_of_lanes(path_data):
     """
     Get the number of lanes from path
-    :param path: dictionary
+    :param path_data: dictionary
     :return: integer
     """
     # u'turn:lanes:forward': u'left;through|right'
@@ -21,23 +23,23 @@ def get_num_of_lanes(path):
     # u'lanes:forward': u'2',
     # "u'lanes:forward'"
 
-    if 'lanes' in path['tags']:
-        return int(path['tags']['lanes'])
+    if 'lanes' in path_data['tags']:
+        return int(path_data['tags']['lanes'])
 
     return 1
 
 
-def count_lanes(path):
+def count_lanes(path_data):
     """
     Calculate the number of left, right and trunk lanes
-    :param path: dictionary
+    :param path_data: dictionary
     :return: tuple of three integers: num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes
     """
 
-    num_of_lanes = get_num_of_lanes(path)
+    num_of_lanes = get_num_of_lanes(path_data)
 
-    if 'turn:lanes' in path['tags']:
-        lane_types = path['tags']['turn:lanes'].split('|')
+    if 'turn:lanes' in path_data['tags']:
+        lane_types = path_data['tags']['turn:lanes'].split('|')
     else:
         lane_types = [''] * num_of_lanes
 
@@ -49,17 +51,17 @@ def count_lanes(path):
     return num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes
 
 
-def add_borders_to_path(path, nodes_dict, width=3.048):
-    path = remove_nodes_without_coordinates(path, nodes_dict)
-    if len(path['nodes']) < 2:
-        path['left_border'] = None
-        path['right_border'] = None
-        return path
-    num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(path)
-    node_coordinates = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path['nodes']]
-    path['right_border'] = shift_list_of_nodes(node_coordinates, [width*num_of_trunk_lanes/2.0]*len(node_coordinates))
-    path['left_border'] = shift_list_of_nodes(node_coordinates, [-width*num_of_trunk_lanes/2.0] * len(node_coordinates))
-    return path
+def add_borders_to_path(path_data, nodes_dict, width=3.048):
+    path_data = remove_nodes_without_coordinates(path_data, nodes_dict)
+    if len(path_data['nodes']) < 2:
+        path_data['left_border'] = None
+        path_data['right_border'] = None
+        return path_data
+    num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(path_data)
+    node_coordinates = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path_data['nodes']]
+    path_data['right_border'] = shift_list_of_nodes(node_coordinates, [width*num_of_trunk_lanes/2.0]*len(node_coordinates))
+    path_data['left_border'] = shift_list_of_nodes(node_coordinates, [-width*num_of_trunk_lanes/2.0] * len(node_coordinates))
+    return path_data
 
 
 def add_borders_to_paths(paths, nodes_dict, width=3.048):
@@ -74,17 +76,18 @@ def add_borders_to_paths(paths, nodes_dict, width=3.048):
         add_borders_to_path(p, nodes_dict, width=width)
     return paths
 
-def split_bidirectional_path(path):
+
+def split_bidirectional_path(path_data):
     """
     Split a bidirectional path to two oneway paths
-    :param path: dictionary
+    :param path_data: dictionary
     :return: a tuple of dictionaries: forward and backward paths
     """
 
-    if 'oneway' in path['tags'] and path['tags']['oneway'] == 'yes':
-        return path, None
+    if 'oneway' in path_data['tags'] and path_data['tags']['oneway'] == 'yes':
+        return path_data, None
 
-    forward_path = copy.deepcopy(path)
+    forward_path = copy.deepcopy(path_data)
     forward_path['tags']['oneway'] = 'yes'
     forward_path['id'] = forward_path['id']*1000
     if 'turn:lanes:forward' in forward_path['tags']:
@@ -94,7 +97,7 @@ def split_bidirectional_path(path):
     if 'lanes:forward' in forward_path['tags']:
         forward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
 
-    backward_path = copy.deepcopy(path)
+    backward_path = copy.deepcopy(path_data)
     backward_path['id'] = backward_path['id'] * 1000 + 1
     backward_path['tags']['oneway'] = 'yes'
     backward_path['nodes'] = backward_path['nodes'][::-1]
@@ -128,8 +131,61 @@ def split_bidirectional_paths(paths):
     return split
 
 
-def remove_nodes_without_coordinates(path, nodes_dict):
-    path['nodes'] = [n for n in path['nodes'] if n in nodes_dict]
-    return path
+def remove_nodes_without_coordinates(path_data, nodes_dict):
+    """
+    Remove reference to nodes that are not in the input data
+    :param path_data: dictionary
+    :param nodes_dict: dictionary
+    :return: dictionary
+    """
+    path_data['nodes'] = [n for n in path_data['nodes'] if n in nodes_dict]
+    return path_data
 
 
+def clean_paths(paths, street_tuple):
+    """
+    Remove streets not related to the current intersection
+    :param paths: list of paths
+    :param street_tuple: tuple of strings
+    :return: cleaned list of paths
+    """
+
+    return [p for p in paths
+            if ('name' in p['tags'] and (p['tags']['name'] in street_tuple))
+            or ('highway' in p['tags'] and 'trunk_link' in p['tags']['highway'])
+            ]
+
+
+def remove_zero_length_paths(paths):
+    """
+    Remove paths having one node or no no node (zero length)
+    :param paths: list of dictionaries
+    :return: list of dictionaries
+    """
+    return [p for p in paths if 'nodes' in p and len(p['nodes']) > 1]
+
+
+def set_direction(paths, x, y, nodes_dict):
+    """
+    Set direction relative to the intersection: to_intersection or from_intersection
+    :param paths: list of dictionaries
+    :param x: float
+    :param y: float
+    :param nodes_dict: dictionary
+    :return: None
+    """
+    for p in paths:
+        if len(p['nodes']) < 2 or ('highway' in p['tags'] and 'trunk_link' in p['tags']['highway']):
+            p['tags']['direction'] = 'undefined'
+            continue
+
+        distance_to_center0 = ox.great_circle_vec(y, x, nodes_dict[p['nodes'][0]]['y'],
+                                                  nodes_dict[p['nodes'][0]]['x'])
+        distance_to_center1 = ox.great_circle_vec(y, x,
+                                                  nodes_dict[p['nodes'][-1]]['y'],
+                                                  nodes_dict[p['nodes'][-1]]['x']
+                                                  )
+        if distance_to_center0 > distance_to_center1:
+            p['tags']['direction'] = 'to_intersection'
+        else:
+            p['tags']['direction'] = 'from_intersection'

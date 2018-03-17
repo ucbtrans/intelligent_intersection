@@ -8,7 +8,8 @@
 
 import osmnx as ox
 from matplotlib.patches import Polygon
-from path import add_borders_to_paths, split_bidirectional_paths
+from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
+from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes
 from street import select_close_nodes
 
 
@@ -32,8 +33,9 @@ def get_intersection_data(paths, nodes_dict, street_tuple, size=500.0, crop_radi
 
     north, south, east, west = get_box(u, v, size=size)
     intersection_jsons = ox.osm_net_download(north=north, south=south, east=east, west=west, network_type='drive')
-    intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] != 'node']
+    intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
     correction(intersection_paths)
+    node_subset = get_node_subset(intersection_jsons, intersection_paths)
     oneway_paths = add_borders_to_paths(split_bidirectional_paths(intersection_paths), nodes_dict)
     cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths, street_tuple))
     set_direction(cleaned_intersection_paths, u, v, nodes_dict)
@@ -41,7 +43,7 @@ def get_intersection_data(paths, nodes_dict, street_tuple, size=500.0, crop_radi
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
                                'generator': intersection_jsons[0]['generator'],
-                               'elements': get_node_subset(intersection_jsons, cleaned_intersection_paths)
+                               'elements': node_subset
                                + cleaned_intersection_paths
                                }
                               ]
@@ -74,68 +76,6 @@ def crop_selection(selection, x0, y0, radius=275.0):
         cropped_selection.append(s_cropped)
 
     return cropped_selection
-
-
-def get_nodes_ids_for_street(paths, name):
-    node_ids = []
-    for path in [p for p in paths if 'name' in p['tags'] and name in p['tags']['name']]:
-        node_ids.extend(path['nodes'])
-    return set(node_ids)
-
-
-def clean_paths(paths, street_tuple):
-    """
-    Remove streets not related to the current intersection
-    :param paths: list of paths
-    :param street_tuple: tuple of strings
-    :return: cleaned list of paths
-    """
-
-    return [p for p in paths
-            if ('name' in p['tags'] and (p['tags']['name'] in street_tuple))
-            or ('highway' in p['tags'] and 'trunk_link' in p['tags']['highway'])
-            ]
-
-
-def remove_zero_length_paths(paths):
-    return [p for p in paths if 'nodes' in p and len(p['nodes']) > 1]
-
-
-def get_node_subset(city_paths_nodes, section):
-    section_nodes = []
-    [section_nodes.extend(p['nodes']) for p in section]
-    section_node_set = set(section_nodes)
-    return [n for n in city_paths_nodes[0]['elements'] if n['type'] == 'node' and n['id'] in section_node_set]
-
-
-def get_intersection_nodes(paths, street_tuple):
-    """
-    Get node ids for an intersection.  The intersection is defines by a tuple of intersectiong streets.
-    :param paths: list of dictionaries
-    :param street_tuple: tuple of strings
-    :return: set of node ids
-    """
-
-    node_ids = get_nodes_ids_for_street(paths, street_tuple[0])
-
-    for street in street_tuple[1:]:
-        node_ids = node_ids & get_nodes_ids_for_street(paths, street)
-    return node_ids
-
-
-def get_nodes_dict(city_paths_nodes):
-    nodes_dict, paths_dict = ox.parse_osm_nodes_paths(city_paths_nodes[0])
-    return nodes_dict
-
-
-def get_center(nodes, nodes_d):
-    if len(nodes) < 1:
-        return None
-
-    x = sum([nodes_d[n]['x'] for n in nodes]) / len(nodes)
-    y = sum([nodes_d[n]['y'] for n in nodes]) / len(nodes)
-
-    return x, y
 
 
 def get_box(x, y, size=500.0):
@@ -247,24 +187,6 @@ def plot_lanes(lanes,
     return fig, ax
 
 
-def set_direction(paths, x, y, nodes_dict):
-    for p in paths:
-        if len(p['nodes']) < 2 or ('highway' in p['tags'] and 'trunk_link' in p['tags']['highway']):
-            p['tags']['direction'] = 'undefined'
-            continue
-
-        distance_to_center0 = ox.great_circle_vec(y, x, nodes_dict[p['nodes'][0]]['y'],
-                                                  nodes_dict[p['nodes'][0]]['x'])
-        distance_to_center1 = ox.great_circle_vec(y, x,
-                                                  nodes_dict[p['nodes'][-1]]['y'],
-                                                  nodes_dict[p['nodes'][-1]]['x']
-                                                  )
-        if distance_to_center0 > distance_to_center1:
-            p['tags']['direction'] = 'to_intersection'
-        else:
-            p['tags']['direction'] = 'from_intersection'
-
-
 def graph_from_jsons(response_jsons, network_type='all_private', simplify=True,
                      retain_all=False, truncate_by_edge=False, name='unnamed',
                      timeout=180, memory=None,
@@ -318,7 +240,7 @@ def graph_from_jsons(response_jsons, network_type='all_private', simplify=True,
         # count how many street segments in buffered graph emanate from each
         # intersection in un-buffered graph, to retain true counts for each
         # intersection, even if some of its neighbors are outside the polygon
-        g.graph['streets_per_node'] = ox.count_streets_per_node(G, nodes=G.nodes())
+        g.graph['streets_per_node'] = ox.count_streets_per_node(g, nodes=g.nodes())
 
     else:
 
