@@ -43,6 +43,21 @@ def get_node(element):
     return node_data
 
 
+def osmnx_to_osm(node_data):
+    """
+    Convert node from the osmnx format to the original osm one
+    :param node_data: dictionary
+    :return: dictionary
+    """
+    return {
+        'lat': node_data['y'],
+        'lon': node_data['x'],
+        'id': node_data['osmid'],
+        'type': 'node',
+        'tags': {tag: node_data[tag] for tag in node_data if tag not in ['x', 'y', 'osmid']}
+    }
+
+
 def get_nodes_ids_for_street(paths, name):
     """
     Get a list of node ids realted to a street
@@ -56,11 +71,30 @@ def get_nodes_ids_for_street(paths, name):
     return set(node_ids)
 
 
-def get_node_subset(city_paths_nodes, section):
-    section_nodes = []
-    [section_nodes.extend(p['nodes']) for p in section]
-    section_node_set = set(section_nodes)
-    return [n for n in city_paths_nodes[0]['elements'] if n['type'] == 'node' and n['id'] in section_node_set]
+def get_node_subset(city_paths_nodes, section, nodes_dict):
+    """
+    Filter out nodes not referenced in any path and possibly add missing nodes from the overall node dictionary
+    :param city_paths_nodes: list of elements (paths and nodes)
+    :param section: list of paths representing a subsection
+    :param nodes_dict: dictionary
+    :return: list of nodes
+    """
+    section_node_ids = []
+    result =[]
+    [section_node_ids.extend(p['nodes']) for p in section]
+    section_node_set = set(section_node_ids)
+
+    for n in city_paths_nodes[0]['elements']:
+        if n['type'] != 'node':
+            continue
+        if n['id'] in section_node_set:
+            result.append(n)
+
+    for node_id in section_node_set - set([n['id'] for n in result]):
+        if node_id in nodes_dict:
+            result.append(osmnx_to_osm(nodes_dict[node_id]))
+
+    return result
 
 
 def get_intersection_nodes(paths, street_tuple):

@@ -153,7 +153,8 @@ def get_shaped_lane_width(width, n=10):
     return [abs(1.0 - (math.cos(i/float(n)*math.pi) + 1.0)/2.0)*width for i in range(n+1)]
 
 
-def create_lane(p, nodes_dict,
+def create_lane(p,
+                nodes_dict,
                 left_border=None,
                 right_border=None,
                 right_shaped_border=None,
@@ -168,6 +169,25 @@ def create_lane(p, nodes_dict,
                 num_of_trunk_lanes=1,
                 crosswalk_width=1.82
                 ):
+    """
+    Create a lane from a path
+    :param p: 
+    :param nodes_dict: 
+    :param left_border: 
+    :param right_border: 
+    :param right_shaped_border: 
+    :param lane_id: 
+    :param lane_type: 
+    :param direction: 
+    :param width: 
+    :param shape_points: 
+    :param shape_length: 
+    :param num_of_left_lanes: 
+    :param num_of_right_lanes: 
+    :param num_of_trunk_lanes: 
+    :param crosswalk_width: 
+    :return: 
+    """
     lane_data = {
         'lane_id': str(lane_id),
         'path_id': p['id'],
@@ -437,10 +457,11 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
     return lanes
 
 
-def merge_lanes(lanes):
+def merge_lanes(lanes, nodes_dict):
     """
     Merge lanes for same street, direction, lane id
     :param lanes: list of dictionaries
+    :param nodes_dict: dictionary of nodes
     :return: list of dictionaries
     """
     merged_lanes = []
@@ -487,6 +508,7 @@ def merge_lanes(lanes):
                     merged_lanes.append(merged_lane)
 
     set_lane_bearing(merged_lanes)
+    add_node_tags_to_lanes(merged_lanes, nodes_dict)
     set_approach_ids(merged_lanes)
     return merged_lanes
 
@@ -500,3 +522,49 @@ def set_approach_ids(merged_lanes):
     """
     for n, m in enumerate(merged_lanes):
         m['approach_id'] = n
+
+
+def add_value_to_dict(d, k, v):
+    """
+    Add a value to the dictionary.  If the value exists and not None, skip.
+    :param d: dictionary
+    :param k: key
+    :param v: value
+    :return: None
+    """
+    if k in ['x', 'y', 'osmid', 'street_name']:
+        return
+    if k not in d or d[k] is None:
+        d[k] = v
+
+
+def add_node_tags_to_lane(lane_data, nodes_dict):
+    """
+    Add node tags to the lane data.  
+    Nodes will will be processed in the reverse order if the lane direction is from intersection,
+    otherwise in the normal order.
+    :param lane_data: dictionary
+    :param nodes_dict: dictionary
+    :return: None
+    """
+    if lane_data['direction'] == 'from_intersection':
+        for node_id in lane_data['nodes'][::-1]:
+            for k in nodes_dict[node_id]:
+                add_value_to_dict(lane_data, k, nodes_dict[node_id][k])
+    else:
+        for node_id in lane_data['nodes']:
+            for k in nodes_dict[node_id]:
+                add_value_to_dict(lane_data, k, nodes_dict[node_id][k])
+
+
+def add_node_tags_to_lanes(lanes, nodes_dict):
+    """
+    Add node tags to a list of lanes.  
+    Nodes will will be processed in the reverse order if the lane direction is from intersection,
+    otherwise in the normal order.
+    :param lanes: list of dictionaries
+    :param nodes_dict: dictionary
+    :return: None
+    """
+    for lane_data in lanes:
+        add_node_tags_to_lane(lane_data, nodes_dict)

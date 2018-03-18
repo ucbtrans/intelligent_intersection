@@ -26,19 +26,54 @@ def get_street_structure(city_name):
     return paths, nodes_dict
 
 
-def get_intersection_data(paths, nodes_dict, street_tuple, size=500.0, crop_radius=150.0):
-
-    intersection_nodes = select_close_nodes(nodes_dict, get_intersection_nodes(paths, street_tuple))
-    u, v = get_center(intersection_nodes, nodes_dict)
+def create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
+    """
+    Create dictionary of intersection data.
+    :param street_tuple: tuple of strings
+    :param city_data: dictionary
+    :param size: float in meters: initial size of osm data
+    :param crop_radius: float in meters: the data within the initial size will be cropped to the specified radius
+    :return: dictionary
+    """
+    x_nodes = select_close_nodes(city_data['nodes'], get_intersection_nodes(city_data['paths'], street_tuple))
+    u, v = get_center(x_nodes, city_data['nodes'])
 
     north, south, east, west = get_box(u, v, size=size)
-    intersection_jsons = ox.osm_net_download(north=north, south=south, east=east, west=west, network_type='drive')
+    x_data = {
+        'city': city_data['name'],
+        'streets': street_tuple,
+        'center_x': u,
+        'center_y': v,
+        'north': north,
+        'south': south,
+        'east': east,
+        'west': west,
+        'size': size,
+        'crop_radius': crop_radius
+        }
+
+    return x_data
+
+
+def get_intersection_data(x_data, nodes_dict):
+    """
+    Get a list of paths related to the intersection and a list of data matching the osmnx format.
+    :param x_data: dictionary
+    :param nodes_dict: dictionary
+    :return: a tuple of lists
+    """
+    intersection_jsons = ox.osm_net_download(north=x_data['north'],
+                                             south=x_data['south'],
+                                             east=x_data['east'],
+                                             west=x_data['west'],
+                                             network_type='drive'
+                                             )
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
     correction(intersection_paths)
-    node_subset = get_node_subset(intersection_jsons, intersection_paths)
+    node_subset = get_node_subset(intersection_jsons, intersection_paths, nodes_dict)
     oneway_paths = add_borders_to_paths(split_bidirectional_paths(intersection_paths), nodes_dict)
-    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths, street_tuple))
-    set_direction(cleaned_intersection_paths, u, v, nodes_dict)
+    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths, x_data['streets']))
+    set_direction(cleaned_intersection_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
 
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
@@ -48,11 +83,23 @@ def get_intersection_data(paths, nodes_dict, street_tuple, size=500.0, crop_radi
                                }
                               ]
 
-    cropped_intersection = crop_selection(intersection_selection, u, v, crop_radius)
+    cropped_intersection = crop_selection(intersection_selection,
+                                          x_data['center_x'],
+                                          x_data['center_y'],
+                                          x_data['crop_radius']
+                                          )
     return cleaned_intersection_paths, cropped_intersection
 
 
-def crop_selection(selection, x0, y0, radius=275.0):
+def crop_selection(selection, x0, y0, radius=150.0):
+    """
+    Crop the selection to a smaller radius
+    :param selection: list of intersection data in the osmnx format
+    :param x0: float: center coordinate
+    :param y0: float: center coordinate
+    :param radius: float in meters: cropping radius
+    :return: cropped list of intersection data in the osmnx format
+    """
     node_d = get_nodes_dict(selection)
     cropped_selection = []
 

@@ -20,7 +20,7 @@ def insert_street_names(city_data):
             for node_id in path['nodes']:
                 if 'street_name' not in city_data['nodes'][node_id]:
                     city_data['nodes'][node_id]['street_name'] = set()
-                    city_data['nodes'][node_id]['street_name'].add(path['tags']['name'])
+                city_data['nodes'][node_id]['street_name'].add(path['tags']['name'])
 
     return city_data
 

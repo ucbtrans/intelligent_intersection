@@ -9,7 +9,7 @@
 
 import copy
 import osmnx as ox
-from intersection import get_intersection_data, plot_lanes
+from intersection import get_intersection_data, plot_lanes, create_intersection
 from street import insert_street_names, get_intersections_for_a_street
 from lane import get_lanes, merge_lanes, shorten_lanes
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways
@@ -57,9 +57,9 @@ def get_intersecting_streets(city_data):
     """
     intersecting_streets = set()
 
-    for node in city_data['nodes']:
-        if 'street_name' in city_data['nodes'][node] and len(city_data['nodes'][node]['street_name']) > 1:
-            intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node]['street_name']))))
+    for node_id in city_data['nodes']:
+        if 'street_name' in city_data['nodes'][node_id] and len(city_data['nodes'][node_id]['street_name']) > 1:
+            intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
 
     duplicates = set()
     for x in intersecting_streets:
@@ -93,24 +93,20 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     :param crop_radius: the data will be cropped to the specified radius in meters
     :return: dictionary
     """
-    cleaned_intersection_paths, cropped_intersection = get_intersection_data(city_data['paths'],
-                                                                             city_data['nodes'],
-                                                                             street_tuple,
-                                                                             size=size,
-                                                                             crop_radius=crop_radius
+
+    intersection_data = create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0)
+
+    cleaned_intersection_paths, cropped_intersection = get_intersection_data(intersection_data,
+                                                                             city_data['nodes']
                                                                              )
 
     lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
-    merged_lanes = merge_lanes(lanes)
+    merged_lanes = merge_lanes(lanes, city_data['nodes'])
     shorten_lanes(merged_lanes)
 
-    intersection_data = {
-        'city': city_data['name'],
-        'streets': street_tuple,
-        'lanes': lanes,
-        'merged_lanes': merged_lanes,
-        'cropped_intersection': cropped_intersection
-    }
+    intersection_data['lanes'] = lanes
+    intersection_data['merged_lanes'] = merged_lanes
+    intersection_data['cropped_intersection'] = cropped_intersection
 
     return intersection_data
 
@@ -148,8 +144,8 @@ def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
             continue
 
         intersection_candidates = set(copy.deepcopy(cities[city_name]['intersecting_streets']))
-        for street in [s.strip() for s in (address.split(',')[0]).split('and')]:
-            intersection_candidates = get_intersections_for_a_street(street, intersection_candidates)
+        for street_name in [s.strip() for s in (address.split(',')[0]).split('and')]:
+            intersection_candidates = get_intersections_for_a_street(street_name, intersection_candidates)
 
         cities[city_name]['intersections'] = cities[city_name]['intersections'] | intersection_candidates
 
