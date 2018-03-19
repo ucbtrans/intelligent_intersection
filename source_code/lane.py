@@ -411,6 +411,8 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
 
     if 'turn:lanes' in path_data['tags']:
         lane_types = path_data['tags']['turn:lanes'].split('|')
+    elif 'railway' in path_data['tags']:
+        lane_types = ['rail_track'] * num_of_lanes
     else:
         lane_types = [''] * num_of_lanes
 

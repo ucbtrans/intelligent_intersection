@@ -9,9 +9,9 @@
 
 import copy
 import osmnx as ox
-from intersection import get_intersection_data, plot_lanes, create_intersection
+from intersection import get_intersection_data, plot_lanes, create_intersection, get_railway_data
 from street import insert_street_names, get_intersections_for_a_street
-from lane import get_lanes, merge_lanes, shorten_lanes
+from lane import get_lanes, merge_lanes, shorten_lanes, get_lanes
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways
 from city import get_city_name_from_address
 from node import get_nodes_dict
@@ -107,7 +107,8 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     intersection_data['lanes'] = lanes
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
-
+    intersection_data['railway'] = get_railway_data(intersection_data, city_data['nodes'])
+    intersection_data['rail_lane'] = get_lanes(intersection_data['railway'], city_data['nodes'])
     return intersection_data
 
 

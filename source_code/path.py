@@ -40,6 +40,8 @@ def count_lanes(path_data):
 
     if 'turn:lanes' in path_data['tags']:
         lane_types = path_data['tags']['turn:lanes'].split('|')
+    elif 'railway' in path_data['tags']:
+        lane_types = ['rail_track'] * num_of_lanes
     else:
         lane_types = [''] * num_of_lanes
 

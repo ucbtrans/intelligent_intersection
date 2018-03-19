@@ -9,7 +9,7 @@
 import osmnx as ox
 from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
-from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes
+from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, add_nodes_to_dictionary
 from street import select_close_nodes
 
 
@@ -86,21 +86,50 @@ def get_intersection_data(x_data, nodes_dict):
     cropped_intersection = crop_selection(intersection_selection,
                                           x_data['center_x'],
                                           x_data['center_y'],
-                                          x_data['crop_radius']
+                                          radius=x_data['crop_radius']
                                           )
     return cleaned_intersection_paths, cropped_intersection
 
 
-def crop_selection(selection, x0, y0, radius=150.0):
+def get_railway_data(x_data, nodes_dict):
+    """
+    Get railway data if applicable for the intersection and crop within the radius.
+    :param x_data: dictionary
+    :param nodes_dict: dictionary 
+    :return: list of railway paths 
+    """
+    railway_jsons = ox.osm_net_download(north=x_data['north'],
+                                        south=x_data['south'],
+                                        east=x_data['east'],
+                                        west=x_data['west'],
+                                        network_type='all',
+                                        infrastructure='way["railway"]'
+                                        )
+    railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
+    add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
+    oneway_paths = add_borders_to_paths(split_bidirectional_paths(railway_paths), nodes_dict)
+    set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    return remove_elements_beyond_radius(oneway_paths,
+                                         nodes_dict,
+                                         x_data['center_x'],
+                                         x_data['center_y'],
+                                         x_data['crop_radius']
+                                         )
+
+
+def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):
     """
     Crop the selection to a smaller radius
     :param selection: list of intersection data in the osmnx format
     :param x0: float: center coordinate
     :param y0: float: center coordinate
+    :param nodes_dict: dictionary
     :param radius: float in meters: cropping radius
     :return: cropped list of intersection data in the osmnx format
     """
-    node_d = get_nodes_dict(selection)
+    if nodes_dict is None:
+        nodes_dict = get_nodes_dict(selection, nodes_dict={})
+
     cropped_selection = []
 
     for s in selection:
@@ -109,20 +138,32 @@ def crop_selection(selection, x0, y0, radius=150.0):
                      'generator': s['generator'],
                      'elements': s['elements']
                      }
-        for e in s_cropped['elements']:
-            if e['type'] != 'node':
-                cropped_node_list = []
-                for n in e['nodes']:
-                    dist = ox.great_circle_vec(y0, x0, node_d[n]['y'], node_d[n]['x'])
-                    if dist <= radius:
-                        cropped_node_list.append(n)
-                e['nodes'] = cropped_node_list
-
-        lst = [e for e in s_cropped['elements'] if e['type'] == 'node' or len(e['nodes']) > 1]
-        s_cropped['element'] = lst
+        s_cropped['element'] = remove_elements_beyond_radius(s_cropped['elements'], nodes_dict, x0, y0, radius)
         cropped_selection.append(s_cropped)
 
     return cropped_selection
+
+
+def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
+    """
+    Remove elements of a list having coordinates beyond certain radius
+    :param elements: list of elements
+    :param nodes_dict: dictionary
+    :param x0: center coordinate
+    :param y0: center coordinate
+    :param radius: radius in meters
+    :return: list of remaining elements
+    """
+    for e in elements:
+        if e['type'] != 'node':
+            cropped_node_list = []
+            for n in e['nodes']:
+                dist = ox.great_circle_vec(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
+                if dist <= radius:
+                    cropped_node_list.append(n)
+            e['nodes'] = cropped_node_list
+
+    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 1]
 
 
 def get_box(x, y, size=500.0):

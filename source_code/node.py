@@ -7,20 +7,21 @@
 #######################################################################
 
 
-def get_nodes_dict(city_paths_nodes):
+def get_nodes_dict(city_paths_nodes, nodes_dict={}):
     """
     Parse nodes from an osm response and convert them into the osmnx format
     :param city_paths_nodes: list of dictinaries
+    :param nodes_dict: dictionary
     :return: list of dictionaries
     """
-    nodes = {}
+
     for city_paths_node in city_paths_nodes:
         for element in city_paths_node['elements']:
             if element['type'] == 'node':
                 key = element['id']
-                nodes[key] = get_node(element)
+                nodes_dict[key] = get_node(element)
 
-    return nodes
+    return nodes_dict
 
 
 def get_node(element):
@@ -126,3 +127,15 @@ def get_center(nodes, nodes_d):
     y = sum([nodes_d[n]['y'] for n in nodes]) / len(nodes)
 
     return x, y
+
+
+def add_nodes_to_dictionary(nodes, nodes_dict):
+    """
+    Add nodes to the node dictionary if missing
+    :param nodes: list of nodes in the osm format
+    :param nodes_dict: dictionary
+    :return: None
+    """
+    for n in nodes:
+        if n['id'] not in nodes_dict:
+            nodes_dict[n['id']] = get_node(n)
