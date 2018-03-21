@@ -125,6 +125,20 @@ def shift_list_of_nodes(node_coordinates, widths, direction_reference=None):
     return shifted_list
 
 
+def shift_border(path_data, nodes_dict, shift):
+    """
+    Shift border to a specified distance
+    :param path_data: dictionary
+    :param nodes_dict: dictionary
+    :param shift: float in meters
+    :return: list of coordinates
+    """
+    if len(path_data['nodes']) < 2:
+        return None
+    node_coordinates = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path_data['nodes']]
+    return shift_list_of_nodes(node_coordinates, [shift] * len(node_coordinates))
+
+
 def get_vertices(node_coordinates, width):
     """
     Get list of points for a polygon

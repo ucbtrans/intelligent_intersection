@@ -7,10 +7,22 @@
 #######################################################################
 
 import osmnx as ox
+import copy
 from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, add_nodes_to_dictionary
 from street import select_close_nodes
+
+track_symbol = {
+    'SW': '\\',
+    'NE': '\\',
+    'N': '-',
+    'S': '-',
+    'E': '|',
+    'W': '|',
+    'SE': '/',
+    'NW': '/',
+}
 
 
 def get_street_structure(city_name):
@@ -69,9 +81,18 @@ def get_intersection_data(x_data, nodes_dict):
                                              network_type='drive'
                                              )
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
-    correction(intersection_paths)
-    node_subset = get_node_subset(intersection_jsons, intersection_paths, nodes_dict)
-    oneway_paths = add_borders_to_paths(split_bidirectional_paths(intersection_paths), nodes_dict)
+    add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
+
+    cropped_paths = remove_elements_beyond_radius(intersection_paths,
+                                                  nodes_dict,
+                                                  x_data['center_x'],
+                                                  x_data['center_y'],
+                                                  x_data['crop_radius']
+                                                  )
+    correction(cropped_paths)
+
+    node_subset = get_node_subset(intersection_jsons, cropped_paths, nodes_dict)
+    oneway_paths = add_borders_to_paths(split_bidirectional_paths(cropped_paths, nodes_dict), nodes_dict)
     cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths, x_data['streets']))
     set_direction(cleaned_intersection_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
 
@@ -83,12 +104,7 @@ def get_intersection_data(x_data, nodes_dict):
                                }
                               ]
 
-    cropped_intersection = crop_selection(intersection_selection,
-                                          x_data['center_x'],
-                                          x_data['center_y'],
-                                          radius=x_data['crop_radius']
-                                          )
-    return cleaned_intersection_paths, cropped_intersection
+    return cleaned_intersection_paths, intersection_selection
 
 
 def get_railway_data(x_data, nodes_dict):
@@ -107,14 +123,15 @@ def get_railway_data(x_data, nodes_dict):
                                         )
     railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
     add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
-    oneway_paths = add_borders_to_paths(split_bidirectional_paths(railway_paths), nodes_dict)
-    set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
-    return remove_elements_beyond_radius(oneway_paths,
-                                         nodes_dict,
-                                         x_data['center_x'],
-                                         x_data['center_y'],
-                                         x_data['crop_radius']
-                                         )
+    cropped_paths = remove_elements_beyond_radius(railway_paths,
+                                                  nodes_dict,
+                                                  x_data['center_x'],
+                                                  x_data['center_y'],
+                                                  x_data['crop_radius']
+                                                  )
+    paths_with_borders = add_borders_to_paths(cropped_paths, nodes_dict, width=2.0)
+    set_direction(paths_with_borders, x_data['center_x'], x_data['center_y'], nodes_dict)
+    return paths_with_borders
 
 
 def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):
@@ -200,19 +217,30 @@ def set_font_size(ax, font_size=14):
         item.set_fontsize(font_size)
 
 
-def get_polygon_from_lane(lane, fc='#808080', ec='w', alpha=1.0, linestyle='dashed', joinstyle='round'):
+def get_polygon_from_lane(lane,
+                          fc='#808080',
+                          ec='#000000',
+                          alpha=1.0,
+                          linestyle='dashed',
+                          joinstyle='round',
+                          fill=True,
+                          hatch=None
+                          ):
     """
     Get a polygon from a lane
     """
-    if lane['direction'] == 'to_intersection':
-        fc = '#003366'
-    elif lane['direction'] == 'from_intersection':
-        fc = '#00994C'
+    if 'rail' not in lane['lane_type']:
+        if lane['direction'] == 'to_intersection':
+            fc = '#003366'
+        elif lane['direction'] == 'from_intersection':
+            fc = '#00994C'
 
-    if lane['left_shaped_border'] is not None and lane['left_shaped_border'] is not None and 'L' in lane['lane_id']:
+    if lane['left_shaped_border'] is not None and lane['right_shaped_border'] is not None and 'L' in lane['lane_id']:
         polygon_sequence = lane['left_shaped_border'] + lane['right_shaped_border'][::-1]
     else:
         polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
+
+    polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
 
     return Polygon(polygon_sequence,
                    closed=True,
@@ -220,7 +248,9 @@ def get_polygon_from_lane(lane, fc='#808080', ec='w', alpha=1.0, linestyle='dash
                    ec=ec,
                    alpha=alpha,
                    linestyle=linestyle,
-                   joinstyle=joinstyle
+                   joinstyle=joinstyle,
+                   hatch=hatch,
+                   fill=fill
                    )
 
 
@@ -233,9 +263,13 @@ def plot_lanes(lanes,
                axis_off=False,
                edge_linewidth=1,
                margin=0.02,
+               linestyle='dashed',
                bgcolor='#CCFFE5',
                edge_color='#FF9933',
-               alpha=1.0
+               fcolor='#808080',
+               alpha=1.0,
+               fill=True,
+               hatch=None,
                ):
     """
     Plot lanes for existing street plot
@@ -269,8 +303,25 @@ def plot_lanes(lanes,
                                 show=False
                                 )
 
-    for lane in lanes:
-        ax.add_patch(get_polygon_from_lane(lane, alpha=alpha))
+    for lane_data in lanes:
+        if hatch is None and 'rail' in lane_data['lane_type']:
+            track_hatch = track_symbol[lane_data['compass']]
+        else:
+            track_hatch = hatch
+        """
+        if lane_data['approach_id'] == 0:
+            track_hatch = '0'
+        else:
+            track_hatch = '|'
+        """
+        ax.add_patch(get_polygon_from_lane(lane_data,
+                                           alpha=alpha,
+                                           ec=edge_color,
+                                           fc=fcolor,
+                                           fill=fill,
+                                           hatch=track_hatch,
+                                           linestyle=linestyle,)
+                     )
 
     return fig, ax
 

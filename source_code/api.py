@@ -94,7 +94,7 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     :return: dictionary
     """
 
-    intersection_data = create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0)
+    intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
 
     cleaned_intersection_paths, cropped_intersection = get_intersection_data(intersection_data,
                                                                              city_data['nodes']
@@ -108,7 +108,8 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
     intersection_data['railway'] = get_railway_data(intersection_data, city_data['nodes'])
-    intersection_data['rail_lane'] = get_lanes(intersection_data['railway'], city_data['nodes'])
+    intersection_data['rail_lane'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
+    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_lane'], city_data['nodes'])
     return intersection_data
 
 
@@ -187,7 +188,7 @@ def get_approaches(intersection_data):
     return [m for m in intersection_data['merged_lanes'] if m['direction'] == 'to_intersection']
 
 
-def get_intersection_image(intersection_data):
+def get_intersection_image(intersection_data, alpha=1.0):
     """
     Get an image of intersection lanes in PNG format
     :param intersection_data: dictionary
@@ -203,7 +204,21 @@ def get_intersection_image(intersection_data):
                          margin=0.02,
                          bgcolor='#CCFFE5',
                          edge_color='#FF9933',
-                         alpha=1.0
+                         alpha=alpha
+                         )
+
+    fig, ax = plot_lanes(intersection_data['merged_tracks'],
+                         fig=fig, ax=ax,
+                         cropped_intersection=None,
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         fcolor='#C0C0C0',
+                         edge_color='#000000',
+                         alpha=alpha,
+                         linestyle='solid'
                          )
 
     return fig

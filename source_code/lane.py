@@ -256,6 +256,11 @@ def create_lane(p,
 
 def add_lane(lane_data, merged_lane=None):
 
+    if 'split' in lane_data:
+        split = lane_data['path']['tags']['split']
+    else:
+        split = 'no'
+
     if merged_lane is None:
         merged_lane = {
             'width': [lane_data['width']],
@@ -269,10 +274,19 @@ def add_lane(lane_data, merged_lane=None):
             'left_shaped_border': copy.deepcopy(lane_data['left_shaped_border']),
             'shape_points': copy.deepcopy(lane_data['shape_points']),
             'shape_length': copy.deepcopy(lane_data['shape_length']),
+            'split': [split]
         }
     else:
+
+        split_transition = merged_lane['split'][-1] + '2' + split
+        # split_transition options: yes2no, no2yes, yes2yes, no2no
         for k in ['nodes', 'left_border', 'right_border', 'nodes_coordinates']:
-            merged_lane[k] += lane_data[k][1:]
+            if split_transition == 'yes2no':
+                merged_lane[k][:-1] += lane_data[k]
+            else:
+                merged_lane[k] += lane_data[k][1:]
+        merged_lane['split'] += [split]
+
         for k in ['width', 'path_id', 'path']:
             merged_lane[k] += [lane_data[k]]
 
@@ -292,7 +306,8 @@ def add_lane(lane_data, merged_lane=None):
                      'right_shaped_border',
                      'left_shaped_border',
                      'shape_length',
-                     'shape_points']:
+                     'shape_points',
+                     'split']:
             merged_lane[k] = lane_data[k]
     return merged_lane
 
@@ -385,15 +400,21 @@ def intersects(origin_lane, destination_lane, all_lanes):
         return False
 
 
-def get_lanes(paths, nodes_dict, shape_points=16, shape_length=10.0):
+def get_lanes(paths, nodes_dict, shape_points=16, shape_length=10.0, width=3.08):
     lanes = []
     for p in paths:
-        lanes.extend(get_lanes_from_path(p, nodes_dict, shape_points=shape_points, shape_length=shape_length))
+        lanes.extend(get_lanes_from_path(p,
+                                         nodes_dict,
+                                         shape_points=shape_points,
+                                         shape_length=shape_length,
+                                         width=width
+                                         )
+                     )
 
     return lanes
 
 
-def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.0):
+def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.0, width=3.08):
     """
     Create a lane from a path
     :param path_data: dictionary
@@ -432,7 +453,8 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
                                 shape_points=shape_points, shape_length=shape_length,
                                 num_of_left_lanes=num_of_left_lanes,
                                 num_of_right_lanes=num_of_right_lanes,
-                                num_of_trunk_lanes=num_of_trunk_lanes
+                                num_of_trunk_lanes=num_of_trunk_lanes,
+                                width=width
                                 )
         lanes.append(lane_data)
         left_border = lane_data['right_border']
@@ -450,7 +472,8 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
                                 shape_points=shape_points, shape_length=shape_length,
                                 num_of_left_lanes=num_of_left_lanes,
                                 num_of_right_lanes=num_of_right_lanes,
-                                num_of_trunk_lanes=num_of_trunk_lanes
+                                num_of_trunk_lanes=num_of_trunk_lanes,
+                                width=width
                                 )
         lanes.append(lane_data)
         right_border = lane_data['left_border']

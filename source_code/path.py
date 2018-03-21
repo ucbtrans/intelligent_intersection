@@ -6,7 +6,7 @@
 #
 #######################################################################
 
-from border import shift_list_of_nodes
+from border import shift_list_of_nodes, shift_border
 import copy
 import osmnx as ox
 
@@ -23,6 +23,8 @@ def get_num_of_lanes(path_data):
     # u'lanes:forward': u'2',
     # "u'lanes:forward'"
 
+    if 'turn:lanes' in path_data['tags']:
+        return len(path_data['tags']['turn:lanes'].split('|'))
     if 'lanes' in path_data['tags']:
         return int(path_data['tags']['lanes'])
 
@@ -54,6 +56,14 @@ def count_lanes(path_data):
 
 
 def add_borders_to_path(path_data, nodes_dict, width=3.048):
+    """
+    Create left and right borders for a path assuming the path nodes defines the center of teh street
+    :param path_data: dictionary
+    :param nodes_dict: dictionary
+    :param width: float lane width in meters
+    :return: dictionary
+    """
+
     path_data = remove_nodes_without_coordinates(path_data, nodes_dict)
     if len(path_data['nodes']) < 2:
         path_data['left_border'] = None
@@ -61,8 +71,18 @@ def add_borders_to_path(path_data, nodes_dict, width=3.048):
         return path_data
     num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(path_data)
     node_coordinates = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path_data['nodes']]
-    path_data['right_border'] = shift_list_of_nodes(node_coordinates, [width*num_of_trunk_lanes/2.0]*len(node_coordinates))
-    path_data['left_border'] = shift_list_of_nodes(node_coordinates, [-width*num_of_trunk_lanes/2.0] * len(node_coordinates))
+
+    if 'left_border' not in path_data or path_data['left_border'] is None:
+        path_data['right_border'] = shift_list_of_nodes(node_coordinates,
+                                                        [width*num_of_trunk_lanes/2.0]*len(node_coordinates)
+                                                        )
+        path_data['left_border'] = shift_list_of_nodes(node_coordinates,
+                                                       [-width*num_of_trunk_lanes/2.0] * len(node_coordinates)
+                                                       )
+    else:
+        path_data['right_border'] = shift_list_of_nodes(path_data['left_border'],
+                                                        [width * num_of_trunk_lanes] * len(node_coordinates)
+                                                        )
     return path_data
 
 
@@ -79,17 +99,21 @@ def add_borders_to_paths(paths, nodes_dict, width=3.048):
     return paths
 
 
-def split_bidirectional_path(path_data):
+def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0):
     """
     Split a bidirectional path to two oneway paths
     :param path_data: dictionary
+    :param nodes_dict: dictionary
+    :param space_between_direction: float in meters
     :return: a tuple of dictionaries: forward and backward paths
     """
 
     if 'oneway' in path_data['tags'] and path_data['tags']['oneway'] == 'yes':
+        path_data['tags']['split'] = 'no'
         return path_data, None
 
     forward_path = copy.deepcopy(path_data)
+    forward_path['tags']['split'] = 'yes'
     forward_path['tags']['oneway'] = 'yes'
     forward_path['id'] = forward_path['id']*1000
     if 'turn:lanes:forward' in forward_path['tags']:
@@ -99,33 +123,41 @@ def split_bidirectional_path(path_data):
     if 'lanes:forward' in forward_path['tags']:
         forward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
 
+    forward_path['left_border'] = shift_border(forward_path, nodes_dict, space_between_direction/2.0)
+
     backward_path = copy.deepcopy(path_data)
+    backward_path['tags']['split'] = 'yes'
     backward_path['id'] = backward_path['id'] * 1000 + 1
     backward_path['tags']['oneway'] = 'yes'
     backward_path['nodes'] = backward_path['nodes'][::-1]
-    if 'turn:lanes:forward' in forward_path['tags']:
-        forward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:forward']
+
+    if 'turn:lanes:backward' in forward_path['tags']:
+        backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:forward']
     if 'turn:lanes:both_ways' in forward_path['tags']:
         forward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
-    if 'lanes:forward' in forward_path['tags']:
-        forward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
+        backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
+    if 'lanes:backward' in forward_path['tags']:
+        backward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
     if 'destination:ref:backward' in forward_path['tags']:
-        forward_path['tags']['destination:ref'] = forward_path['tags']['destination:ref:backward']
+        backward_path['tags']['destination:ref'] = forward_path['tags']['destination:ref:backward']
     if 'destination:backward' in forward_path['tags']:
-        forward_path['tags']['destination'] = forward_path['tags']['destination:backward']
+        backward_path['tags']['destination'] = forward_path['tags']['destination:backward']
+
+    backward_path['left_border'] = shift_border(backward_path, nodes_dict, space_between_direction / 2.0)
 
     return forward_path, backward_path
 
 
-def split_bidirectional_paths(paths):
+def split_bidirectional_paths(paths, nodes_dict):
     """
     Replace bidirectional paths with oneway ones and return a new list
     :param paths: list of dictionaries
+    :param nodes_dict: dictionary
     :return: list of dictionaries
     """
     split = []
     for p in paths:
-        forward_path, backward_path = split_bidirectional_path(p)
+        forward_path, backward_path = split_bidirectional_path(p, nodes_dict)
         split.append(forward_path)
         if backward_path is not None:
             split.append(backward_path)
