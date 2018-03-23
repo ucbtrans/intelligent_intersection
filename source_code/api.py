@@ -12,9 +12,9 @@ import osmnx as ox
 from intersection import get_intersection_data, plot_lanes, create_intersection, get_railway_data
 from street import insert_street_names, get_intersections_for_a_street
 from lane import get_lanes, merge_lanes, shorten_lanes, get_lanes
-from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways
+from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, get_through_guideways
 from city import get_city_name_from_address
-from node import get_nodes_dict
+from node import get_nodes_dict, get_node_dict_subset_from_list_of_lanes
 
 
 def get_city(city_name, network_type="drive"):
@@ -108,8 +108,16 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
     intersection_data['railway'] = get_railway_data(intersection_data, city_data['nodes'])
-    intersection_data['rail_lane'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
-    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_lane'], city_data['nodes'])
+    intersection_data['rail_tracks'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
+    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_tracks'], city_data['nodes'])
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['lanes'],
+                                                                         city_data['nodes'],
+                                                                         nodes_subset=intersection_data['nodes']
+                                                                         )
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['rail_tracks'],
+                                                                         city_data['nodes'],
+                                                                         nodes_subset=intersection_data['nodes']
+                                                                         )
     return intersection_data
 
 
@@ -232,15 +240,23 @@ def get_guideways(intersection_data, guideway_type='all'):
     :return: list of dictionaries
     """
     guideways = []
-    if guideway_type == 'left' or 'all':
-        guideways.extend(get_left_turn_guideways(intersection_data['merged_lanes'], angle_delta=2.0))
-    if guideway_type == 'right' or 'all':
+    if guideway_type == 'left' or guideway_type == 'all':
+        guideways.extend(get_left_turn_guideways(intersection_data['merged_lanes'],
+                                                 intersection_data['nodes'],
+                                                 angle_delta=2.0
+                                                 )
+                         )
+    if guideway_type == 'right' or guideway_type == 'all':
         guideways.extend(get_right_turn_guideways(intersection_data['merged_lanes']))
+
+    if guideway_type == 'through' or guideway_type == 'all':
+        guideways.extend(get_through_guideways(intersection_data['merged_lanes']
+                                               + intersection_data['merged_tracks']))
 
     return guideways
 
 
-def get_guideway_image(guideways, intersection_data):
+def get_guideway_image(guideways, intersection_data, alpha=1.0):
     """
     Get an image of guideways in PNG format
     :param guideways: list of dictionaries
@@ -257,8 +273,22 @@ def get_guideway_image(guideways, intersection_data):
                          margin=0.02,
                          bgcolor='#CCFFE5',
                          edge_color='#FF9933',
-                         alpha=1.0
+                         alpha=alpha
                          )
 
-    guideway_fig, guideway_ax = plot_guideways(guideways, fig=fig, ax=ax, alpha=0.9, fc='#FFFF66', ec='b')
+    fig, ax = plot_lanes(intersection_data['merged_tracks'],
+                         fig=fig, ax=ax,
+                         cropped_intersection=None,
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         fcolor='#C0C0C0',
+                         edge_color='#000000',
+                         alpha=alpha,
+                         linestyle='solid'
+                         )
+
+    guideway_fig, guideway_ax = plot_guideways(guideways, fig=fig, ax=ax, alpha=alpha, fc='#FFFF66', ec='b')
     return guideway_fig

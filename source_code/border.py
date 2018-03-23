@@ -253,6 +253,20 @@ def get_compass_rhumb(compass_bearing):
     return rhumbs[int(float(compass_bearing)/interval + 0.5) % len(rhumbs)]
 
 
+def get_angle_between_bearings(bearing1, bearing2):
+    """
+    Calculate angle between two compass bearings in degrees.  The result is in +/- 180 range.
+    The positive direction is from North to East
+    :param bearing1: float
+    :param bearing2: float
+    :return: float
+    """
+    angle = (bearing2 - bearing1 + 360) % 360
+    if angle >= 180.0:
+        angle -= 360.0
+    return angle
+
+
 def set_lane_bearing(lanes):
     """
     Set compass bearings and rhumbs for a list of lanes
@@ -362,3 +376,28 @@ def get_turn_angle(origin_border, destination_border):
     pt = list(intersection_point.coords)[0]
     line2 = cut_border_by_distance(destination_line, destination_line.project(intersection_point))[1]
     return pt, [pt, origin_border[-1]], list(line2.coords)[:2]
+
+
+def get_intersection_with_circle(vector, center, radius, margin=0.01):
+    """
+    Get an intersection between a vector and a circle.
+    Assuming vector[0] is within the circle and vector[1] is outside.
+    Applying a margin to make sure the intersection is within the circle.
+    Can not use the standard Shapely method because we are in lon-lat coordinates
+    :param vector: list of two points
+    :param center: coordinates of the center
+    :param radius: float in meters
+    :param margin: float: relative to 1.  applied to make sure the intersection is within the circle.
+    :return: coordinates of the intersection
+    """
+    bearing1 = get_compass(vector[1], vector[0])
+    bearing2 = get_compass(vector[1], center)
+    angle = (abs(bearing2 - bearing1) + 360) % 360
+    length = ox.great_circle_vec(center[1], center[0], vector[1][1], vector[1][0])
+    outside_of_circle = length*math.cos(to_rad(angle)) - math.sqrt(radius**2 - (length*math.sin(to_rad(angle)))**2)
+    line = geom.LineString(vector[::-1])
+    relative_distance = outside_of_circle/vector_len(vector) * (1.0 + margin)
+    coord = line.interpolate(relative_distance, normalized=True).coords[0]
+    new_dist = ox.great_circle_vec(center[1], center[0], coord[1], coord[0])
+    # print('angle, length, new, outside, rel:', angle, length, new_dist, outside_of_circle, relative_distance)
+    return line.interpolate(relative_distance, normalized=True).coords[0]

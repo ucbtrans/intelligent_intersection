@@ -10,8 +10,11 @@ import osmnx as ox
 import copy
 from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
-from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, add_nodes_to_dictionary
+from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
+    add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, remove_nodes_outside_of_radius
 from street import select_close_nodes
+from railway import split_railways
+
 
 track_symbol = {
     'SW': '\\',
@@ -61,7 +64,8 @@ def create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
         'east': east,
         'west': west,
         'size': size,
-        'crop_radius': crop_radius
+        'crop_radius': crop_radius,
+        'nodes': {}
         }
 
     return x_data
@@ -122,8 +126,11 @@ def get_railway_data(x_data, nodes_dict):
                                         infrastructure='way["railway"]'
                                         )
     railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
+    referenced_nodes = {}
+    referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
+    split_railway_paths = split_railways(railway_paths, referenced_nodes)
     add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
-    cropped_paths = remove_elements_beyond_radius(railway_paths,
+    cropped_paths = remove_elements_beyond_radius(split_railway_paths,
                                                   nodes_dict,
                                                   x_data['center_x'],
                                                   x_data['center_y'],
@@ -171,6 +178,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
     :param radius: radius in meters
     :return: list of remaining elements
     """
+    center = (x0, y0)
     for e in elements:
         if e['type'] != 'node':
             cropped_node_list = []
@@ -179,7 +187,14 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                 if dist <= radius:
                     cropped_node_list.append(n)
             e['nodes'] = cropped_node_list
-
+            '''
+                    nodes_dict[n]['within_selection'] = 'yes'
+                else:
+                    nodes_dict[n]['within_selection'] = 'no'
+            #print('Before', len(e['nodes']))
+            e['nodes'] = remove_nodes_outside_of_radius(e['nodes'], nodes_dict, center, radius)
+            #print('After', len(e['nodes']))
+            '''
     return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 1]
 
 
@@ -308,15 +323,15 @@ def plot_lanes(lanes,
             track_hatch = track_symbol[lane_data['compass']]
         else:
             track_hatch = hatch
-        """
-        if lane_data['approach_id'] == 0:
-            track_hatch = '0'
+
+        if 'rail' in lane_data['lane_type']:
+            lane_edge_color = '#000000'
         else:
-            track_hatch = '|'
-        """
+            lane_edge_color = '#FFFFFF'
+
         ax.add_patch(get_polygon_from_lane(lane_data,
                                            alpha=alpha,
-                                           ec=edge_color,
+                                           ec=lane_edge_color,
                                            fc=fcolor,
                                            fill=fill,
                                            hatch=track_hatch,

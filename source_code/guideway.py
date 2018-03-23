@@ -27,7 +27,7 @@ from matplotlib.patches import Polygon
 from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
     get_direct_right_turn_border, get_destination_lanes_for_right_turn
 from left_turn import is_left_turn_allowed, get_destination_lanes_for_left_turn
-
+from through import is_through_allowed, get_destination_lane
 
 def get_intersection_angle(origin_lane, destination_lane, all_lanes):
     """
@@ -163,27 +163,28 @@ def create_left_turn_guideway(origin_lane, destination_lane, all_lanes):
     return guideway
 
 
-def get_left_turn_guideways(all_lanes, angle_delta=2.5):
+def get_left_turn_guideways(all_lanes, nodes_dict, angle_delta=2.5):
     """
     Compile a list of guideways for all legal left turns
     :param all_lanes: list of dictionaries
     :param angle_delta: float in degrees
+    :param nodes_dict: dictionary
     :return: list of dictionaries
     """
 
     guideways = []
     for origin_lane in all_lanes:
-        if 'L' in origin_lane['lane_id']:
-            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes):
-                guideway = get_direct_right_turn_guideway(origin_lane,
-                                                          destination_lane,
-                                                          all_lanes,
-                                                          turn_type='left',
-                                                          angle_delta=angle_delta
-                                                          )
+        if 'L' in origin_lane['lane_id'] or is_left_turn_allowed(origin_lane):
+            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
+                guideway_data = get_direct_right_turn_guideway(origin_lane,
+                                                               destination_lane,
+                                                               all_lanes,
+                                                               turn_type='left',
+                                                               angle_delta=angle_delta
+                                                              )
                 # guideway = create_left_turn_guideway(origin_lane, destination_lane, all_lanes)
-                if guideway is not None:
-                    guideways.append(guideway)
+                if guideway_data is not None:
+                    guideways.append(guideway_data)
     return guideways
 
 
@@ -239,6 +240,26 @@ def create_right_turn_guideway(origin_lane, all_lanes):
         return None
 
     return guideway
+
+
+def get_through_guideway(origin_lane, destination_lane):
+    return {
+        'type': 'through',
+        'origin_lane': origin_lane,
+        'destination_lane': destination_lane,
+        'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'],
+        'right_border': origin_lane['right_border'][:-1] + destination_lane['right_border']
+    }
+
+
+def get_through_guideways(all_lanes):
+    guideways = []
+    for origin_lane in all_lanes:
+        if is_through_allowed(origin_lane):
+            destination_lane = get_destination_lane(origin_lane, all_lanes)
+            if destination_lane is not None:
+                guideways.append(get_through_guideway(origin_lane, destination_lane))
+    return guideways
 
 
 def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='right', angle_delta=2.5):

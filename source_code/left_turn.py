@@ -6,24 +6,28 @@
 #
 #######################################################################
 
-from lane import get_lane_index_from_left, intersects, get_turn_type
+from lane import get_lane_index_from_left, intersects, get_turn_type, is_lane_crossing_another_street
 
 
-def is_left_turn_allowed(lane):
+def is_left_turn_allowed(lane_data):
     """
     Return True if a legal left turn allowed from this lane.  False otherwise.
     :param lane: lane dictionary
     :return: boolean
     """
-    if 'left' in lane['lane_type']:
+    if lane_data['direction'] != 'to_intersection':
+        return False
+    if 'left' in lane_data['lane_type']:
         return True
-    if lane['num_of_left_lanes'] == 0 and lane['lane_type'] == '':
+    if lane_data['num_of_left_lanes'] == 0 \
+            and lane_data['lane_type'] == ''\
+            and get_lane_index_from_left(lane_data) == 0:
         return True
 
     return False
 
 
-def get_destination_lanes_for_left_turn(origin_lane, all_lanes):
+def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
     """
     Identifying destination lanes (possibly more than one).
     Assuming that the origin and destination lanes must have the same lane index from left,
@@ -32,6 +36,7 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes):
     So we identify the destination lane by the index from left rather than by the lane id.
     :param origin_lane: lane dictionary of a left turn
     :param all_lanes: list of dictionaries
+    :param nodes_dict: dictionary
     :return: list of valid lane destinations for the left turn
     """
     if origin_lane['name'] == 'no_name':
@@ -47,4 +52,5 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes):
             and destination_index == get_lane_index_from_left(l)
             and intersects(origin_lane, l, all_lanes)
             and get_turn_type(origin_lane, l) == 'left_turn'
+            and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
             ]

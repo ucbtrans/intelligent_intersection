@@ -381,7 +381,7 @@ def extend_destination_left_border(lane_data):
 
 def intersects(origin_lane, destination_lane, all_lanes):
     """
-    Check if two lanes intersects.
+    Check if two streets intersects.
     Definition of intersection: the destination lane has a common node with any lane
     belonging to the origin street.  The destination lane does necessarily crosses the origin lane
     but it may cross another lane from the origin street to satisfy the intersection requirement.
@@ -593,3 +593,18 @@ def add_node_tags_to_lanes(lanes, nodes_dict):
     """
     for lane_data in lanes:
         add_node_tags_to_lane(lane_data, nodes_dict)
+
+
+def is_lane_crossing_another_street(lane_data, another_street, nodes_dict):
+    """
+    Check if the lane crosses another street, i.e. there is a common node.
+    This is a more strict check than function intersect above
+    :param lane_data: dictionary
+    :param another_street: string
+    :param nodes_dict: dictionary
+    :return: True if crosses, False otherwise
+    """
+    for n in lane_data['nodes']:
+        if another_street in nodes_dict[n]['street_name']:
+            return True
+    return False

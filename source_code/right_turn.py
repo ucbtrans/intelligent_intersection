@@ -13,14 +13,14 @@ from lane import get_lane_index_from_right, get_turn_type, intersects
 from turn import construct_turn_arc, shorten_border_for_crosswalk
 
 
-def is_right_turn_allowed(lane, all_lanes):
-    if 'right' in lane['lane_type'] or 'R ' in lane['lane_id']:
+def is_right_turn_allowed(lane_data, all_lanes):
+    if 'right' in lane_data['lane_type'] or 'R ' in lane_data['lane_id']:
         return True
-    if lane['lane_id'] == '1' and lane['lane_type'] == '' and lane['direction'] == 'to_intersection':
+    if lane_data['lane_id'] == '1' and lane_data['lane_type'] == '' and lane_data['direction'] == 'to_intersection':
         return True
-    if lane['lane_type'] == 'through' \
-            and lane['direction'] == 'to_intersection' \
-            and len(get_connected_links(lane, all_lanes)) > 0:
+    if lane_data['lane_type'] == 'through' \
+            and lane_data['direction'] == 'to_intersection' \
+            and len(get_connected_links(lane_data, all_lanes)) > 0:
         return True
 
     return False
@@ -130,19 +130,27 @@ def get_direct_right_turn_border(origin_lane,
                                  all_lanes,
                                  border_type='left',
                                  turn_direction=1,
-                                 angle_delta=0.0
+                                 angle_delta=0.0,
+                                 use_shaped_border=False
                                  ):
 
     shaped_border = border_type + '_shaped_border'
     non_shaped_border = border_type + '_border'
-    if shaped_border not in origin_lane or origin_lane[shaped_border] is None:
+
+    if not use_shaped_border:
+        origin_border = origin_lane[non_shaped_border]
+    elif shaped_border not in origin_lane or origin_lane[shaped_border] is None:
         origin_border = origin_lane[non_shaped_border]
     else:
         origin_border = origin_lane[shaped_border]
 
     destination_border = destination_lane[non_shaped_border]
 
-    shorten_origin_border = origin_border
+    shorten_origin_border = shorten_border_for_crosswalk(origin_border,
+                                                              origin_lane['name'],
+                                                              all_lanes,
+                                                              destination='to_intersection'
+                                                              )
     shorten_destination_border = shorten_border_for_crosswalk(destination_border,
                                                               destination_lane['name'],
                                                               all_lanes,

@@ -132,12 +132,12 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0)
     backward_path['nodes'] = backward_path['nodes'][::-1]
 
     if 'turn:lanes:backward' in forward_path['tags']:
-        backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:forward']
+        backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:backward']
     if 'turn:lanes:both_ways' in forward_path['tags']:
         forward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
         backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
     if 'lanes:backward' in forward_path['tags']:
-        backward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
+        backward_path['tags']['lanes'] = forward_path['tags']['lanes:backward']
     if 'destination:ref:backward' in forward_path['tags']:
         backward_path['tags']['destination:ref'] = forward_path['tags']['destination:ref:backward']
     if 'destination:backward' in forward_path['tags']:
