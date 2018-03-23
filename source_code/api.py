@@ -11,8 +11,9 @@ import copy
 import osmnx as ox
 from intersection import get_intersection_data, plot_lanes, create_intersection, get_railway_data
 from street import insert_street_names, get_intersections_for_a_street
-from lane import get_lanes, merge_lanes, shorten_lanes, get_lanes
-from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, get_through_guideways
+from lane import set_ids, merge_lanes, shorten_lanes, get_lanes
+from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
+    get_through_guideways, set_guideway_ids
 from city import get_city_name_from_address
 from node import get_nodes_dict, get_node_dict_subset_from_list_of_lanes
 
@@ -118,6 +119,7 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
                                                                          city_data['nodes'],
                                                                          nodes_subset=intersection_data['nodes']
                                                                          )
+    set_ids(intersection_data['merged_lanes'] + intersection_data['merged_tracks'])
     return intersection_data
 
 
@@ -253,7 +255,7 @@ def get_guideways(intersection_data, guideway_type='all'):
         guideways.extend(get_through_guideways(intersection_data['merged_lanes']
                                                + intersection_data['merged_tracks']))
 
-    return guideways
+    return set_guideway_ids(guideways)
 
 
 def get_guideway_image(guideways, intersection_data, alpha=1.0):

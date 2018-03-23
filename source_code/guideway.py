@@ -340,6 +340,17 @@ def get_right_turn_guideways(all_lanes):
     return [g for g in guideways if g is not None]
 
 
+def set_guideway_ids(guideways):
+    """
+    Set guideway ids as a combination of the origin and destination ids
+    :param guideways: list of dictionaries
+    :return: list of dictionaries
+    """
+    for g in guideways:
+        g['id'] = 100*g['origin_lane']['id'] + g['destination_lane']['id']
+
+    return guideways
+
 def get_polygon_from_guideway(guideway, fc='y', ec='w', alpha=0.8, linestyle='dashed', joinstyle='round'):
     """
     Get a polygon from a lane

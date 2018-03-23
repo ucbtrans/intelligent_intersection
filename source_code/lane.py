@@ -533,20 +533,20 @@ def merge_lanes(lanes, nodes_dict):
                     merged_lanes.append(merged_lane)
 
     set_lane_bearing(merged_lanes)
+    set_ids(lanes)
     add_node_tags_to_lanes(merged_lanes, nodes_dict)
-    set_approach_ids(merged_lanes)
     return merged_lanes
 
 
-def set_approach_ids(merged_lanes):
+def set_ids(lanes):
     """
-    Set approach ids for a list of merged lanes.  
-    Approaches are numbered separately for each intersection starting from zero.
-    :param merged_lanes: list of dictionaries
+    Set ids for a list of lanes.  
+    Lanes are numbered separately for each intersection starting from 1.
+    :param lanes: list of dictionaries
     :return: None
     """
-    for n, m in enumerate(merged_lanes):
-        m['approach_id'] = n
+    for n, m in enumerate(lanes):
+        m['id'] = n + 1
 
 
 def add_value_to_dict(d, k, v):
