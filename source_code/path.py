@@ -57,7 +57,7 @@ def count_lanes(path_data):
 
 def add_borders_to_path(path_data, nodes_dict, width=3.048):
     """
-    Create left and right borders for a path assuming the path nodes defines the center of teh street
+    Create left and right borders for a path assuming the path nodes defines the center of the street
     :param path_data: dictionary
     :param nodes_dict: dictionary
     :param width: float lane width in meters
@@ -123,6 +123,14 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0)
     if 'lanes:forward' in forward_path['tags']:
         forward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
 
+    # process bicycle lanes
+    if 'bicycle' not in forward_path['tags'] or forward_path['tags']['bicycle'] == 'yes':
+        if 'cycleway:left' in forward_path:
+            del forward_path['cycleway:left']
+        if 'cycleway:both' in forward_path['tags']:
+            forward_path['tags']['cycleway:right'] = forward_path['tags']['cycleway:both']
+            del forward_path['tags']['cycleway:both']
+
     forward_path['left_border'] = shift_border(forward_path, nodes_dict, space_between_direction/2.0)
 
     backward_path = copy.deepcopy(path_data)
@@ -142,6 +150,17 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0)
         backward_path['tags']['destination:ref'] = forward_path['tags']['destination:ref:backward']
     if 'destination:backward' in forward_path['tags']:
         backward_path['tags']['destination'] = forward_path['tags']['destination:backward']
+
+    # process bicycle lanes
+    if 'bicycle' not in backward_path['tags'] or backward_path['tags']['bicycle'] == 'yes':
+        if 'cycleway:right' in backward_path:
+            del backward_path['tags']['cycleway:right']
+        if 'cycleway:left' in backward_path:
+            backward_path['tags']['cycleway:right'] = backward_path['tags']['cycleway:left']
+            del backward_path['tags']['cycleway:left']
+        if 'cycleway:both' in backward_path['tags']:
+            backward_path['tags']['cycleway:right'] = backward_path['tags']['cycleway:both']
+            del backward_path['tags']['cycleway:both']
 
     backward_path['left_border'] = shift_border(backward_path, nodes_dict, space_between_direction / 2.0)
 
@@ -223,3 +242,17 @@ def set_direction(paths, x, y, nodes_dict):
             p['tags']['direction'] = 'to_intersection'
         else:
             p['tags']['direction'] = 'from_intersection'
+
+
+def reverse_direction(direction):
+    """
+    Reverse direction
+    :param direction: string
+    :return: string
+    """
+    if direction == 'to_intersection':
+        return 'from_intersection'
+    elif direction == 'from_intersection':
+        return 'to_intersection'
+    else:
+        return direction

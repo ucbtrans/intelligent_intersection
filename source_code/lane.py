@@ -4,6 +4,8 @@
 #
 #   This module creates lanes for the intersection
 #
+#   Reference: https://wiki.openstreetmap.org/wiki/Map_Features
+#
 #######################################################################
 
 
@@ -11,7 +13,8 @@ import copy
 import math
 import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, cut_border_by_polygon, set_lane_bearing
-from path import get_num_of_lanes, count_lanes
+from path import get_num_of_lanes, count_lanes, reverse_direction
+from bicycle import key_value_check, get_bicycle_lane_location
 
 
 def get_turn_type(origin_lane, destination_lane):
@@ -414,6 +417,174 @@ def get_lanes(paths, nodes_dict, shape_points=16, shape_length=10.0, width=3.08)
     return lanes
 
 
+def get_bicycle_lanes(paths, nodes_dict, width=1.0):
+    lanes = []
+    for path_data in paths:
+        lanes.extend(get_bicycle_lanes_from_path(path_data, nodes_dict, width=width))
+    return lanes
+
+
+def get_bicycle_lanes_from_path(path_data, nodes_dict, width=1.0):
+
+    if len(path_data['nodes']) < 2:
+        return []
+
+    if key_value_check([('bicycle', 'no')], path_data):
+        return []
+
+    lanes = []
+
+    shared = False
+    if 'cycleway' in path_data['tags'] and 'shared' in path_data['tags']['cycleway']:
+        shared = True
+    elif 'cycleway:right' in path_data['tags'] and 'shared' in path_data['tags']['cycleway:right']:
+        shared = True
+    elif 'cycleway' not in path_data['tags'] \
+            and 'cycleway:right' not in path_data['tags'] \
+            and 'cycleway:left' not in path_data['tags']:
+        shared = True
+
+    if shared:
+        lane_data = create_lane(path_data,
+                                nodes_dict,
+                                right_border=path_data['right_border'],
+                                lane_id='1B',
+                                lane_type='cycleway',
+                                direction=path_data['tags']['direction'],
+                                width=width
+                                )
+        lanes.append(lane_data)
+    else:
+        bicycle_lane_location = get_bicycle_lane_location(path_data)
+        fl = bicycle_lane_location['bicycle_forward_location']
+        bl = bicycle_lane_location['bicycle_backward_location']
+        if fl == 'right' and bl == 'right':
+            backward_lane_data = create_lane(path_data,
+                                             nodes_dict,
+                                             left_border=path_data['right_border'],
+                                             lane_id='1B',
+                                             lane_type='cycleway',
+                                             direction=reverse_direction(path_data['tags']['direction']),
+                                             width=width
+                                             )
+            forward_lane_data = create_lane(path_data,
+                                            nodes_dict,
+                                            left_border=backward_lane_data['right_border'],
+                                            lane_id='1B',
+                                            lane_type='cycleway',
+                                            direction=path_data['tags']['direction'],
+                                            width=width
+                                            )
+            lanes.append(forward_lane_data)
+            lanes.append(backward_lane_data)
+
+        elif fl == 'right' and bl == 'left':
+            backward_lane_data = create_lane(path_data,
+                                             nodes_dict,
+                                             right_border=path_data['left_border'],
+                                             lane_id='1B',
+                                             lane_type='cycleway',
+                                             direction=reverse_direction(path_data['tags']['direction']),
+                                             width=width
+                                             )
+            forward_lane_data = create_lane(path_data,
+                                            nodes_dict,
+                                            left_border=path_data['right_border'],
+                                            lane_id='1B',
+                                            lane_type='cycleway',
+                                            direction=path_data['tags']['direction'],
+                                            width=width
+                                            )
+            lanes.append(forward_lane_data)
+            lanes.append(backward_lane_data)
+
+        elif fl == 'left' and bl == 'left':
+            forward_lane_data = create_lane(path_data,
+                                            nodes_dict,
+                                            right_border=path_data['left_border'],
+                                            lane_id='1B',
+                                            lane_type='cycleway',
+                                            direction=path_data['tags']['direction'],
+                                            width=width
+                                            )
+            backward_lane_data = create_lane(path_data,
+                                             nodes_dict,
+                                             right_border=forward_lane_data['left_border'],
+                                             lane_id='1B',
+                                             lane_type='cycleway',
+                                             direction=reverse_direction(path_data['tags']['direction']),
+                                             width=width
+                                             )
+            lanes.append(forward_lane_data)
+            lanes.append(backward_lane_data)
+
+        elif fl == 'left' and bl == 'right':
+            forward_lane_data = create_lane(path_data,
+                                            nodes_dict,
+                                            right_border=path_data['left_border'],
+                                            lane_id='1B',
+                                            lane_type='cycleway',
+                                            direction=path_data['tags']['direction'],
+                                            width=width
+                                            )
+            backward_lane_data = create_lane(path_data,
+                                             nodes_dict,
+                                             left_border=path_data['right_border'],
+                                             lane_id='1B',
+                                             lane_type='cycleway',
+                                             direction=reverse_direction(path_data['tags']['direction']),
+                                             width=width
+                                             )
+            lanes.append(forward_lane_data)
+            lanes.append(backward_lane_data)
+
+        elif fl == 'left' and bl is None:
+            forward_lane_data = create_lane(path_data,
+                                            nodes_dict,
+                                            right_border=path_data['left_border'],
+                                            lane_id='1B',
+                                            lane_type='cycleway',
+                                            direction=path_data['tags']['direction'],
+                                            width=width
+                                            )
+            lanes.append(forward_lane_data)
+
+        elif fl == 'right' and bl is None:
+            forward_lane_data = create_lane(path_data,
+                                            nodes_dict,
+                                            left_border=path_data['right_border'],
+                                            lane_id='1B',
+                                            lane_type='cycleway',
+                                            direction=path_data['tags']['direction'],
+                                            width=width
+                                            )
+            lanes.append(forward_lane_data)
+
+        elif fl is None and bl == 'right':
+            backward_lane_data = create_lane(path_data,
+                                             nodes_dict,
+                                             left_border=path_data['right_border'],
+                                             lane_id='1B',
+                                             lane_type='cycleway',
+                                             direction=reverse_direction(path_data['tags']['direction']),
+                                             width=width
+                                             )
+            lanes.append(backward_lane_data)
+
+        elif fl is None and bl == 'left':
+            backward_lane_data = create_lane(path_data,
+                                             nodes_dict,
+                                             rigth_border=path_data['left_border'],
+                                             lane_id='1B',
+                                             lane_type='cycleway',
+                                             direction=reverse_direction(path_data['tags']['direction']),
+                                             width=width
+                                             )
+            lanes.append(backward_lane_data)
+
+    return lanes
+
+
 def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.0, width=3.08):
     """
     Create a lane from a path
@@ -421,6 +592,7 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
     :param nodes_dict: dictionary
     :param shape_points: integer number of points to create a shaped border of a turn lane
     :param shape_length: float in meters: the length of the shaped portion of the border
+    :param width: float in meters
     :return: list of dictionaries
     """
     if len(path_data['nodes']) < 2:

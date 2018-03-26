@@ -244,11 +244,11 @@ def get_polygon_from_lane(lane,
     """
     Get a polygon from a lane
     """
-    if 'rail' not in lane['lane_type']:
+    if 'rail' not in lane['lane_type'] and 'cycleway' not in lane['lane_type']:
         if lane['direction'] == 'to_intersection':
             fc = '#003366'
         elif lane['direction'] == 'from_intersection':
-            fc = '#00994C'
+            fc = '#006600'
 
     if lane['left_shaped_border'] is not None and lane['right_shaped_border'] is not None and 'L' in lane['lane_id']:
         polygon_sequence = lane['left_shaped_border'] + lane['right_shaped_border'][::-1]
@@ -327,7 +327,7 @@ def plot_lanes(lanes,
         if 'rail' in lane_data['lane_type']:
             lane_edge_color = '#000000'
         else:
-            lane_edge_color = '#FFFFFF'
+            lane_edge_color = edge_color
 
         ax.add_patch(get_polygon_from_lane(lane_data,
                                            alpha=alpha,

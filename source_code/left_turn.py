@@ -12,11 +12,13 @@ from lane import get_lane_index_from_left, intersects, get_turn_type, is_lane_cr
 def is_left_turn_allowed(lane_data):
     """
     Return True if a legal left turn allowed from this lane.  False otherwise.
-    :param lane: lane dictionary
+    :param lane_data: lane dictionary
     :return: boolean
     """
     if lane_data['direction'] != 'to_intersection':
         return False
+    if lane_data['lane_type'] == 'cycleway':
+        return True
     if 'left' in lane_data['lane_type']:
         return True
     if lane_data['num_of_left_lanes'] == 0 \
@@ -44,7 +46,18 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
     if not is_left_turn_allowed(origin_lane):
         return []
 
+    if origin_lane['lane_type'] == 'cycleway':
+        return [l for l in all_lanes
+                if l['name'] != origin_lane['name']
+                and l['name'] != 'no_name'
+                and l['direction'] == 'from_intersection'
+                and intersects(origin_lane, l, all_lanes)
+                and get_turn_type(origin_lane, l) == 'left_turn'
+                and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
+                ]
+
     destination_index = get_lane_index_from_left(origin_lane)
+
     return [l for l in all_lanes
             if l['name'] != origin_lane['name']
             and l['name'] != 'no_name'

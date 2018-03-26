@@ -11,7 +11,7 @@ import copy
 import osmnx as ox
 from intersection import get_intersection_data, plot_lanes, create_intersection, get_railway_data
 from street import insert_street_names, get_intersections_for_a_street
-from lane import set_ids, merge_lanes, shorten_lanes, get_lanes
+from lane import set_ids, merge_lanes, shorten_lanes, get_lanes, get_bicycle_lanes
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
     get_through_guideways, set_guideway_ids
 from city import get_city_name_from_address
@@ -119,7 +119,9 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
                                                                          city_data['nodes'],
                                                                          nodes_subset=intersection_data['nodes']
                                                                          )
-    set_ids(intersection_data['merged_lanes'] + intersection_data['merged_tracks'])
+    intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths, city_data['nodes'])
+    intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
+    set_ids(intersection_data['merged_lanes']+intersection_data['merged_tracks']+intersection_data['merged_cycleways'])
     return intersection_data
 
 
@@ -204,6 +206,7 @@ def get_intersection_image(intersection_data, alpha=1.0):
     :param intersection_data: dictionary
     :return: matplotlib.figure.Figure
     """
+
     fig, ax = plot_lanes(intersection_data['merged_lanes'],
                          fig=None, ax=None,
                          cropped_intersection=intersection_data['cropped_intersection'],
@@ -213,7 +216,7 @@ def get_intersection_image(intersection_data, alpha=1.0):
                          edge_linewidth=1,
                          margin=0.02,
                          bgcolor='#CCFFE5',
-                         edge_color='#FF9933',
+                         edge_color='w',#'#FF9933',
                          alpha=alpha
                          )
 
@@ -231,6 +234,19 @@ def get_intersection_image(intersection_data, alpha=1.0):
                          linestyle='solid'
                          )
 
+    fig, ax = plot_lanes(intersection_data['merged_cycleways'],
+                         fig=fig, ax=ax,
+                         cropped_intersection=None,
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         fcolor='#00FF00',
+                         edge_color='#00FF00',
+                         alpha=alpha,
+                         linestyle='solid'
+                         )
     return fig
 
 
@@ -255,6 +271,16 @@ def get_guideways(intersection_data, guideway_type='all'):
         guideways.extend(get_through_guideways(intersection_data['merged_lanes']
                                                + intersection_data['merged_tracks']))
 
+    """
+    if ('cycleways' in guideway_type and 'left' in guideway_type) \
+            or ('cycleways' in guideway_type and 'all' in guideway_type):
+    """
+    if True:
+        guideways.extend(get_left_turn_guideways(intersection_data['merged_cycleways'],
+                                                 intersection_data['nodes'],
+                                                 angle_delta=2.0
+                                                 )
+                         )
     return set_guideway_ids(guideways)
 
 

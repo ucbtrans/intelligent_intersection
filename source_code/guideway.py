@@ -174,7 +174,7 @@ def get_left_turn_guideways(all_lanes, nodes_dict, angle_delta=2.5):
 
     guideways = []
     for origin_lane in all_lanes:
-        if 'L' in origin_lane['lane_id'] or is_left_turn_allowed(origin_lane):
+        if is_left_turn_allowed(origin_lane):
             for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
                 guideway_data = get_direct_right_turn_guideway(origin_lane,
                                                                destination_lane,
@@ -401,7 +401,13 @@ def plot_guideways(guideways, fig=None, ax=None, cropped_intersection=None,
             return None, None
         return None, None
 
-    for guideway in guideways:
-        ax.add_patch(get_polygon_from_guideway(guideway, alpha=alpha, fc=fc, ec=ec))
+    for guideway_data in guideways:
+        if guideway_data['destination_lane']['lane_type'] == 'cycleway':
+            fcolor = '#00FF00'
+            ecolor = '#00FF00'
+        else:
+            fcolor = fc
+            ecolor = ec
+        ax.add_patch(get_polygon_from_guideway(guideway_data, alpha=alpha, fc=fcolor, ec=ecolor))
 
     return fig, ax
