@@ -18,6 +18,8 @@ def is_right_turn_allowed(lane_data, all_lanes):
         return True
     if lane_data['lane_id'] == '1' and lane_data['lane_type'] == '' and lane_data['direction'] == 'to_intersection':
         return True
+    if lane_data['lane_type'] == 'cycleway' and lane_data['direction'] == 'to_intersection':
+        return True
     if lane_data['lane_type'] == 'through' \
             and lane_data['direction'] == 'to_intersection' \
             and len(get_connected_links(lane_data, all_lanes)) > 0:

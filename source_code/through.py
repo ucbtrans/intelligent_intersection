@@ -21,6 +21,8 @@ def is_through_allowed(lane_data):
         return False
     if 'through' in lane_data['lane_type'] or lane_data['lane_type'] == '' or 'rail' in lane_data['lane_type']:
         return True
+    if lane_data['lane_type'] == 'cycleway':
+        return True
 
     return False
 

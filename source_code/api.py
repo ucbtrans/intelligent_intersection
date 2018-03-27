@@ -271,16 +271,22 @@ def get_guideways(intersection_data, guideway_type='all'):
         guideways.extend(get_through_guideways(intersection_data['merged_lanes']
                                                + intersection_data['merged_tracks']))
 
-    """
     if ('cycleways' in guideway_type and 'left' in guideway_type) \
             or ('cycleways' in guideway_type and 'all' in guideway_type):
-    """
-    if True:
         guideways.extend(get_left_turn_guideways(intersection_data['merged_cycleways'],
                                                  intersection_data['nodes'],
                                                  angle_delta=2.0
                                                  )
                          )
+
+    if ('cycleways' in guideway_type and 'right' in guideway_type) \
+            or ('cycleways' in guideway_type and 'all' in guideway_type):
+        guideways.extend(get_right_turn_guideways(intersection_data['merged_cycleways']))
+
+    if ('cycleways' in guideway_type and 'through' in guideway_type) \
+            or ('cycleways' in guideway_type and 'all' in guideway_type):
+        guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
+
     return set_guideway_ids(guideways)
 
 
