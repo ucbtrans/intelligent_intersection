@@ -12,7 +12,8 @@
 import copy
 import math
 import shapely.geometry as geom
-from border import shift_list_of_nodes, get_incremental_points, extend_vector, cut_border_by_polygon, set_lane_bearing
+from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
+    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings
 from path import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location
 
@@ -206,6 +207,11 @@ def create_lane(p,
         'num_of_trunk_lanes': num_of_trunk_lanes,
         'crosswalk_width': crosswalk_width
     }
+
+    if lane_type == 'cycleway':
+        bicycle_lane_location = get_bicycle_lane_location(p)
+        lane_data['bicycle_forward_location'] = bicycle_lane_location['bicycle_forward_location']
+        lane_data['bicycle_backward_location'] = bicycle_lane_location['bicycle_backward_location']
 
     for x in p['tags']:
         lane_data[x] = p['tags'][x]
@@ -666,10 +672,13 @@ def merge_lanes(lanes, nodes_dict):
         merged_lanes.append(add_lane(lane, merged_lane=None))
 
     names = set([l['name'] for l in lanes if l['name'] != 'no_name'])
+
     for name in names:
         ids = sorted(set([l['lane_id'] for l in lanes if l['name'] == name]))
+
         for lane_id in ids:
             directions = set([l['direction'] for l in lanes if l['lane_id'] == lane_id and l['name'] == name])
+
             for direction in directions:
                 similar_lanes = [l for l in lanes
                                  if l['lane_id'] == lane_id
@@ -677,14 +686,22 @@ def merge_lanes(lanes, nodes_dict):
                                  and l['direction'] == direction
                                  and len(l['nodes']) > 1
                                  ]
+
                 for similar_lane in similar_lanes:
-                    next_lanes = [l for l in similar_lanes if similar_lane['nodes'][-1] == l['nodes'][0]]
+                    bearing = similar_lane['path']['bearing']
+                    next_lanes = [l for l in similar_lanes
+                                  if similar_lane['nodes'][-1] == l['nodes'][0]
+                                  and abs(get_angle_between_bearings(l['path']['bearing'], bearing)) < 60.0
+                                  ]
                     if len(next_lanes) == 0:
                         similar_lane['next'] = None
                     else:
                         similar_lane['next'] = next_lanes[0]['path_id']
 
-                    prev_lanes = [l for l in similar_lanes if similar_lane['nodes'][0] == l['nodes'][-1]]
+                    prev_lanes = [l for l in similar_lanes
+                                  if similar_lane['nodes'][0] == l['nodes'][-1]
+                                  and abs(get_angle_between_bearings(l['path']['bearing'], bearing)) < 60.0
+                                  ]
                     if len(prev_lanes) == 0:
                         similar_lane['prev'] = None
                     else:

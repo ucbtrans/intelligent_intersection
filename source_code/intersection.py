@@ -14,6 +14,7 @@ from node import get_nodes_dict, get_center, get_node_subset, get_intersection_n
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, remove_nodes_outside_of_radius
 from street import select_close_nodes
 from railway import split_railways
+from correction import manual_correction, correct_paths
 
 
 track_symbol = {
@@ -93,12 +94,13 @@ def get_intersection_data(x_data, nodes_dict):
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    correction(cropped_paths)
+    manual_correction(cropped_paths)
 
     node_subset = get_node_subset(intersection_jsons, cropped_paths, nodes_dict)
-    oneway_paths = add_borders_to_paths(split_bidirectional_paths(cropped_paths, nodes_dict), nodes_dict)
-    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths, x_data['streets']))
-    set_direction(cleaned_intersection_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    oneway_paths = split_bidirectional_paths(cropped_paths, nodes_dict)
+    set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
+    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths_with_borders, x_data['streets']))
 
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
@@ -108,7 +110,7 @@ def get_intersection_data(x_data, nodes_dict):
                                }
                               ]
 
-    return cleaned_intersection_paths, intersection_selection
+    return cleaned_intersection_paths, intersection_selection, intersection_jsons
 
 
 def get_railway_data(x_data, nodes_dict):
@@ -212,16 +214,6 @@ def get_box(x, y, size=500.0):
     east = x + east_west * scale
 
     return north, south, east, west
-
-
-def correction(paths):
-    for p in paths:
-        if p['id'] == 517844779:
-            p['tags']['lanes'] = 4
-            p['tags']['turn:lanes'] = 'left|||'
-
-        if p['id'] == 45097701:
-            p['tags']['lanes'] = 2
 
 
 def set_font_size(ax, font_size=14):

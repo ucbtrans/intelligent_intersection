@@ -225,7 +225,7 @@ def get_lane_bearing(lane):
     :param lane: dictionary
     :return: float (degrees)
     """
-    if len(lane['left_border']) < 2:
+    if 'left_border' not in lane and len(lane['left_border']) < 2:
         return None
     x0 = lane['left_border'][0][0]
     y0 = lane['left_border'][0][1]
@@ -249,6 +249,9 @@ def get_compass_rhumb(compass_bearing):
     :param compass_bearing: float
     :return: string
     """
+    if compass_bearing is None:
+        return None
+
     interval = 360.0/len(rhumbs)
     return rhumbs[int(float(compass_bearing)/interval + 0.5) % len(rhumbs)]
 

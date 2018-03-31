@@ -6,7 +6,7 @@
 #
 #######################################################################
 
-from border import shift_list_of_nodes, shift_border
+from border import shift_list_of_nodes, shift_border, get_compass_bearing, get_compass_rhumb
 import copy
 import osmnx as ox
 
@@ -238,10 +238,31 @@ def set_direction(paths, x, y, nodes_dict):
                                                   nodes_dict[p['nodes'][-1]]['y'],
                                                   nodes_dict[p['nodes'][-1]]['x']
                                                   )
+
         if distance_to_center0 > distance_to_center1:
             p['tags']['direction'] = 'to_intersection'
         else:
             p['tags']['direction'] = 'from_intersection'
+
+        p['bearing'] = get_path_bearing(p, nodes_dict)
+        p['compass'] = get_compass_rhumb(p['bearing'])
+
+
+def get_path_bearing(path_data, nodes_dict):
+    """
+    Get compass bearing of a path
+    :param path_data: dictionary
+    :param nodes_dict: dictionary
+    :return: float (degrees)
+    """
+    if 'nodes' not in path_data and len(path_data['nodes']) < 2:
+        return None
+
+    x0 = nodes_dict[path_data['nodes'][0]]['x']
+    y0 = nodes_dict[path_data['nodes'][0]]['y']
+    x1 = nodes_dict[path_data['nodes'][-1]]['x']
+    y1 = nodes_dict[path_data['nodes'][-1]]['y']
+    return get_compass_bearing((y0, x0), (y1, x1))
 
 
 def reverse_direction(direction):

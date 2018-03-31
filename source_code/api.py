@@ -25,11 +25,17 @@ def get_city(city_name, network_type="drive"):
     :param network_type: string: {'walk', 'bike', 'drive', 'drive_service', 'all', 'all_private', 'none'}
     :return: a tuple of list of paths and a nodes dictionary
     """
-    try:
-        city_boundaries = ox.gdf_from_place(city_name)
-        city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type=network_type)
-    except KeyError:
+    city_paths_nodes = None
+    for which_result in range(1,4):
+        try:
+            city_boundaries = ox.gdf_from_place(city_name, which_result=which_result)
+            city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type=network_type)
+            break
+        except ValueError:
+            continue
+    if city_paths_nodes is None:
         return None
+
     nodes_dict = get_nodes_dict(city_paths_nodes)
     paths = [p for p in city_paths_nodes[0]['elements'] if p['type'] != 'node']
     city_data = {
@@ -97,14 +103,14 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
 
     intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
 
-    cleaned_intersection_paths, cropped_intersection = get_intersection_data(intersection_data,
+    cleaned_intersection_paths, cropped_intersection, raw_data = get_intersection_data(intersection_data,
                                                                              city_data['nodes']
                                                                              )
 
     lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
     merged_lanes = merge_lanes(lanes, city_data['nodes'])
     shorten_lanes(merged_lanes)
-
+    intersection_data['raw_data'] = raw_data
     intersection_data['lanes'] = lanes
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
@@ -216,7 +222,7 @@ def get_intersection_image(intersection_data, alpha=1.0):
                          edge_linewidth=1,
                          margin=0.02,
                          bgcolor='#CCFFE5',
-                         edge_color='w',#'#FF9933',
+                         edge_color='w',  #'#FF9933',
                          alpha=alpha
                          )
 
