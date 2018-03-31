@@ -99,6 +99,7 @@ def get_intersection_data(x_data, nodes_dict):
     node_subset = get_node_subset(intersection_jsons, cropped_paths, nodes_dict)
     oneway_paths = split_bidirectional_paths(cropped_paths, nodes_dict)
     set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    correct_paths(oneway_paths)
     oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
     cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths_with_borders, x_data['streets']))
 

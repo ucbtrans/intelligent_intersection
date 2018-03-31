@@ -162,7 +162,7 @@ def create_lane(p,
                 left_border=None,
                 right_border=None,
                 right_shaped_border=None,
-                lane_id=1,
+                lane_id='1',
                 lane_type='',
                 direction='undefined',
                 width=3.048,
@@ -580,7 +580,7 @@ def get_bicycle_lanes_from_path(path_data, nodes_dict, width=1.0):
         elif fl is None and bl == 'left':
             backward_lane_data = create_lane(path_data,
                                              nodes_dict,
-                                             rigth_border=path_data['left_border'],
+                                             right_border=path_data['left_border'],
                                              lane_id='1B',
                                              lane_type='cycleway',
                                              direction=reverse_direction(path_data['tags']['direction']),
@@ -591,7 +591,24 @@ def get_bicycle_lanes_from_path(path_data, nodes_dict, width=1.0):
     return lanes
 
 
-def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.0, width=3.08):
+def get_bicycle_lane_width(bicycle_lane_location, location, bicycle_lane_width=1.0):
+    """
+    Calculate the combined width of bicycle lanes at the left or right side of the trunk lanes.
+    This is needed to allow some space between the trunk and turn lanes to fit bicycle lanes.
+    :param bicycle_lane_location: dictionary
+    :param location: string: either right or left
+    :param bicycle_lane_width: float in m
+    :return: float in meters
+    """
+    w = 0.0
+    if bicycle_lane_location['bicycle_forward_location'] == location:
+        w += bicycle_lane_width
+    if bicycle_lane_location['bicycle_backward_location'] == location:
+        w += bicycle_lane_width
+    return w
+
+
+def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.0, width=3.08, bicycle_lane_width=1.0):
     """
     Create a lane from a path
     :param path_data: dictionary
@@ -599,6 +616,7 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
     :param shape_points: integer number of points to create a shaped border of a turn lane
     :param shape_length: float in meters: the length of the shaped portion of the border
     :param width: float in meters
+    :param bicycle_lane_width: float in meters
     :return: list of dictionaries
     """
     if len(path_data['nodes']) < 2:
@@ -616,17 +634,52 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
         lane_types = [''] * num_of_lanes
 
     lane_types = lane_types[::-1]
-    left_border = copy.deepcopy(path_data['left_border'])
-    num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(path_data)
 
-    for i in range(num_of_lanes, 0, -1):
-        if lane_types[i - 1] == 'left':
-            continue
+    num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(path_data)
+    bicycle_lane_location = get_bicycle_lane_location(path_data)
+
+    # Construct trunk lanes
+    left_border = copy.deepcopy(path_data['left_border'])
+    for i in range(num_of_trunk_lanes, 0, -1):
+        lane_type = lane_types[i + num_of_right_lanes - 1]
         lane_data = create_lane(path_data,
                                 nodes_dict,
                                 left_border=left_border,
-                                lane_id=i,
-                                lane_type=lane_types[i - 1],
+                                lane_id=str(i),
+                                lane_type=lane_type,
+                                direction=path_data['tags']['direction'],
+                                shape_points=shape_points, shape_length=shape_length,
+                                num_of_left_lanes=num_of_left_lanes,
+                                num_of_right_lanes=num_of_right_lanes,
+                                num_of_trunk_lanes=num_of_trunk_lanes,
+                                width=width
+                                )
+        lanes.append(lane_data)
+        left_border = lane_data['right_border']
+
+    space_for_bike_lane = get_bicycle_lane_width(bicycle_lane_location, 'right', bicycle_lane_width=bicycle_lane_width)
+    if space_for_bike_lane > 0.0:
+        space = create_lane(path_data,
+                            nodes_dict,
+                            left_border=left_border,
+                            lane_id='1B',
+                            lane_type='cycleway',
+                            direction=path_data['tags']['direction'],
+                            shape_points=shape_points, shape_length=shape_length,
+                            num_of_left_lanes=num_of_left_lanes,
+                            num_of_right_lanes=num_of_right_lanes,
+                            num_of_trunk_lanes=num_of_trunk_lanes,
+                            width=space_for_bike_lane
+                            )
+        left_border = space['right_border']
+
+    # Construct right turn lanes
+    for i in range(num_of_right_lanes, 0, -1):
+        lane_data = create_lane(path_data,
+                                nodes_dict,
+                                left_border=left_border,
+                                lane_id=str(i)+'R',
+                                lane_type='right',
                                 direction=path_data['tags']['direction'],
                                 shape_points=shape_points, shape_length=shape_length,
                                 num_of_left_lanes=num_of_left_lanes,
@@ -639,11 +692,31 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
 
     right_border = copy.deepcopy(path_data['left_border'])
     right_shaped_border = right_border
+
+    space_for_bike_lane = get_bicycle_lane_width(bicycle_lane_location, 'left', bicycle_lane_width=bicycle_lane_width)
+    if space_for_bike_lane > 0.0:
+        space = create_lane(path_data,
+                            nodes_dict,
+                            right_border=right_border,
+                            lane_id='1B',
+                            lane_type='cycleway',
+                            direction=path_data['tags']['direction'],
+                            right_shaped_border=right_shaped_border,
+                            shape_points=shape_points, shape_length=shape_length,
+                            num_of_left_lanes=num_of_left_lanes,
+                            num_of_right_lanes=num_of_right_lanes,
+                            num_of_trunk_lanes=num_of_trunk_lanes,
+                            width=space_for_bike_lane
+                            )
+        right_border = space['left_border']
+        right_shaped_border = space['left_shaped_border']
+
+    # Construct left turn lanes
     for i in range(num_of_left_lanes):
         lane_data = create_lane(path_data,
                                 nodes_dict,
                                 right_border=right_border,
-                                lane_id=i + 1,
+                                lane_id=str(i + 1),
                                 lane_type='left',
                                 direction=path_data['tags']['direction'],
                                 right_shaped_border=right_shaped_border,

@@ -34,6 +34,7 @@ def extrapolate_number_of_lanes(path_data, paths):
     :param paths: list of dictionaries
     :return: None
     """
+
     if 'tags' in path_data \
             and 'lanes' not in path_data['tags'] \
             and 'turn:lanes' not in path_data['tags']\

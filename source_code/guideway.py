@@ -247,8 +247,8 @@ def get_through_guideway(origin_lane, destination_lane):
         'type': 'through',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
-        'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'],
-        'right_border': origin_lane['right_border'][:-1] + destination_lane['right_border']
+        'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'][1:],
+        'right_border': origin_lane['right_border'][:-1] + destination_lane['right_border'][1:]
     }
 
 
