@@ -308,20 +308,22 @@ def vector_len(coord):
     return ox.great_circle_vec(y0, x0, y1, x1)
 
 
-def get_incremental_points((x0, y0), (x1, y1), n, l):
+def get_incremental_points(p0, p1, n, l):
     """
     Create a sequence of n+1 points along the vector.
     Combined distance of n interval between n+1 points should be l.
     l can be smaller or larger than the vector length
-    :param x0: starting vector coordinate
-    :param y0: starting vector coordinate
-    :param x1: ending vector coordinate
-    :param y1: ending vector coordinate
+    :param p0: starting vector point
+    :param p1: ending vector point
     :param n: number of points
     :param l: combined distance, m
     :return: list of coordinates
     """
 
+    x0 = p0[0]
+    y0 = p0[1]
+    x1 = p1[0]
+    y1 = p1[1]
     if n < 1:
         return None
 
