@@ -8,7 +8,7 @@
 
 
 import shapely.geometry as geom
-from border import cut_border_by_distance
+from border import cut_border_by_distance, extend_vector
 from lane import get_lane_index_from_right, get_turn_type, intersects
 from turn import construct_turn_arc, shorten_border_for_crosswalk
 
@@ -37,9 +37,9 @@ def get_connected_links(origin_lane, all_lanes):
     """
     return [l for l in all_lanes
             if 'highway' in l['path'][0]['tags']
-            and l['path'][0]['tags']['highway'] == 'trunk_link'
+            and 'link' in l['path'][0]['tags']['highway']
             and l['nodes'][0] in origin_lane['nodes']
-            and origin_lane['lane_id'][0] == l['lane_id'][0]
+            #and origin_lane['lane_id'][0] == l['lane_id'][0]
             ]
 
 
@@ -62,7 +62,9 @@ def get_link_destination_lane(link_lane, all_lanes):
            if link_lane['nodes'][-1] in l['nodes']
            and link_lane['lane_id'] == l['lane_id']
            and l['direction'] == 'from_intersection'
+           and 'link' not in l['path'][0]['tags']['highway']
            ]
+
     if len(res) > 0:
         return res[0]
     else:
@@ -77,7 +79,10 @@ def get_right_turn_border(origin_border, link_border, destination_border):
     :param destination_border: list of coordinates
     :return: list of coordinates
     """
-    origin_line = geom.LineString(origin_border)
+
+    last_segment = [origin_border[-2], origin_border[-1]]
+    extended = extend_vector(last_segment, length=1000.0, backward=False)
+    origin_line = geom.LineString(origin_border[:-1] + extended[1:])
     link_line = geom.LineString(link_border)
     if not origin_line.intersects(link_line):
         # Something went terribly wrong

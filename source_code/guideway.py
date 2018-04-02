@@ -237,6 +237,10 @@ def create_right_turn_guideway(origin_lane, all_lanes):
                                                      destination_lane['right_border']
                                                      )
     if guideway['left_border'] is None or guideway['right_border'] is None:
+        print('Something is None')
+        print(guideway['left_border'])
+        print(guideway['right_border'])
+
         return None
 
     return guideway

@@ -264,7 +264,7 @@ def get_angle_between_bearings(bearing1, bearing2):
     :param bearing2: float
     :return: float
     """
-    angle = (bearing2 - bearing1 + 360) % 360
+    angle = (bearing2 - bearing1 + 360.0) % 360
     if angle >= 180.0:
         angle -= 360.0
     return angle

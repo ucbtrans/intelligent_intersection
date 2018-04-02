@@ -205,7 +205,7 @@ def clean_paths(paths, street_tuple):
 
     return [p for p in paths
             if ('name' in p['tags'] and (p['tags']['name'] in street_tuple))
-            or ('highway' in p['tags'] and 'trunk_link' in p['tags']['highway'])
+            or ('highway' in p['tags'] and 'link' in p['tags']['highway'])
             ]
 
 

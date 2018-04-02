@@ -678,7 +678,7 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
         lane_data = create_lane(path_data,
                                 nodes_dict,
                                 left_border=left_border,
-                                lane_id=str(i)+'R',
+                                lane_id=str(i),
                                 lane_type='right',
                                 direction=path_data['tags']['direction'],
                                 shape_points=shape_points, shape_length=shape_length,
