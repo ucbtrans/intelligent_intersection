@@ -7,13 +7,14 @@
 #######################################################################
 
 import osmnx as ox
-import copy
+from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes, set_ids
 from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
-    add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, remove_nodes_outside_of_radius
+    add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes
 from street import select_close_nodes
 from railway import split_railways
+from footway import get_crosswalks
 from correction import manual_correction, correct_paths
 
 
@@ -72,7 +73,7 @@ def create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     return x_data
 
 
-def get_intersection_data(x_data, nodes_dict):
+def get_street_data(x_data, nodes_dict):
     """
     Get a list of paths related to the intersection and a list of data matching the osmnx format.
     :param x_data: dictionary
@@ -142,6 +143,85 @@ def get_railway_data(x_data, nodes_dict):
     paths_with_borders = add_borders_to_paths(cropped_paths, nodes_dict, width=2.0)
     set_direction(paths_with_borders, x_data['center_x'], x_data['center_y'], nodes_dict)
     return paths_with_borders
+
+
+def get_footway_data(x_data, nodes_dict):
+    """
+    Get footway data if applicable for the intersection and crop within the radius.
+    :param x_data: dictionary
+    :param nodes_dict: dictionary 
+    :return: list of railway paths 
+    """
+    footway_jsons = ox.osm_net_download(north=x_data['north'],
+                                        south=x_data['south'],
+                                        east=x_data['east'],
+                                        west=x_data['west'],
+                                        network_type='all',
+                                        infrastructure='way["highway"]'
+                                        )
+    footway_paths = [e for e in footway_jsons[0]['elements']
+                     if e['type'] == 'way'
+                     and 'highway' in e['tags']
+                     and 'foot' in e['tags']['highway']
+                     ]
+
+    add_nodes_to_dictionary([e for e in footway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
+    cropped_paths = remove_elements_beyond_radius(footway_paths,
+                                                  nodes_dict,
+                                                  x_data['center_x'],
+                                                  x_data['center_y'],
+                                                  x_data['crop_radius']
+                                                  )
+    paths_with_borders = add_borders_to_paths(cropped_paths, nodes_dict, width=1.8)
+    set_direction(paths_with_borders, x_data['center_x'], x_data['center_y'], nodes_dict)
+    return paths_with_borders
+
+
+def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0):
+    """
+    Get a dictionary with all data related to an intersection.
+    :param street_tuple: tuple of strings
+    :param city_data: dictionary
+    :param size: initial size of the surrounding area in meters
+    :param crop_radius: the data will be cropped to the specified radius in meters
+    :return: dictionary
+    """
+
+    intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
+
+    cleaned_intersection_paths, cropped_intersection, raw_data = get_street_data(intersection_data,
+                                                                                 city_data['nodes']
+                                                                                 )
+
+    lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
+    merged_lanes = merge_lanes(lanes, city_data['nodes'])
+    shorten_lanes(merged_lanes)
+    intersection_data['raw_data'] = raw_data
+    intersection_data['lanes'] = lanes
+    intersection_data['merged_lanes'] = merged_lanes
+    intersection_data['cropped_intersection'] = cropped_intersection
+    intersection_data['railway'] = get_railway_data(intersection_data, city_data['nodes'])
+    intersection_data['rail_tracks'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
+    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_tracks'], city_data['nodes'])
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['lanes'],
+                                                                         city_data['nodes'],
+                                                                         nodes_subset=intersection_data['nodes']
+                                                                         )
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['rail_tracks'],
+                                                                         city_data['nodes'],
+                                                                         nodes_subset=intersection_data['nodes']
+                                                                         )
+    intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths, city_data['nodes'])
+    intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
+    intersection_data['footway'] = get_footway_data(intersection_data, city_data['nodes'])
+    intersection_data['crosswalks'] = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
+    set_ids(intersection_data['merged_lanes']
+            + intersection_data['merged_tracks']
+            + intersection_data['merged_cycleways']
+            + intersection_data['crosswalks']
+            )
+
+    return intersection_data
 
 
 def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):

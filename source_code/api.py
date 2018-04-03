@@ -9,13 +9,12 @@
 
 import copy
 import osmnx as ox
-from intersection import get_intersection_data, plot_lanes, create_intersection, get_railway_data
+from intersection import get_intersection_data, plot_lanes
 from street import insert_street_names, get_intersections_for_a_street
-from lane import set_ids, merge_lanes, shorten_lanes, get_lanes, get_bicycle_lanes
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
     get_through_guideways, set_guideway_ids
 from city import get_city_name_from_address
-from node import get_nodes_dict, get_node_dict_subset_from_list_of_lanes
+from node import get_nodes_dict
 
 
 def get_city(city_name, network_type="drive"):
@@ -26,7 +25,7 @@ def get_city(city_name, network_type="drive"):
     :return: a tuple of list of paths and a nodes dictionary
     """
     city_paths_nodes = None
-    for which_result in range(1,4):
+    for which_result in range(1, 4):
         try:
             city_boundaries = ox.gdf_from_place(city_name, which_result=which_result)
             city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type=network_type)
@@ -101,34 +100,7 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     :return: dictionary
     """
 
-    intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
-
-    cleaned_intersection_paths, cropped_intersection, raw_data = get_intersection_data(intersection_data,
-                                                                             city_data['nodes']
-                                                                             )
-
-    lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
-    merged_lanes = merge_lanes(lanes, city_data['nodes'])
-    shorten_lanes(merged_lanes)
-    intersection_data['raw_data'] = raw_data
-    intersection_data['lanes'] = lanes
-    intersection_data['merged_lanes'] = merged_lanes
-    intersection_data['cropped_intersection'] = cropped_intersection
-    intersection_data['railway'] = get_railway_data(intersection_data, city_data['nodes'])
-    intersection_data['rail_tracks'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
-    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_tracks'], city_data['nodes'])
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['lanes'],
-                                                                         city_data['nodes'],
-                                                                         nodes_subset=intersection_data['nodes']
-                                                                         )
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['rail_tracks'],
-                                                                         city_data['nodes'],
-                                                                         nodes_subset=intersection_data['nodes']
-                                                                         )
-    intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths, city_data['nodes'])
-    intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
-    set_ids(intersection_data['merged_lanes']+intersection_data['merged_tracks']+intersection_data['merged_cycleways'])
-    return intersection_data
+    return get_intersection_data(street_tuple, city_data, size=size, crop_radius=crop_radius)
 
 
 def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
@@ -177,6 +149,15 @@ def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
     return result
 
 
+def get_crosswalks(intersection_data):
+    """
+    Return a list of crosswalks
+    :param intersection_data: dictionary
+    :return: list of dictionaries
+    """
+    return intersection_data['crosswalks']
+
+
 def get_approaches(intersection_data):
     """
     Return a list of approaches for an intersection.  
@@ -204,6 +185,35 @@ def get_approaches(intersection_data):
     :return: list of dictionaries
     """
     return [m for m in intersection_data['merged_lanes'] if m['direction'] == 'to_intersection']
+
+
+def get_exits(intersection_data):
+    """
+    Return a list of exits for an intersection.  
+    An approach is a dictionary defining a lane approaching an intersection.
+
+    'name' - street name
+    'approach_id' - approach number (zero based) for a given intersection 
+    'bearing' - compass bearing in degrees,
+    'compass' - compass point: 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'
+    'lane_id' - a string identifying a lane, for example: '1', '2', '1R', '1L', '2L'.  Numbers are from right to left
+    'direction' - direction: 'to_intersection', 'from_intersection', 'undefined'
+    'cycleway' - presence of a bicycle lane
+    'cycleway:left' - location of a bicycle lane
+    'cycleway:right' - location of a bicycle lane
+    'sidewalk' - presence of a sidewalk if applicable
+    'hov' - presence of HOV lanes
+    'maxspeed' - speed limit if applicable
+    'width' - list of lane widths in meters
+    'num_of_trunk_lanes' - number of main lanes
+    'num_of_right_lanes' - number of right turn lanes
+    'num_of_left_lanes' - number of left turn lanes
+    'crosswalk_width' - assumed width of a crosswalk in meters (crosswalk presence is not recorded in the input data)
+
+    :param intersection_data: dictionary
+    :return: list of dictionaries
+    """
+    return [m for m in intersection_data['merged_lanes'] if m['direction'] == 'from_intersection']
 
 
 def get_intersection_image(intersection_data, alpha=1.0):
