@@ -15,7 +15,7 @@ import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
     cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings
 from path import get_num_of_lanes, count_lanes, reverse_direction
-from bicycle import key_value_check, get_bicycle_lane_location
+from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 
 
 def get_turn_type(origin_lane, destination_lane):
@@ -260,6 +260,7 @@ def create_lane(p,
         lane_data['right_shaped_border'] = None
         lane_data['left_shaped_border'] = None
 
+    insert_referenced_nodes(lane_data, nodes_dict)
     return lane_data
 
 
@@ -440,17 +441,7 @@ def get_bicycle_lanes_from_path(path_data, nodes_dict, width=1.0):
 
     lanes = []
 
-    shared = False
-    if 'cycleway' in path_data['tags'] and 'shared' in path_data['tags']['cycleway']:
-        shared = True
-    elif 'cycleway:right' in path_data['tags'] and 'shared' in path_data['tags']['cycleway:right']:
-        shared = True
-    elif 'cycleway' not in path_data['tags'] \
-            and 'cycleway:right' not in path_data['tags'] \
-            and 'cycleway:left' not in path_data['tags']:
-        shared = True
-
-    if shared:
+    if is_shared(path_data):
         lane_data = create_lane(path_data,
                                 nodes_dict,
                                 right_border=path_data['right_border'],
@@ -741,6 +732,7 @@ def merge_lanes(lanes, nodes_dict):
     :return: list of dictionaries
     """
     merged_lanes = []
+    set_ids(lanes)
     for lane in [l for l in lanes if l['name'] == 'no_name']:
         merged_lanes.append(add_lane(lane, merged_lane=None))
 
@@ -795,8 +787,9 @@ def merge_lanes(lanes, nodes_dict):
                     merged_lanes.append(merged_lane)
 
     set_lane_bearing(merged_lanes)
-    set_ids(lanes)
     add_node_tags_to_lanes(merged_lanes, nodes_dict)
+    insert_referenced_nodes_to_lanes(merged_lanes, nodes_dict)
+
     return merged_lanes
 
 
@@ -870,3 +863,27 @@ def is_lane_crossing_another_street(lane_data, another_street, nodes_dict):
         if another_street in nodes_dict[n]['street_name']:
             return True
     return False
+
+
+def insert_referenced_nodes(lane_data, nodes_dict):
+    """
+    Insert data about each referenced node into the lane dictionary
+    :param lane_data: dictionary
+    :param nodes_dict: dictionary
+    :return: None
+    """
+    lane_data['nodes_dict'] = {}
+    for n in lane_data['nodes']:
+        lane_data['nodes_dict'][n] = nodes_dict[n]
+
+
+def insert_referenced_nodes_to_lanes(lanes, nodes_dict):
+    """
+    Insert data about each referenced node into each lane in the list
+    :param lanes list of dictionaries
+    :param nodes_dict: dictionary
+    :return: None
+    """
+
+    for lane_data in lanes:
+        insert_referenced_nodes(lane_data, nodes_dict)

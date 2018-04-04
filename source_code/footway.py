@@ -26,7 +26,7 @@ def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
         'path_id': path_data['id'],
         'bearing': path_data['bearing'],
         'compass': path_data['compass'],
-        'path': path_data,
+        'path': [path_data],
         'lane_type': 'crosswalk',
         'direction': 'undefined',
         'nodes': path_data['nodes'],

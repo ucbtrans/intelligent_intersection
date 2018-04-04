@@ -7,7 +7,8 @@
 #######################################################################
 
 import osmnx as ox
-from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes, set_ids
+from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes
+from meta import set_meta_data
 from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
@@ -177,6 +178,32 @@ def get_footway_data(x_data, nodes_dict):
     return paths_with_borders
 
 
+def get_public_transit_data(x_data, nodes_dict):
+    """
+    Get footway data if applicable for the intersection and crop within the radius.
+    :param x_data: dictionary
+    :param nodes_dict: dictionary 
+    :return: list of railway paths 
+    """
+    public_transit_jsons = ox.osm_net_download(north=x_data['north'],
+                                        south=x_data['south'],
+                                        east=x_data['east'],
+                                        west=x_data['west'],
+                                        network_type='all',
+                                        infrastructure='node["highway"]'
+                                        )
+
+    public_transit_nodes = [e for e in public_transit_jsons[0]['elements']
+                            if e['type'] == 'node'
+                            and 'tags' in e
+                            and 'stop' in ' '.join(e['tags'].values())
+                            ]
+
+    add_nodes_to_dictionary(public_transit_nodes, nodes_dict)
+
+    return public_transit_nodes
+
+
 def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0):
     """
     Get a dictionary with all data related to an intersection.
@@ -215,11 +242,15 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
     intersection_data['footway'] = get_footway_data(intersection_data, city_data['nodes'])
     intersection_data['crosswalks'] = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
-    set_ids(intersection_data['merged_lanes']
-            + intersection_data['merged_tracks']
-            + intersection_data['merged_cycleways']
-            + intersection_data['crosswalks']
-            )
+    intersection_data['public_transit_nodes'] = get_public_transit_data(intersection_data, city_data['nodes'])
+
+    set_meta_data(intersection_data['merged_lanes']
+                  + intersection_data['merged_tracks']
+                  + intersection_data['merged_cycleways']
+                  + intersection_data['crosswalks'],
+                  intersection_data['public_transit_nodes'],
+                  city_data['nodes']
+                  )
 
     return intersection_data
 

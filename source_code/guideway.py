@@ -243,6 +243,12 @@ def create_right_turn_guideway(origin_lane, all_lanes):
 
 
 def get_through_guideway(origin_lane, destination_lane):
+    """
+    Create a through guideway from an origin and destination lanes
+    :param origin_lane: dictionary
+    :param destination_lane: dictionary
+    :return: dictionary
+    """
     return {
         'type': 'through',
         'origin_lane': origin_lane,
@@ -253,6 +259,11 @@ def get_through_guideway(origin_lane, destination_lane):
 
 
 def get_through_guideways(all_lanes):
+    """
+    Create through guideways from a list of merged lanes
+    :param all_lanes: list of dictionaries
+    :return: list of dictionaries
+    """
     guideways = []
     for origin_lane in all_lanes:
         if is_through_allowed(origin_lane):
@@ -350,6 +361,7 @@ def set_guideway_ids(guideways):
         g['id'] = 100*g['origin_lane']['id'] + g['destination_lane']['id']
 
     return guideways
+
 
 def get_polygon_from_guideway(guideway, fc='y', ec='w', alpha=0.8, linestyle='dashed', joinstyle='round'):
     """

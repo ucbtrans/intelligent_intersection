@@ -87,3 +87,22 @@ def key_value_check(list_of_key_value_pairs, path_data):
         if path_data['tags'][key] != value:
             return False
     return True
+
+
+def is_shared(path_data):
+    """
+    Check if bicycle traffic is sharing the vehicle lane.
+    :param path_data: dictionary
+    :return: True if sharing, False otherwise
+    """
+    shared = False
+    if 'cycleway' in path_data['tags'] and 'shared' in path_data['tags']['cycleway']:
+        shared = True
+    elif 'cycleway:right' in path_data['tags'] and 'shared' in path_data['tags']['cycleway:right']:
+        shared = True
+    elif 'cycleway' not in path_data['tags'] \
+            and 'cycleway:right' not in path_data['tags'] \
+            and 'cycleway:left' not in path_data['tags']:
+        shared = True
+
+    return shared

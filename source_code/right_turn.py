@@ -35,8 +35,13 @@ def get_connected_links(origin_lane, all_lanes):
     :param all_lanes: list of dictionaries
     :return: list of dictionaries
     """
+    if 'walk' in origin_lane['lane_type'] or 'rail' in origin_lane['lane_type']:
+        return []
+
     return [l for l in all_lanes
-            if 'highway' in l['path'][0]['tags']
+            if 'walk' not in l['lane_type']
+            and 'rail' not in l['lane_type']
+            and 'highway' in l['path'][0]['tags']
             and 'link' in l['path'][0]['tags']['highway']
             and l['nodes'][0] in origin_lane['nodes']
             #and origin_lane['lane_id'][0] == l['lane_id'][0]
