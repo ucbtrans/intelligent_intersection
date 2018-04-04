@@ -178,6 +178,6 @@ def get_direct_right_turn_border(origin_lane,
 
     destination_line = geom.LineString(destination_border)
     landing_point = destination_line.project(geom.Point(turn_arc[-1]))
-    landing_border = cut_border_by_distance(destination_line, landing_point)[1]
+    landing_border = cut_border_by_distance(destination_line, landing_point)[-1]
 
     return origin_border[:-1] + turn_arc + list(landing_border.coords)[1:]

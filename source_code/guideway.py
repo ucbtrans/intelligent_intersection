@@ -302,6 +302,7 @@ def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, tur
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
     }
+
     left_border = get_direct_right_turn_border(origin_lane,
                                                destination_lane,
                                                all_lanes,

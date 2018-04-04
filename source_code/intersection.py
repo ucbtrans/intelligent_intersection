@@ -17,6 +17,7 @@ from street import select_close_nodes
 from railway import split_railways
 from footway import get_crosswalks
 from correction import manual_correction, correct_paths
+from border import border_within_box, get_box
 
 
 track_symbol = {
@@ -89,22 +90,19 @@ def get_street_data(x_data, nodes_dict):
                                              )
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
     add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
-
-    cropped_paths = remove_elements_beyond_radius(intersection_paths,
+    manual_correction(intersection_paths)
+    oneway_paths = split_bidirectional_paths(intersection_paths, nodes_dict)
+    set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    correct_paths(oneway_paths)
+    oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
+    cropped_paths = remove_elements_beyond_radius(oneway_paths_with_borders,
                                                   nodes_dict,
                                                   x_data['center_x'],
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    manual_correction(cropped_paths)
-
-    node_subset = get_node_subset(intersection_jsons, cropped_paths, nodes_dict)
-    oneway_paths = split_bidirectional_paths(cropped_paths, nodes_dict)
-    set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
-    correct_paths(oneway_paths)
-    oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
-    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(oneway_paths_with_borders, x_data['streets']))
-
+    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(cropped_paths, x_data['streets']))
+    node_subset = get_node_subset(intersection_jsons, cleaned_intersection_paths, nodes_dict)
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
                                'generator': intersection_jsons[0]['generator'],
@@ -135,15 +133,15 @@ def get_railway_data(x_data, nodes_dict):
     referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
     split_railway_paths = split_railways(railway_paths, referenced_nodes)
     add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
-    cropped_paths = remove_elements_beyond_radius(split_railway_paths,
+    paths_with_borders = add_borders_to_paths(split_railway_paths, nodes_dict, width=2.0)
+    cropped_paths = remove_elements_beyond_radius(paths_with_borders,
                                                   nodes_dict,
                                                   x_data['center_x'],
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    paths_with_borders = add_borders_to_paths(cropped_paths, nodes_dict, width=2.0)
-    set_direction(paths_with_borders, x_data['center_x'], x_data['center_y'], nodes_dict)
-    return paths_with_borders
+    set_direction(cropped_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    return cropped_paths
 
 
 def get_footway_data(x_data, nodes_dict):
@@ -167,15 +165,15 @@ def get_footway_data(x_data, nodes_dict):
                      ]
 
     add_nodes_to_dictionary([e for e in footway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
-    cropped_paths = remove_elements_beyond_radius(footway_paths,
+    paths_with_borders = add_borders_to_paths(footway_paths, nodes_dict, width=1.8)
+    cropped_paths = remove_elements_beyond_radius(paths_with_borders,
                                                   nodes_dict,
                                                   x_data['center_x'],
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    paths_with_borders = add_borders_to_paths(cropped_paths, nodes_dict, width=1.8)
-    set_direction(paths_with_borders, x_data['center_x'], x_data['center_y'], nodes_dict)
-    return paths_with_borders
+    set_direction(cropped_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    return cropped_paths
 
 
 def get_public_transit_data(x_data, nodes_dict):
@@ -281,6 +279,24 @@ def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):
     return cropped_selection
 
 
+def smart_crop(elements, nodes_dict, x0, y0, radius):
+    center = (x0, y0)
+    for e in elements:
+        if e['type'] != 'node':
+            cropped_node_list = []
+            for n in e['nodes']:
+                dist = ox.great_circle_vec(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
+                if dist <= radius:
+                    cropped_node_list.append(n)
+            if 0 < len(cropped_node_list) < len(e['nodes']):
+                if 'left_border' in e:
+                    e['left_border'] = border_within_box(x0, y0, e['left_border'], radius)
+                if 'left_border' in e:
+                    e['right_border'] = border_within_box(x0, y0, e['right_border'], radius)
+
+            e['nodes'] = cropped_node_list
+
+
 def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
     """
     Remove elements of a list having coordinates beyond certain radius
@@ -299,32 +315,16 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                 dist = ox.great_circle_vec(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
                 if dist <= radius:
                     cropped_node_list.append(n)
+
+            if 0 < len(cropped_node_list) < len(e['nodes']):
+                if 'left_border' in e:
+                    e['left_border'] = border_within_box(x0, y0, e['left_border'], radius)
+                if 'left_border' in e:
+                    e['right_border'] = border_within_box(x0, y0, e['right_border'], radius)
+
             e['nodes'] = cropped_node_list
-            '''
-                    nodes_dict[n]['within_selection'] = 'yes'
-                else:
-                    nodes_dict[n]['within_selection'] = 'no'
-            #print('Before', len(e['nodes']))
-            e['nodes'] = remove_nodes_outside_of_radius(e['nodes'], nodes_dict, center, radius)
-            #print('After', len(e['nodes']))
-            '''
+
     return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 1]
-
-
-def get_box(x, y, size=500.0):
-    north_south = 0.0018
-    dist = ox.great_circle_vec(y, x, y + north_south, x)
-    scale = size / dist
-    north = y + north_south * scale
-    south = y - north_south * scale
-
-    east_west = 0.00227
-    dist = ox.great_circle_vec(y, x, y, x + east_west)
-    scale = size / dist
-    west = x - east_west * scale
-    east = x + east_west * scale
-
-    return north, south, east, west
 
 
 def set_font_size(ax, font_size=14):

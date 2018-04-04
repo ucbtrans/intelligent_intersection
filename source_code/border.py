@@ -363,6 +363,34 @@ def get_incremental_points(p0, p1, n, l):
     return [(x0+(x1-x0)*i/n*scale, y0+(y1-y0)*i/n*scale) for i in range(n+1)]
 
 
+def get_box(x, y, size=500.0):
+    north_south = 0.0018
+    dist = ox.great_circle_vec(y, x, y + north_south, x)
+    scale = size / dist
+    north = y + north_south * scale
+    south = y - north_south * scale
+
+    east_west = 0.00227
+    dist = ox.great_circle_vec(y, x, y, x + east_west)
+    scale = size / dist
+    west = x - east_west * scale
+    east = x + east_west * scale
+
+    return north, south, east, west
+
+
+def border_within_box(x0, y0, border, size):
+    try:
+        north, south, east, west = get_box(x0, y0, size=size)
+        polygon = geom.Polygon([(west, north), (east, north), (east, south), (west, south)])
+        line = geom.LineString(border)
+        line.intersection(polygon)
+        result = list(line.coords)
+    except:
+        return []
+    return result
+
+
 def cut_border_by_polygon(border, polygon, multi_string_index=0):
     """
     Remove a portion of a border that overlaps wit a polygon
