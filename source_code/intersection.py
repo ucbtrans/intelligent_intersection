@@ -248,8 +248,7 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
                   + intersection_data['merged_tracks']
                   + intersection_data['merged_cycleways']
                   + intersection_data['crosswalks'],
-                  intersection_data['public_transit_nodes'],
-                  city_data['nodes']
+                  intersection_data['public_transit_nodes']
                   )
 
     return intersection_data

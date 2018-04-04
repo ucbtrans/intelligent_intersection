@@ -15,7 +15,24 @@ rhumbs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 
 
 def get_distance_between_nodes(nodes_d, id1, id2):
+    """
+    Get distance between two nodes
+    :param nodes_d: dictionary of nodes
+    :param id1: node id
+    :param id2: node id
+    :return: float in meters
+    """
     return ox.great_circle_vec(nodes_d[id1]['y'], nodes_d[id1]['x'], nodes_d[id2]['y'], nodes_d[id2]['x'])
+
+
+def get_distance_between_points(point1, point2):
+    """
+    Get distance between two points
+    :param point1: coordinates
+    :param point2: coordinates
+    :return: float in meters
+    """
+    return ox.great_circle_vec(point1[1], point1[0], point2[1], point2[0])
 
 
 def shift_vector(node_coordinates, width, direction_reference=None):
@@ -174,6 +191,17 @@ def cut_border_by_distance(line, distance):
             return [
                 geom.LineString(coords[:i] + [(cp.x, cp.y)]),
                 geom.LineString([(cp.x, cp.y)] + coords[i:])]
+
+
+def get_closest_point(point, coordinates):
+    """
+    Get closest point on a line to a point somewhere
+    :param point: coordinates
+    :param coordinates: list of coordinates
+    :return: coordinates
+    """
+    line = geom.LineString(coordinates)
+    return line.interpolate(line.project(geom.Point(point))).coords[0]
 
 
 def get_compass(x, y):

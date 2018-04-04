@@ -7,24 +7,26 @@
 #######################################################################
 
 
+import datetime
 from right_turn import get_connected_links
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
-from lane import set_ids
+from lane import set_ids, get_link_from_and_to
 from public_transit import get_public_transit_stop
 
 
-def set_meta_data(lanes, stops, nodes_dict, max_distance=20.0):
+def set_meta_data(lanes, stops, max_distance=20.0):
     """
     Set meta data for all lanes related to the intersection
     :param lanes: 
     :return: 
     """
+
     set_ids(lanes)
     for lane_data in lanes:
-        lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, stops, nodes_dict, max_distance=max_distance)
+        lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, stops, max_distance=max_distance)
 
 
-def get_lane_meta_data(lane_data, all_lanes, stops, nodes_dict, max_distance=20.0):
+def get_lane_meta_data(lane_data, all_lanes, stops, max_distance=20.0):
     """
     Create meta data dictionary for a lane (i.e. approach or exit)
     :param lane_data: dictionary of all lanes related to the intersection
@@ -41,7 +43,15 @@ def get_lane_meta_data(lane_data, all_lanes, stops, nodes_dict, max_distance=20.
         meta_data['number_of_right-turning_lanes'] = lane_data['num_of_right_lanes']
 
     if 'name' in lane_data:
-        meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
+
+        if 'no_name' in lane_data['name']:
+            from_name, to_name = get_link_from_and_to(lane_data, all_lanes)
+            if from_name is None or to_name is None:
+                meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
+            else:
+                meta_data['identification'] = from_name + ' - ' + to_name + ' Link ' + lane_data['direction']
+        else:
+            meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
     else:
         meta_data['identification'] = 'undefined_name' + ' ' + lane_data['direction']
 
@@ -59,7 +69,6 @@ def get_lane_meta_data(lane_data, all_lanes, stops, nodes_dict, max_distance=20.
     meta_data['bicycle_lane_on_the_left'] = None
 
     if 'path' not in lane_data:
-        print(lane_data['lane_type'], lane_data['id'])
         meta_data['bicycle_lane_on_the_right'] = 'no'
         meta_data['bicycle_lane_on_the_left'] = 'no'
     else:
@@ -87,6 +96,9 @@ def get_lane_meta_data(lane_data, all_lanes, stops, nodes_dict, max_distance=20.
                 meta_data['rail_track'] = 'yes'
                 break
 
+    if 'lane_type' in lane_data:
+        meta_data['lane_type'] = lane_data['lane_type']
+
     meta_data['traffic_signals'] = None
     meta_data['number_of_crosswalks'] = None
     if 'footway' in lane_data and lane_data['footway'] == 'crossing':
@@ -100,10 +112,12 @@ def get_lane_meta_data(lane_data, all_lanes, stops, nodes_dict, max_distance=20.
 
     meta_data['compass'] = lane_data['compass']
 
-    if get_public_transit_stop(lane_data, stops, nodes_dict, max_distance=max_distance):
+    if get_public_transit_stop(lane_data, stops, max_distance=max_distance):
         meta_data['public_transit_stop'] = 'yes'
     else:
         meta_data['public_transit_stop'] = None
+
+    meta_data['timestamp'] = str(datetime.datetime.now())
 
     return meta_data
 

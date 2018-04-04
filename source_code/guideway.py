@@ -214,6 +214,8 @@ def create_right_turn_guideway(origin_lane, all_lanes):
         else:
             return None
 
+    guideway['link_lane'] = link_lane
+
     destination_lane = get_link_destination_lane(link_lane, all_lanes)
     if destination_lane is None:
         return None

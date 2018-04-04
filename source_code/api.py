@@ -216,6 +216,27 @@ def get_exits(intersection_data):
     return [m for m in intersection_data['merged_lanes'] if m['direction'] == 'from_intersection']
 
 
+def get_guideway_by_approach_id(intersection_data, approach_id):
+    """
+    Get guideway by approach id.
+    :param intersection_data: dictionary
+    :param approach_id: integer
+    :return: list of guideways
+    """
+
+    return [g for g in get_guideways(intersection_data, guideway_type='all') if g ['origin_lane']['id'] == approach_id]
+
+
+def get_guideway_by_exit_id(intersection_data, exit_id):
+    """
+    Get guideway by exit id.
+    :param intersection_data: dictionary
+    :param exit_id: integer
+    :return: list of guideways
+    """
+    return [g for g in get_guideways(intersection_data, guideway_type='all') if g['destination_lane']['id'] == exit_id]
+
+
 def get_intersection_image(intersection_data, alpha=1.0):
     """
     Get an image of intersection lanes in PNG format
@@ -268,42 +289,109 @@ def get_intersection_image(intersection_data, alpha=1.0):
 
 def get_guideways(intersection_data, guideway_type='all'):
     """
-    Get a list of guideways for the intersection.  Presently only left and right turns have been implemented
+    Get a list of guideways for the intersection by the specified type.
+
+    Valid type options:
+    all
+    all vehicle
+    vehicle right
+    vehicle left
+    vehicle through
+    all bicycle
+    bicycle right
+    bicycle left
+    bicycle through
+    all rail
+    rail
+    
     :param intersection_data: dictionary
     :param guideway_type: string
     :return: list of dictionaries
     """
     guideways = []
-    if guideway_type == 'left' or guideway_type == 'all':
+    if 'vehicle' in guideway_type and 'left' in guideway_type \
+            or (guideway_type == 'all vehicle') \
+            or (guideway_type == 'all'):
         guideways.extend(get_left_turn_guideways(intersection_data['merged_lanes'],
                                                  intersection_data['nodes'],
                                                  angle_delta=2.0
                                                  )
                          )
-    if guideway_type == 'right' or guideway_type == 'all':
+    if 'vehicle' in guideway_type and 'right' in guideway_type \
+            or (guideway_type == 'all vehicle') \
+            or (guideway_type == 'all'):
         guideways.extend(get_right_turn_guideways(intersection_data['merged_lanes']))
 
-    if guideway_type == 'through' or guideway_type == 'all':
+    if 'vehicle' in guideway_type and 'through' in guideway_type \
+            or (guideway_type == 'all vehicle') \
+            or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_lanes']
                                                + intersection_data['merged_tracks']))
 
-    if ('cycleways' in guideway_type and 'left' in guideway_type) \
-            or ('cycleways' in guideway_type and 'all' in guideway_type):
+    if 'rail' in guideway_type:
+        guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
+
+    if ('bicycle' in guideway_type and 'left' in guideway_type) \
+            or (guideway_type == 'all bicycle') \
+            or (guideway_type == 'all'):
         guideways.extend(get_left_turn_guideways(intersection_data['merged_cycleways'],
                                                  intersection_data['nodes'],
                                                  angle_delta=2.0
                                                  )
                          )
 
-    if ('cycleways' in guideway_type and 'right' in guideway_type) \
-            or ('cycleways' in guideway_type and 'all' in guideway_type):
+    if ('bicycle' in guideway_type and 'right' in guideway_type) \
+            or (guideway_type == 'all bicycle') \
+            or (guideway_type == 'all'):
         guideways.extend(get_right_turn_guideways(intersection_data['merged_cycleways']))
 
-    if ('cycleways' in guideway_type and 'through' in guideway_type) \
-            or ('cycleways' in guideway_type and 'all' in guideway_type):
+    if ('bicycle' in guideway_type and 'through' in guideway_type) \
+            or (guideway_type == 'all bicycle') \
+            or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
 
     return set_guideway_ids(guideways)
+
+
+def get_meta_data(data):
+    """
+    Get meta data from a guideway, approach, exit or lane.  
+    If the parameter is a guideway, the function returns meta data for the origin, destination and link (if applicable).
+    For all other parameter types, the function returns a meta data dictionary.
+
+    Sample meta data:
+    {'bicycle_lane_on_the_left': 'no',
+    'bicycle_lane_on_the_right': 'yes',
+    'compass': 'NW',
+    'id': 9,
+    'identification': u'North 1st Street from_intersection',
+    'lane_type': '',
+    'number_of_crosswalks': 1,
+    'number_of_left-turning_lanes': 0,
+    'number_of_right-turning_lanes': 0,
+    'public_transit_stop': None,
+    'rail_track': 'no',
+    'right_turn_dedicated_link': 'no',
+    'timestamp': '2018-04-04 11:08:04.675000',
+    'total_number_of_vehicle_lanes': 2,
+    'traffic_signals': 'yes'}
+
+    :param data: dictionary
+    :return: dictionary
+    """
+    if 'origin_lane' in data and 'destination_lane' in data:
+        meta_data = {
+            'origin_lane': data['origin_lane']['meta_data'],
+            'destination_lane': data['destination_lane']['meta_data']
+        }
+        if 'link_lane' in data:
+            meta_data['link_lane'] = data['link_lane']['meta_data']
+        return meta_data
+    else:
+        if 'meta_data' in data:
+            return data['meta_data']
+        else:
+            return None
 
 
 def get_guideway_image(guideways, intersection_data, alpha=1.0):

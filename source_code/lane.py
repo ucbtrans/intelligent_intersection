@@ -887,3 +887,22 @@ def insert_referenced_nodes_to_lanes(lanes, nodes_dict):
 
     for lane_data in lanes:
         insert_referenced_nodes(lane_data, nodes_dict)
+
+
+def get_link_from_and_to(lane_data, lanes):
+    if 'highway' not in lane_data or 'link' not in lane_data['highway'] or len(lane_data['nodes']) == 0:
+        return None, None
+
+    from_name = ''
+    for l in lanes:
+        if 'no_name' not in l['name'] and lane_data['nodes'][0] in l['nodes']:
+            from_name = l['name']
+            break
+
+    to_name = ''
+    for l in lanes:
+        if 'no_name' not in l['name'] and lane_data['nodes'][-1] in l['nodes']:
+            to_name = l['name']
+            break
+
+    return from_name, to_name
