@@ -163,11 +163,10 @@ def create_left_turn_guideway(origin_lane, destination_lane, all_lanes):
     return guideway
 
 
-def get_left_turn_guideways(all_lanes, nodes_dict, angle_delta=2.5):
+def get_left_turn_guideways(all_lanes, nodes_dict):
     """
     Compile a list of guideways for all legal left turns
     :param all_lanes: list of dictionaries
-    :param angle_delta: float in degrees
     :param nodes_dict: dictionary
     :return: list of dictionaries
     """
@@ -179,8 +178,7 @@ def get_left_turn_guideways(all_lanes, nodes_dict, angle_delta=2.5):
                 guideway_data = get_direct_right_turn_guideway(origin_lane,
                                                                destination_lane,
                                                                all_lanes,
-                                                               turn_type='left',
-                                                               angle_delta=angle_delta
+                                                               turn_type='left'
                                                               )
                 # guideway = create_left_turn_guideway(origin_lane, destination_lane, all_lanes)
                 if guideway_data is not None:
@@ -208,8 +206,7 @@ def create_right_turn_guideway(origin_lane, all_lanes):
             return get_direct_right_turn_guideway(origin_lane,
                                                   destination_lanes[0],
                                                   all_lanes,
-                                                  turn_type='right',
-                                                  angle_delta=0.0
+                                                  turn_type='right'
                                                   )
         else:
             return None
@@ -275,26 +272,23 @@ def get_through_guideways(all_lanes):
     return guideways
 
 
-def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='right', angle_delta=2.5):
+def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='right'):
     """
     Create a right turn guideway if there is no link lane connecting origin and destination
     :param origin_lane: dictionary
     :param destination_lane: dictionary
     :param all_lanes: list of dictionaries
     :param turn_type: string: 'right' for a right turn, left' a for left one
-    :param angle_delta: float in degrees
     :return: dictionary
     """
 
     if turn_type == 'right':
         if not is_right_turn_allowed(origin_lane, all_lanes):
             return None
-        angle_delta = 0.0
         turn_direction = 1
     else:
         if not is_left_turn_allowed(origin_lane):
             return None
-        angle_delta = angle_delta
         turn_direction = -1
 
     guideway = {
@@ -307,7 +301,6 @@ def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, tur
                                                destination_lane,
                                                all_lanes,
                                                border_type='left',
-                                               angle_delta=angle_delta,
                                                turn_direction=turn_direction
                                                )
     if left_border is None:
@@ -317,7 +310,6 @@ def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, tur
                                                 destination_lane,
                                                 all_lanes,
                                                 border_type='right',
-                                                angle_delta=angle_delta,
                                                 turn_direction=turn_direction
                                                 )
     if right_border is None:

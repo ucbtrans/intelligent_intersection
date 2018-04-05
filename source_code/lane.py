@@ -13,7 +13,7 @@ import copy
 import math
 import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
-    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings
+    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border
 from path import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 
@@ -45,9 +45,11 @@ def add_space_for_crosswalk(lane_data, crosswalk_width=1.82):
     :param crosswalk_width: float
     :return: dictionary
     """
-    return lane_data['left_border'], shift_list_of_nodes(lane_data['right_border'],
-                                                         [crosswalk_width]*len(lane_data['right_border'])
-                                                         )
+    left_border = extend_both_sides_of_a_border(lane_data['left_border'])
+    right_border = extend_both_sides_of_a_border(lane_data['right_border'])
+
+    return shift_list_of_nodes(left_border, [-crosswalk_width]*len(left_border)),\
+        shift_list_of_nodes(right_border, [crosswalk_width]*len(right_border))
 
 
 def shorten_lane_for_crosswalk(lane_data, lanes, crosswalk_width=1.82):
@@ -122,6 +124,9 @@ def get_lane_index_from_right(lane_data):
     :param lane_data: dictionary
     :return: number - zero based: the most right lane index is zero.
     """
+    if 'B' in lane_data['lane_id']:
+        return 0
+
     if lane_data['direction'] == 'to_intersection':
         path_index = -1
     else:

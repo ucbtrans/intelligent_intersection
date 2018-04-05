@@ -9,9 +9,11 @@
 import osmnx as ox
 import math
 import shapely.geometry as geom
+import nvector as nv
 
 
 rhumbs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+nv_frame = nv.FrameE(a=6371e3, f=0)
 
 
 def get_distance_between_nodes(nodes_d, id1, id2):
@@ -33,6 +35,13 @@ def get_distance_between_points(point1, point2):
     :return: float in meters
     """
     return ox.great_circle_vec(point1[1], point1[0], point2[1], point2[0])
+
+
+def shift_by_bearing_and_distance(point, distance, direction_reference, bearing_delta=90.0):
+    starting_point = nv_frame.GeoPoint(latitude=point[1], longitude=point[0], degrees=True)
+    azimuth = ( 360.0 + get_compass(direction_reference[0], direction_reference[1]) + bearing_delta) % 360
+    result, _azimuthb = starting_point.geo_point(distance=abs(distance), azimuth=azimuth, degrees=True)
+    return result.longitude_deg, result.latitude_deg
 
 
 def shift_vector(node_coordinates, width, direction_reference=None):
@@ -69,7 +78,7 @@ def shift_vector(node_coordinates, width, direction_reference=None):
     return [(xx0, yy0), (xx1, yy1)]
 
 
-def extend_vector(coord, length=300.0, backward=True):
+def extend_vector(coord, length=300.0, backward=True, relative=False):
     """
     Extend (or reduce) the length of a vector to the required length
     :param coord: list of vector coord.
@@ -87,7 +96,12 @@ def extend_vector(coord, length=300.0, backward=True):
     current_distance = ox.great_circle_vec(y0, x0, y1, x1)
     if current_distance < 0.01:
         return coord
-    scale = length/current_distance
+
+    if relative:
+        scale = (current_distance + length) / current_distance
+    else:
+        scale = length/current_distance
+
     if backward:
         xx0 = x1 - (x1 - x0) * scale
         yy0 = y1 - (y1 - y0) * scale
@@ -98,23 +112,33 @@ def extend_vector(coord, length=300.0, backward=True):
         return [(x0, y0), (xx1, yy1)]
 
 
-def extend_origin_border(border):
+def extend_both_sides_of_a_border(border, length=10.0, relative=True):
+    """
+    Extend both ends of a border to a large size in order to clear crosswalk areas
+    :param border: list of coordinates
+    :return: list of coordinates representing new extended border
+    """
+    temp = extend_origin_border(border, length=length, relative=relative)
+    return extend_destination_border(temp, length=length, relative=relative)
+
+
+def extend_origin_border(border, length=300.0, relative=False):
     """
     Extend the last section of a border to a large size in order to find cross points with other lanes
     :param border: list of coordinates
     :return: list of coordinates representing new extended border
     """
 
-    return border[:-2] + extend_vector(border[-2:], backward=False)
+    return border[:-2] + extend_vector(border[-2:], backward=False, length=length, relative=relative)
 
 
-def extend_destination_border(border):
+def extend_destination_border(border, length=300.0, relative=False):
     """
     Extend the first section of a border to a large size in order to find cross points with other lanes
     :param border: list of coordinates
     :return: list of coordinates representing new extended border
     """
-    return extend_vector(border[:2]) + border[2:]
+    return extend_vector(border[:2], length=length, relative=relative) + border[2:]
 
 
 def shift_list_of_nodes(node_coordinates, widths, direction_reference=None):
@@ -436,7 +460,7 @@ def get_turn_angle(origin_border, destination_border):
     intersection_point = origin_line.intersection(destination_line)
     pt = list(intersection_point.coords)[0]
     line2 = cut_border_by_distance(destination_line, destination_line.project(intersection_point))[1]
-    return pt, [pt, origin_border[-1]], list(line2.coords)[:2]
+    return pt, [pt, origin_border[-1]], [pt, destination_border[0]] #, list(line2.coords)[:2]
 
 
 def get_intersection_with_circle(vector, center, radius, margin=0.01):

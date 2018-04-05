@@ -314,7 +314,6 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all'):
         guideways.extend(get_left_turn_guideways(intersection_data['merged_lanes'],
                                                  intersection_data['nodes'],
-                                                 angle_delta=2.0
                                                  )
                          )
     if 'vehicle' in guideway_type and 'right' in guideway_type \
@@ -325,8 +324,7 @@ def get_guideways(intersection_data, guideway_type='all'):
     if 'vehicle' in guideway_type and 'through' in guideway_type \
             or (guideway_type == 'all vehicle') \
             or (guideway_type == 'all'):
-        guideways.extend(get_through_guideways(intersection_data['merged_lanes']
-                                               + intersection_data['merged_tracks']))
+        guideways.extend(get_through_guideways(intersection_data['merged_lanes']))
 
     if 'rail' in guideway_type:
         guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
@@ -336,7 +334,6 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all'):
         guideways.extend(get_left_turn_guideways(intersection_data['merged_cycleways'],
                                                  intersection_data['nodes'],
-                                                 angle_delta=2.0
                                                  )
                          )
 
@@ -349,6 +346,9 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all bicycle') \
             or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
+
+    if 'rail' in guideway_type:
+        guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
 
     return set_guideway_ids(guideways)
 

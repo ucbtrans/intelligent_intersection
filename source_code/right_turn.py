@@ -142,7 +142,6 @@ def get_direct_right_turn_border(origin_lane,
                                  all_lanes,
                                  border_type='left',
                                  turn_direction=1,
-                                 angle_delta=0.0,
                                  use_shaped_border=False
                                  ):
 
@@ -159,10 +158,10 @@ def get_direct_right_turn_border(origin_lane,
     destination_border = destination_lane[non_shaped_border]
 
     shorten_origin_border = shorten_border_for_crosswalk(origin_border,
-                                                              origin_lane['name'],
-                                                              all_lanes,
-                                                              destination='to_intersection'
-                                                              )
+                                                         origin_lane['name'],
+                                                         all_lanes,
+                                                         destination='to_intersection'
+                                                         )
     shorten_destination_border = shorten_border_for_crosswalk(destination_border,
                                                               destination_lane['name'],
                                                               all_lanes,
@@ -172,12 +171,12 @@ def get_direct_right_turn_border(origin_lane,
     turn_arc = construct_turn_arc(shorten_origin_border,
                                   shorten_destination_border,
                                   turn_direction=turn_direction,
-                                  angle_delta=angle_delta)
+                                  )
     if turn_arc is None:
         return None
 
-    destination_line = geom.LineString(destination_border)
+    destination_line = geom.LineString(shorten_destination_border)
     landing_point = destination_line.project(geom.Point(turn_arc[-1]))
     landing_border = cut_border_by_distance(destination_line, landing_point)[-1]
 
-    return origin_border[:-1] + turn_arc + list(landing_border.coords)[1:]
+    return shorten_origin_border + turn_arc[1:-1] + shorten_destination_border # list(landing_border.coords)
