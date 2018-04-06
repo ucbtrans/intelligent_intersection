@@ -7,12 +7,11 @@
 #######################################################################
 
 
-import copy
 import osmnx as ox
 from intersection import get_intersection_data, plot_lanes
-from street import insert_street_names, get_intersections_for_a_street
+from street import insert_street_names
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
-    get_through_guideways, set_guideway_ids
+    get_through_guideways, set_guideway_ids, get_bicycle_left_turn_guideways
 from city import get_city_name_from_address
 from node import get_nodes_dict
 
@@ -67,25 +66,15 @@ def get_intersecting_streets(city_data):
         if 'street_name' in city_data['nodes'][node_id] and len(city_data['nodes'][node_id]['street_name']) > 1:
             intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
 
+    multiples = [x for x in intersecting_streets if len(x) > 2]
     duplicates = set()
     for x in intersecting_streets:
-        if len(x) < 3:
+        if len(x) > 2:
             continue
-        for st1 in x:
-            for st2 in x:
-                if st1 == st2:
-                    continue
-                if (st1, st2) in intersecting_streets:
-                    duplicates.add((st1, st2))
 
-                if len(x) < 3:
-                    continue
-
-                for st3 in x:
-                    if st3 == st2 or st3 == st1:
-                        continue
-                    if (st1, st2, st3) in intersecting_streets:
-                        duplicates.add((st1, st2, st3))
+        for y in multiples:
+            if x[0] in y and x[1] in y:
+                duplicates.add(x)
 
     return sorted(list(intersecting_streets - duplicates))
 
@@ -107,45 +96,74 @@ def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
     """
     Get a list of intersections defined by their addresses, 
     e.g. ["San Pablo and University, Berkeley, California", "Van Ness and Geary, San Francisco, Califocrnia", ...]
+    You can use a single address as a string instead of a list.  The return will be a list in any case.
+    Street names must separated by and, followed by coma and city, state,
+    like 'Solano and Pierce, Albany, California'.  
+    An address like 'Dar and K, Albany, California' returns more than one intersection:
+    ('Dartmouth Street', 'Kains Avenue'),
+    ('Dartmouth Street', 'Key Route Boulevard')
     Please spell out California instead of CA, because CA can be interpreted as Canada
-    :param list_of_addresses: list of strings
+    :param list_of_addresses: list of strings or a string
     :param size: float in meters
     :param crop_radius: float in meters
-    :return: list of dictionaries
+    :return: list of intersections as dictionaries
     """
 
     cities = {}
-
+    result = []
     if not isinstance(list_of_addresses, list):
         list_of_addresses = [list_of_addresses]
 
     for address in list_of_addresses:
         city_name = get_city_name_from_address(address)
         if city_name not in cities:
-            city_data = get_city(city_name)
-            cities[city_name] = {}
-            cities[city_name]['city_data'] = city_data
-            cities[city_name]['intersecting_streets'] = None
-            cities[city_name]['intersections'] = set()
-            if city_data is None:
-                cities[city_name]['intersecting_streets'] = None
-            else:
-                cities[city_name]['intersecting_streets'] = get_intersecting_streets(city_data)
+            cities[city_name] = get_city(city_name)
 
-        if cities[city_name]['intersecting_streets'] is None:
-            continue
+        for x_tuple in get_intersection_tuples_by_address(cities[city_name], address):
+            result.append(get_intersection(x_tuple, cities[city_name], size=size, crop_radius=crop_radius))
 
-        intersection_candidates = set(copy.deepcopy(cities[city_name]['intersecting_streets']))
-        for street_name in [s.strip() for s in (address.split(',')[0]).split('and')]:
-            intersection_candidates = get_intersections_for_a_street(street_name, intersection_candidates)
+    return result
 
-        cities[city_name]['intersections'] = cities[city_name]['intersections'] | intersection_candidates
 
-    result = []
-    for city_name in cities:
-        for x_name in cities[city_name]['intersections']:
-            result.append(get_intersection(x_name, cities[city_name]['city_data'], size=size, crop_radius=crop_radius))
+def get_intersection_tuples_by_address(city_data, address):
+    """
+    Returns a set of intersection tuples for an address or a list of addresses.
+    The address(es) must be in the same city. The result can be empty if no match.
+    Street names must separated by and, followed by coma and city, state,
+    like 'Solano and Pierce, Albany, California'.  
+    An address like 'Dar and K, Albany, California' returns more than one intersection:
+    ('Dartmouth Street', 'Kains Avenue'),
+    ('Dartmouth Street', 'Key Route Boulevard')
+    Please spell out California, because CA will be taken as Canada
+    :param city_data: dictionary
+    :param address: string or list of strings
+    :return: set of street name tuples
+    """
 
+    result = set()
+    if city_data is None:
+        return result
+
+    if not isinstance(address, list):
+        list_of_addresses = [address]
+    else:
+        list_of_addresses = address
+
+    x_streets = get_intersecting_streets(city_data)
+
+    for a in list_of_addresses:
+        street_names = [s.strip() for s in (a.split(',')[0]).split('and')]
+        for x in x_streets:
+            flag = True
+            x_name = ' '.join(x)
+            for street_name in street_names:
+                if street_name in x_name:
+                    continue
+                else:
+                    flag = False
+                    break
+            if flag:
+                result.add(x)
     return result
 
 
@@ -332,9 +350,9 @@ def get_guideways(intersection_data, guideway_type='all'):
     if ('bicycle' in guideway_type and 'left' in guideway_type) \
             or (guideway_type == 'all bicycle') \
             or (guideway_type == 'all'):
-        guideways.extend(get_left_turn_guideways(intersection_data['merged_cycleways'],
-                                                 intersection_data['nodes'],
-                                                 )
+        guideways.extend(get_bicycle_left_turn_guideways(intersection_data['merged_cycleways'],
+                                                         intersection_data['nodes']
+                                                         )
                          )
 
     if ('bicycle' in guideway_type and 'right' in guideway_type) \

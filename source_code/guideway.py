@@ -3,164 +3,72 @@
 
 #######################################################################
 #
-#   This module creates guideways from list of lanes
-#   Left turn algorithm:
-#   1) Identify destination lanes (possibly more than one)
-#   2) Extend the left border of the origin lane
-#   3) Extend the left border of the destination lane
-#   4) Intersect two borders and get intersection angle
-#   5) Calculate turn radius from the angle between two lanes
-#   6) Find the center of the circle
-#   7) Build the turn left border
-#   8) Build the entire left border of a guideway
-#   9) Create a guideway
+#   This module support creation of guideways
 #
 #######################################################################
 
-import math
-import shapely.geometry as geom
-import osmnx as ox
-from lane import extend_origin_left_border, extend_destination_left_border
-from border import extend_vector, cut_border_by_distance, get_compass_bearing, get_compass, shift_vector, \
-    shift_list_of_nodes, to_rad
+
+from border import get_bicycle_border
 from matplotlib.patches import Polygon
 from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
     get_direct_right_turn_border, get_destination_lanes_for_right_turn
 from left_turn import is_left_turn_allowed, get_destination_lanes_for_left_turn
 from through import is_through_allowed, get_destination_lane
 
-def get_intersection_angle(origin_lane, destination_lane, all_lanes):
+
+def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
     """
-    Step 4.  Intersect two borders and return intersection angle.
-    Returns three objects: an intersection point, vector along the origin lane border
-    and vector along the destination lane border.
-    :param origin_lane: dictionary
-    :param destination_lane: dictionary
+    Compile a list of bicycle guideways for all legal left turns
     :param all_lanes: list of dictionaries
-    :return: tuple of three objects: (tuple of coordinates, list of coordinates, list of coordinates)
+    :param nodes_dict: dictionary
+    :return: list of dictionaries
     """
-    origin_line = geom.LineString(extend_origin_left_border(origin_lane, all_lanes))
-    destination_line = geom.LineString(extend_destination_left_border(destination_lane))
-    if not origin_line.intersects(destination_line):
-        # Something went terribly wrong
-        return None, None, None
 
-    intersection_point = origin_line.intersection(destination_line)
-    pt = list(intersection_point.coords)[0]
-    line2 = cut_border_by_distance(destination_line, destination_line.project(intersection_point))[1]
-    return pt, [pt, origin_lane['left_shaped_border'][-1]], list(line2.coords)[:2]
+    guideways = []
+    through_guideways = get_through_guideways(all_lanes)
+
+    for origin_lane in all_lanes:
+        if is_left_turn_allowed(origin_lane):
+            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
+                origin_candidates = [g for g in through_guideways if g['origin_lane']['id'] == origin_lane['id']]
+                destination_candidates = [g for g in through_guideways
+                                          if g['destination_lane']['id'] == destination_lane['id']
+                                          ]
+                if origin_candidates and destination_candidates:
+                    guideway_data = get_bicycle_left_guideway(origin_lane,
+                                                              destination_lane,
+                                                              origin_candidates[0],
+                                                              destination_candidates[0]
+                                                              )
+                else:
+                    guideway_data = None
+
+                if guideway_data is not None \
+                        and guideway_data['left_border'] is not None \
+                        and guideway_data['right_border'] is not None:
+                    guideways.append(guideway_data)
+
+    return guideways
 
 
-def get_turn_radius_and_angle(origin_lane, destination_lane, all_lanes):
+def get_bicycle_left_guideway(origin_lane, destination_lane, origin_through, destination_through):
     """
-    Step 5.  Calculate turn radius from angle between two lanes.
-    The radius is equal to the distance from the intersection to the starting point
-    times tangent of the half of the angle.
+    Get a bicycle guideway for the left turn assuming that the bicyclist making the left turn as pedestrian, 
+    i.e. as an instant 90 degree turn. Creating the bicycle guideway from an origin and destination lanes 
+    and previously calculated through guideways.  
     :param origin_lane: dictionary
     :param destination_lane: dictionary
-    :param all_lanes: list of dictionaries
-    :return: a tuple of two float: radius (m) and angle (degree)
-    """
-
-    intersection_point, vector1, vector2 = get_intersection_angle(origin_lane, destination_lane, all_lanes)
-    if intersection_point is None:
-        return None, None, None
-
-    distance_to_starting_point = ox.great_circle_vec(intersection_point[1], intersection_point[0],
-                                                     vector1[1][1], vector1[1][0])
-    distance_to_starting_point1 = geom.Point(intersection_point).distance(geom.Point(vector1[1][0], vector1[1][1]))
-    bearing1 = get_compass_bearing((vector1[0][1], vector1[0][0]), (vector1[1][1], vector1[1][0]))
-    bearing2 = get_compass_bearing((vector2[0][1], vector2[0][0]), (vector2[1][1], vector2[1][0]))
-    angle = (bearing2 - bearing1 + 360) % 360
-    return distance_to_starting_point*math.tan(angle/360.0*math.pi), \
-        angle, \
-        distance_to_starting_point1*math.tan(angle/360.0*math.pi)
-
-
-def construct_left_border(origin_lane, destination_lane, all_lanes):
-    intersection_point, vector1, vector2 = get_intersection_angle(origin_lane, destination_lane, all_lanes)
-    if intersection_point is None:
-        return None
-
-    distance_to_starting_point = ox.great_circle_vec(intersection_point[1], intersection_point[0],
-                                                     vector1[1][1], vector1[1][0])
-    bearing1 = get_compass(vector1[1], vector1[0])
-    bearing2 = get_compass(vector2[0], vector2[1])
-    angle = (bearing1 - bearing2 + 360) % 360
-    radius = distance_to_starting_point/math.tan(to_rad(angle/2.0))
-    origin_lane['left_turn_angle'] = angle
-    origin_lane['left_turn_radius'] = radius
-    origin_lane['distance_to_starting_point'] = distance_to_starting_point
-    n = 10
-    shift = [-2.0*radius*(math.sin(to_rad(angle/2.0*i/n)))**2 for i in range(1, n+1)]
-    vec = [origin_lane['left_shaped_border'][-1], intersection_point]
-    vector = [extend_vector(vec, length=radius*(math.sin(to_rad(angle*i/n))), backward=False)[1]
-              for i in range(1, n)
-              ]
-    left_border = shift_list_of_nodes(vector, shift, direction_reference=vec)
-
-    return left_border
-
-
-def define_center(origin_lane, destination_lane, all_lanes):
-    """
-    Step 6.  Get the center of the turn
-    :param origin_lane:
-    :param destination_lane:
-    :param all_lanes:
-    :return: tuple of coordinates
-    """
-
-    radius, angle, radius1 = get_turn_radius_and_angle(origin_lane, destination_lane, all_lanes)
-
-    origin_lane['left_turn_radius'] = radius
-    origin_lane['left_turn_radius1'] = radius1
-    origin_lane['left_turn_angle'] = angle
-    origin_lane['left_turn_center'] = shift_vector(origin_lane['left_shaped_border'][-2:], -radius)[-1]
-    return origin_lane['left_turn_center']
-
-
-def get_guideway_left_border(origin_lane, destination_lane, all_lanes):
-    """
-    Step 8.  Build the left border for the entire guideway
-    :param origin_lane: dictionary
-    :param destination_lane: dictionary
-    :param all_lanes: list of dictionary
-    :return: list of coordinates
-    """
-    turn_left_border = construct_left_border(origin_lane, destination_lane, all_lanes)
-    if turn_left_border is None:
-        return None
-    destination_border = geom.LineString(destination_lane['left_border'])
-    landing_point = destination_border.project(geom.Point(turn_left_border[-1]))
-    landing_border = cut_border_by_distance(destination_border, landing_point)[1]
-    return turn_left_border[:-1] + list(landing_border.coords)
-
-
-def create_left_turn_guideway(origin_lane, destination_lane, all_lanes):
-    """
-    Step 9. Calculate the right border and create a guideway
-    :param origin_lane: dictionary
-    :param destination_lane: dictionary
-    :param all_lanes: list of dictionary
+    :param origin_through: dictionary
+    :param destination_through: dictionary
     :return: dictionary
     """
-
-    guideway = {
+    return {
+        'type': 'left',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
+        'left_border': get_bicycle_border(origin_through['left_border'], destination_through['left_border']),
+        'right_border': get_bicycle_border(origin_through['right_border'], destination_through['right_border'])
     }
-
-    left_border = get_guideway_left_border(origin_lane, destination_lane, all_lanes)
-    if left_border is None:
-        return None
-
-    right_border = shift_list_of_nodes(left_border, [origin_lane['width'][-1]]*len(left_border))
-
-    guideway['left_border'] = origin_lane['left_shaped_border'] + left_border
-    guideway['right_border'] = origin_lane['right_shaped_border'] + right_border
-
-    return guideway
 
 
 def get_left_turn_guideways(all_lanes, nodes_dict):
@@ -179,8 +87,8 @@ def get_left_turn_guideways(all_lanes, nodes_dict):
                                                                destination_lane,
                                                                all_lanes,
                                                                turn_type='left'
-                                                              )
-                # guideway = create_left_turn_guideway(origin_lane, destination_lane, all_lanes)
+                                                               )
+
                 if guideway_data is not None:
                     guideways.append(guideway_data)
     return guideways

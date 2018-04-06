@@ -442,12 +442,12 @@ def cut_border_by_polygon(border, polygon, multi_string_index=0):
 
 def get_turn_angle(origin_border, destination_border):
     """
-    Step 4.  Intersect two borders and return intersection angle.
+    Intersect two borders and return intersection angle.
     Returns three objects: an intersection point, vector along the origin lane border
     and vector along the destination lane border.
     :param origin_border: list of coordinates
     :param destination_border: list of coordinates
-    :return: tuple of three objects: (tuple of coordinates, list of coordinates, list of coordinates)
+    :return: tuple of three objects: (coordinates, list of coordinates, list of coordinates)
     """
 
     origin_line = geom.LineString(extend_origin_border(origin_border))
@@ -459,8 +459,30 @@ def get_turn_angle(origin_border, destination_border):
 
     intersection_point = origin_line.intersection(destination_line)
     pt = list(intersection_point.coords)[0]
-    line2 = cut_border_by_distance(destination_line, destination_line.project(intersection_point))[1]
-    return pt, [pt, origin_border[-1]], [pt, destination_border[0]] #, list(line2.coords)[:2]
+
+    return pt, [pt, origin_border[-1]], [pt, destination_border[0]]
+
+
+def get_bicycle_border(origin_border, destination_border):
+    """
+    Get a bicycle guideway border for the left turn assuming that the bicyclist making the left turn as pedestrian, 
+    i.e. as an instant 90 degree turn.  
+    The border is constructed from two intersecting borders obtained from respective through guideways.
+    :param origin_border: list of coordinates
+    :param destination_border: list of coordinates
+    :return: list of coordinates
+    """
+    origin_line = geom.LineString(extend_origin_border(origin_border))
+    destination_line = geom.LineString(extend_destination_border(destination_border))
+
+    if not origin_line.intersects(destination_line):
+        # Something went terribly wrong
+        return None
+
+    intersection_point = origin_line.intersection(destination_line)
+    line1 = cut_border_by_distance(origin_line, origin_line.project(intersection_point))[0]
+    line2 = cut_border_by_distance(destination_line, destination_line.project(intersection_point))[-1]
+    return list(line1.coords)[:-1] + [list(intersection_point.coords)[0]] + list(line2.coords)[1:]
 
 
 def get_intersection_with_circle(vector, center, radius, margin=0.01):
