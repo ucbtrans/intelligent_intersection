@@ -38,7 +38,7 @@ def get_destination_lane(lane_data, all_lanes):
            if lane_data['name'] == l['name']
            and lane_data['lane_id'] == l['lane_id']
            and l['direction'] == 'from_intersection'
-           and - 30.0 < get_angle_between_bearings(lane_data['bearing'], l['bearing']) < 30.0
+           and - 60.0 < get_angle_between_bearings(lane_data['bearing'], l['bearing']) < 60.0
            ]
     if len(res) > 0:
         return res[0]

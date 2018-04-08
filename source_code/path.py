@@ -218,18 +218,32 @@ def remove_zero_length_paths(paths):
     return [p for p in paths if 'nodes' in p and len(p['nodes']) > 1]
 
 
-def set_direction(paths, x, y, nodes_dict):
+def set_direction(paths, x_data, nodes_dict):
     """
-    Set direction relative to the intersection: to_intersection or from_intersection
+    Set direction relative to the intersection: to_intersection or from_intersection.
+    The definition of the direction is based on the distance to the center from the beginning and end of the path.
+    If the first node of the path belongs to the cross street as well, the path considered to 'from_intersection'
+    regardless of the distances.
     :param paths: list of dictionaries
-    :param x: float
-    :param y: float
+    :param x_data: dictionary of intersection data
     :param nodes_dict: dictionary
     :return: None
     """
+
+    x = x_data['center_x']
+    y = x_data['center_y']
+
     for p in paths:
+
+        p['bearing'] = get_path_bearing(p, nodes_dict)
+        p['compass'] = get_compass_rhumb(p['bearing'])
+
         if len(p['nodes']) < 2 or ('highway' in p['tags'] and 'trunk_link' in p['tags']['highway']):
             p['tags']['direction'] = 'undefined'
+            continue
+
+        if p['nodes'][0] in x_data['x_nodes']:
+            p['tags']['direction'] = 'from_intersection'
             continue
 
         distance_to_center0 = ox.great_circle_vec(y, x, nodes_dict[p['nodes'][0]]['y'],
@@ -243,9 +257,6 @@ def set_direction(paths, x, y, nodes_dict):
             p['tags']['direction'] = 'to_intersection'
         else:
             p['tags']['direction'] = 'from_intersection'
-
-        p['bearing'] = get_path_bearing(p, nodes_dict)
-        p['compass'] = get_compass_rhumb(p['bearing'])
 
 
 def get_path_bearing(path_data, nodes_dict):

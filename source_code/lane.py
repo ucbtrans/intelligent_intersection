@@ -13,7 +13,7 @@ import copy
 import math
 import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
-    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border
+    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border, get_lane_bearing
 from path import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 
@@ -289,17 +289,23 @@ def add_lane(lane_data, merged_lane=None):
             'left_shaped_border': copy.deepcopy(lane_data['left_shaped_border']),
             'shape_points': copy.deepcopy(lane_data['shape_points']),
             'shape_length': copy.deepcopy(lane_data['shape_length']),
-            'split': [split]
+            'split': [split],
+            #'lane_id': lane_data['lane_id']
         }
     else:
 
         split_transition = merged_lane['split'][-1] + '2' + split
         # split_transition options: yes2no, no2yes, yes2yes, no2no
-        for k in ['nodes', 'left_border', 'right_border', 'nodes_coordinates']:
+        for k in ['left_border', 'right_border']:
             if split_transition == 'yes2no':
-                merged_lane[k][:-1] += lane_data[k]
+                merged_lane[k] = merged_lane[k][:-1] + lane_data[k][1:]
+            elif split_transition == 'no2yes':
+                merged_lane[k] = merged_lane[k][:-1] + lane_data[k][1:]
             else:
                 merged_lane[k] += lane_data[k][1:]
+        for k in ['nodes', 'nodes_coordinates']:
+            merged_lane[k] += lane_data[k][1:]
+
         merged_lane['split'] += [split]
 
         for k in ['width', 'path_id', 'path']:

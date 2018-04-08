@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #######################################################################
 #
-#   This module creates lane borders
+#   This module supports operations over borders and vectors
 #
 #######################################################################
 
@@ -39,7 +39,7 @@ def get_distance_between_points(point1, point2):
 
 def shift_by_bearing_and_distance(point, distance, direction_reference, bearing_delta=90.0):
     starting_point = nv_frame.GeoPoint(latitude=point[1], longitude=point[0], degrees=True)
-    azimuth = ( 360.0 + get_compass(direction_reference[0], direction_reference[1]) + bearing_delta) % 360
+    azimuth = (360.0 + get_compass(direction_reference[0], direction_reference[1]) + bearing_delta) % 360
     result, _azimuthb = starting_point.geo_point(distance=abs(distance), azimuth=azimuth, degrees=True)
     return result.longitude_deg, result.latitude_deg
 
@@ -82,8 +82,10 @@ def extend_vector(coord, length=300.0, backward=True, relative=False):
     """
     Extend (or reduce) the length of a vector to the required length
     :param coord: list of vector coord.
-    :param length: desired length
+    :param length: desired length in meters
     :param backward: True if extend backward, false if forward
+    :param relative: the length of the resulting vector will be increased by length if True,
+           otherwise the length of the resulting vector will be equal to the input parameter length. 
     :return: list of coordinates for the new vector
     """
     if len(coord) < 2:
@@ -434,8 +436,6 @@ def cut_border_by_polygon(border, polygon, multi_string_index=0):
     try:
         list_of_coordinates = list(shortened_border.coords)
     except Exception as e:
-        print('Exception:',  e)
-        print('Type ', type(shortened_border))
         return None
     return list_of_coordinates
 

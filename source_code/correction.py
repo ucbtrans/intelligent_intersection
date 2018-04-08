@@ -48,7 +48,7 @@ def extrapolate_number_of_lanes(path_data, paths):
                      if 'name' in p['tags']
                      and p['tags']['name'] == path_data['tags']['name']
                      and 'direction' in p['tags']
-                     and p['tags']['direction'] == 'to_intersection'
+                     # and p['tags']['direction'] == 'to_intersection'
                      and 'bearing' in p
                      and abs(get_angle_between_bearings(p['bearing'], path_data['bearing'])) < 60.0
                      and len(p['nodes']) > 0
@@ -58,6 +58,7 @@ def extrapolate_number_of_lanes(path_data, paths):
         if len(prev_path) == 1:
             num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(prev_path[0])
             path_data['tags']['lanes'] = num_of_trunk_lanes
+            path_data['tags']['corrected'] = 'yes'
 
 
 def correct_paths(paths):

@@ -69,6 +69,7 @@ def create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
         'west': west,
         'size': size,
         'crop_radius': crop_radius,
+        'x_nodes': x_nodes,
         'nodes': {}
         }
 
@@ -92,7 +93,7 @@ def get_street_data(x_data, nodes_dict):
     add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
     manual_correction(intersection_paths)
     oneway_paths = split_bidirectional_paths(intersection_paths, nodes_dict)
-    set_direction(oneway_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    set_direction(oneway_paths, x_data, nodes_dict)
     correct_paths(oneway_paths)
     oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
     cropped_paths = remove_elements_beyond_radius(oneway_paths_with_borders,
@@ -140,7 +141,7 @@ def get_railway_data(x_data, nodes_dict):
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    set_direction(cropped_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    set_direction(cropped_paths, x_data, nodes_dict)
     return cropped_paths
 
 
@@ -172,7 +173,7 @@ def get_footway_data(x_data, nodes_dict):
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    set_direction(cropped_paths, x_data['center_x'], x_data['center_y'], nodes_dict)
+    set_direction(cropped_paths, x_data, nodes_dict)
     return cropped_paths
 
 
@@ -184,12 +185,12 @@ def get_public_transit_data(x_data, nodes_dict):
     :return: list of railway paths 
     """
     public_transit_jsons = ox.osm_net_download(north=x_data['north'],
-                                        south=x_data['south'],
-                                        east=x_data['east'],
-                                        west=x_data['west'],
-                                        network_type='all',
-                                        infrastructure='node["highway"]'
-                                        )
+                                               south=x_data['south'],
+                                               east=x_data['east'],
+                                               west=x_data['west'],
+                                               network_type='all',
+                                               infrastructure='node["highway"]'
+                                               )
 
     public_transit_nodes = [e for e in public_transit_jsons[0]['elements']
                             if e['type'] == 'node'
@@ -280,7 +281,7 @@ def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):
 
 
 def smart_crop(elements, nodes_dict, x0, y0, radius):
-    center = (x0, y0)
+
     for e in elements:
         if e['type'] != 'node':
             cropped_node_list = []
@@ -307,7 +308,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
     :param radius: radius in meters
     :return: list of remaining elements
     """
-    center = (x0, y0)
+
     for e in elements:
         if e['type'] != 'node':
             cropped_node_list = []

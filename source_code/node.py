@@ -119,7 +119,7 @@ def get_node_subset(city_paths_nodes, section, nodes_dict):
 
 def get_intersection_nodes(paths, street_tuple):
     """
-    Get node ids for an intersection.  The intersection is defines by a tuple of intersectiong streets.
+    Get node ids for an intersection.  The intersection is defines by a tuple of intersecting streets.
     :param paths: list of dictionaries
     :param street_tuple: tuple of strings
     :return: set of node ids
