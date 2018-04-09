@@ -10,7 +10,6 @@
 import shapely.geometry as geom
 from border import cut_border_by_distance, extend_vector
 from lane import get_lane_index_from_right, get_turn_type, intersects
-from turn import construct_turn_arc, shorten_border_for_crosswalk
 
 
 def is_right_turn_allowed(lane_data, all_lanes):
@@ -44,7 +43,7 @@ def get_connected_links(origin_lane, all_lanes):
             and 'highway' in l['path'][0]['tags']
             and 'link' in l['path'][0]['tags']['highway']
             and l['nodes'][0] in origin_lane['nodes']
-            #and origin_lane['lane_id'][0] == l['lane_id'][0]
+            # and origin_lane['lane_id'][0] == l['lane_id'][0]
             ]
 
 
@@ -135,48 +134,3 @@ def get_destination_lanes_for_right_turn(origin_lane, all_lanes):
             and intersects(origin_lane, l, all_lanes)
             and get_turn_type(origin_lane, l) == 'right_turn'
             ]
-
-
-def get_direct_right_turn_border(origin_lane,
-                                 destination_lane,
-                                 all_lanes,
-                                 border_type='left',
-                                 turn_direction=1,
-                                 use_shaped_border=False
-                                 ):
-
-    shaped_border = border_type + '_shaped_border'
-    non_shaped_border = border_type + '_border'
-
-    if not use_shaped_border:
-        origin_border = origin_lane[non_shaped_border]
-    elif shaped_border not in origin_lane or origin_lane[shaped_border] is None:
-        origin_border = origin_lane[non_shaped_border]
-    else:
-        origin_border = origin_lane[shaped_border]
-
-    destination_border = destination_lane[non_shaped_border]
-
-    shorten_origin_border = shorten_border_for_crosswalk(origin_border,
-                                                         origin_lane['name'],
-                                                         all_lanes,
-                                                         destination='to_intersection'
-                                                         )
-    shorten_destination_border = shorten_border_for_crosswalk(destination_border,
-                                                              destination_lane['name'],
-                                                              all_lanes,
-                                                              destination='from_intersection'
-                                                              )
-
-    turn_arc = construct_turn_arc(shorten_origin_border,
-                                  shorten_destination_border,
-                                  turn_direction=turn_direction,
-                                  )
-    if turn_arc is None:
-        return None
-
-    destination_line = geom.LineString(shorten_destination_border)
-    landing_point = destination_line.project(geom.Point(turn_arc[-1]))
-    landing_border = cut_border_by_distance(destination_line, landing_point)[-1]
-
-    return shorten_origin_border + turn_arc[1:-1] + shorten_destination_border # list(landing_border.coords)

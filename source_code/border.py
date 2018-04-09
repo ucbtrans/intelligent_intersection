@@ -114,7 +114,7 @@ def extend_vector(coord, length=300.0, backward=True, relative=False):
         return [(x0, y0), (xx1, yy1)]
 
 
-def extend_both_sides_of_a_border(border, length=10.0, relative=True):
+def extend_both_sides_of_a_border(border, length=20.0, relative=True):
     """
     Extend both ends of a border to a large size in order to clear crosswalk areas
     :param border: list of coordinates
@@ -128,6 +128,9 @@ def extend_origin_border(border, length=300.0, relative=False):
     """
     Extend the last section of a border to a large size in order to find cross points with other lanes
     :param border: list of coordinates
+    :param length: float in meters
+    :param relative: True if extending the vector length to the current + length, 
+                     False if the resulting vector length should be equal length
     :return: list of coordinates representing new extended border
     """
 
@@ -138,6 +141,9 @@ def extend_destination_border(border, length=300.0, relative=False):
     """
     Extend the first section of a border to a large size in order to find cross points with other lanes
     :param border: list of coordinates
+    :param length: float in meters
+    :param relative: True if extending the vector length to the current + length, 
+                     False if the resulting vector length should be equal length
     :return: list of coordinates representing new extended border
     """
     return extend_vector(border[:2], length=length, relative=relative) + border[2:]

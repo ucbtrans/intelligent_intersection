@@ -11,7 +11,8 @@ import math
 import shapely.geometry as geom
 import osmnx as ox
 from lane import add_space_for_crosswalk
-from border import cut_border_by_polygon, get_turn_angle, to_rad, shift_list_of_nodes, extend_vector, get_compass, shift_by_bearing_and_distance
+from border import cut_border_by_polygon, get_turn_angle, to_rad, shift_list_of_nodes, extend_vector, get_compass, \
+    shift_by_bearing_and_distance
 
 
 def shorten_border_for_crosswalk(input_border,
@@ -39,7 +40,6 @@ def shorten_border_for_crosswalk(input_border,
         if l['name'] == 'no_name' or l['name'] == street_name:
             continue
 
-        #if l['lane_id'] == '1' or l['lane_id'] == '1R' or 'B' in l['lane_id']:
         lb, rb = add_space_for_crosswalk(l, crosswalk_width=crosswalk_width)
         coord = lb + rb[::-1]
         polygon = geom.Polygon(coord)
@@ -86,11 +86,12 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
              ]
 
     vec = [origin_border[-1], intersection_point]
-    vector = [
-        extend_vector(vec, length=dist_delta + radius * (math.sin(to_rad(angle * i / float(number_of_points)))), backward=False)[
-            1]
-        for i in range(0, number_of_points + 1)
-        ]
+    vector = [extend_vector(vec,
+                            length=dist_delta + radius * (math.sin(to_rad(angle * i / float(number_of_points)))),
+                            backward=False
+                            )[1]
+              for i in range(0, number_of_points + 1)
+              ]
 
     temp = shift_list_of_nodes(vector, shift, direction_reference=vec)
 
@@ -98,4 +99,54 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
         res = shift_by_bearing_and_distance(vector[i], shift[i], vec, bearing_delta=turn_direction*90.0)
         temp[i] = res
 
-    return temp # shift_list_of_nodes(vector, shift, direction_reference=vec)
+    return temp  # shift_list_of_nodes(vector, shift, direction_reference=vec)
+
+
+def get_turn_border(origin_lane,
+                    destination_lane,
+                    all_lanes,
+                    border_type='left',
+                    turn_direction=1,
+                    use_shaped_border=False
+                    ):
+    """
+    Create a border for a left or rigth guideway.  U-turn guideways are constructed by a separate function
+    :param origin_lane: dictionary
+    :param destination_lane: dictionary
+    :param all_lanes: list of dictionaries
+    :param border_type: string either 'left' ot 'right'
+    :param turn_direction: -1 if left turn otherwise 1
+    :param use_shaped_border: True if apply a shaped border for turning lane, otherwise False
+    :return: list of coordinates
+    """
+    shaped_border = border_type + '_shaped_border'
+    non_shaped_border = border_type + '_border'
+
+    if not use_shaped_border:
+        origin_border = origin_lane[non_shaped_border]
+    elif shaped_border not in origin_lane or origin_lane[shaped_border] is None:
+        origin_border = origin_lane[non_shaped_border]
+    else:
+        origin_border = origin_lane[shaped_border]
+
+    destination_border = destination_lane[non_shaped_border]
+
+    shorten_origin_border = shorten_border_for_crosswalk(origin_border,
+                                                         origin_lane['name'],
+                                                         all_lanes,
+                                                         destination='to_intersection'
+                                                         )
+    shorten_destination_border = shorten_border_for_crosswalk(destination_border,
+                                                              destination_lane['name'],
+                                                              all_lanes,
+                                                              destination='from_intersection'
+                                                              )
+
+    turn_arc = construct_turn_arc(shorten_origin_border,
+                                  shorten_destination_border,
+                                  turn_direction=turn_direction,
+                                  )
+    if turn_arc is None:
+        return None
+
+    return shorten_origin_border + turn_arc[1:-1] + shorten_destination_border

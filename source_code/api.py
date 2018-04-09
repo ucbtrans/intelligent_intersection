@@ -11,7 +11,7 @@ import osmnx as ox
 from intersection import get_intersection_data, plot_lanes
 from street import insert_street_names
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
-    get_through_guideways, set_guideway_ids, get_bicycle_left_turn_guideways
+    get_through_guideways, set_guideway_ids, get_bicycle_left_turn_guideways, get_u_turn_guideways
 from city import get_city_name_from_address
 from node import get_nodes_dict
 
@@ -242,7 +242,7 @@ def get_guideway_by_approach_id(intersection_data, approach_id):
     :return: list of guideways
     """
 
-    return [g for g in get_guideways(intersection_data, guideway_type='all') if g ['origin_lane']['id'] == approach_id]
+    return [g for g in get_guideways(intersection_data, guideway_type='all') if g['origin_lane']['id'] == approach_id]
 
 
 def get_guideway_by_exit_id(intersection_data, exit_id):
@@ -259,6 +259,7 @@ def get_intersection_image(intersection_data, alpha=1.0):
     """
     Get an image of intersection lanes in PNG format
     :param intersection_data: dictionary
+    :param alpha: transparency: between 0.0 amd 1.0
     :return: matplotlib.figure.Figure
     """
 
@@ -271,7 +272,7 @@ def get_intersection_image(intersection_data, alpha=1.0):
                          edge_linewidth=1,
                          margin=0.02,
                          bgcolor='#CCFFE5',
-                         edge_color='w',  #'#FF9933',
+                         edge_color='w',  # '#FF9933',o
                          alpha=alpha
                          )
 
@@ -344,6 +345,11 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_lanes']))
 
+    if 'vehicle' in guideway_type and 'u-turn' in guideway_type \
+            or (guideway_type == 'all vehicle') \
+            or (guideway_type == 'all'):
+        guideways.extend(get_u_turn_guideways(intersection_data['merged_lanes']))
+
     if 'rail' in guideway_type:
         guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
 
@@ -364,9 +370,6 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all bicycle') \
             or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
-
-    if 'rail' in guideway_type:
-        guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
 
     return set_guideway_ids(guideways)
 
@@ -417,6 +420,7 @@ def get_guideway_image(guideways, intersection_data, alpha=1.0):
     Get an image of guideways in PNG format
     :param guideways: list of dictionaries
     :param intersection_data: dictionary
+    :param alpha: transparency: between 0.0 amd 1.0
     :return: matplotlib.figure.Figure
     """
     fig, ax = plot_lanes(intersection_data['merged_lanes'],

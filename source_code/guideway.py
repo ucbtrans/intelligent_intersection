@@ -11,9 +11,11 @@
 from border import get_bicycle_border
 from matplotlib.patches import Polygon
 from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
-    get_direct_right_turn_border, get_destination_lanes_for_right_turn
+    get_destination_lanes_for_right_turn
 from left_turn import is_left_turn_allowed, get_destination_lanes_for_left_turn
 from through import is_through_allowed, get_destination_lane
+from u_turn import is_u_turn_allowed, get_destination_lanes_for_u_turn, get_u_turn_border
+from turn import get_turn_border
 
 
 def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
@@ -83,11 +85,7 @@ def get_left_turn_guideways(all_lanes, nodes_dict):
     for origin_lane in all_lanes:
         if is_left_turn_allowed(origin_lane):
             for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
-                guideway_data = get_direct_right_turn_guideway(origin_lane,
-                                                               destination_lane,
-                                                               all_lanes,
-                                                               turn_type='left'
-                                                               )
+                guideway_data = get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='left')
 
                 if guideway_data is not None:
                     guideways.append(guideway_data)
@@ -111,11 +109,7 @@ def create_right_turn_guideway(origin_lane, all_lanes):
     if link_lane is None:
         destination_lanes = get_destination_lanes_for_right_turn(origin_lane, all_lanes)
         if len(destination_lanes) > 0:
-            return get_direct_right_turn_guideway(origin_lane,
-                                                  destination_lanes[0],
-                                                  all_lanes,
-                                                  turn_type='right'
-                                                  )
+            return get_direct_turn_guideway(origin_lane, destination_lanes[0], all_lanes, turn_type='right')
         else:
             return None
 
@@ -165,6 +159,44 @@ def get_through_guideway(origin_lane, destination_lane):
     }
 
 
+def get_u_turn_guideways(all_lanes):
+    """
+    Compile a list of bicycle guideways for all legal u-turns
+    :param all_lanes: list of dictionaries
+    :return: list of dictionaries
+    """
+
+    guideways = []
+
+    for origin_lane in all_lanes:
+        if is_u_turn_allowed(origin_lane):
+            for destination_lane in get_destination_lanes_for_u_turn(origin_lane, all_lanes):
+                guideway_data = get_u_turn_guideway(origin_lane, destination_lane, all_lanes)
+                if guideway_data is not None \
+                        and guideway_data['left_border'] is not None \
+                        and guideway_data['right_border'] is not None:
+                    guideways.append(guideway_data)
+
+    return guideways
+
+
+def get_u_turn_guideway(origin_lane, destination_lane, all_lanes):
+    """
+    Create a u-turn guideway from an origin and destination lanes
+    :param origin_lane: dictionary
+    :param destination_lane: dictionary
+    :param all_lanes: list of dictionaries
+    :return: dictionary
+    """
+    return {
+        'type': 'u_turn',
+        'origin_lane': origin_lane,
+        'destination_lane': destination_lane,
+        'left_border': get_u_turn_border(origin_lane, destination_lane, all_lanes, 'left'),
+        'right_border': get_u_turn_border(origin_lane, destination_lane, all_lanes, 'right')
+    }
+
+
 def get_through_guideways(all_lanes):
     """
     Create through guideways from a list of merged lanes
@@ -180,9 +212,9 @@ def get_through_guideways(all_lanes):
     return guideways
 
 
-def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='right'):
+def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='right'):
     """
-    Create a right turn guideway if there is no link lane connecting origin and destination
+    Create a right or left turn guideway if there is no link lane connecting origin and destination
     :param origin_lane: dictionary
     :param destination_lane: dictionary
     :param all_lanes: list of dictionaries
@@ -205,43 +237,27 @@ def get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes, tur
         'destination_lane': destination_lane,
     }
 
-    left_border = get_direct_right_turn_border(origin_lane,
-                                               destination_lane,
-                                               all_lanes,
-                                               border_type='left',
-                                               turn_direction=turn_direction
-                                               )
+    left_border = get_turn_border(origin_lane,
+                                  destination_lane,
+                                  all_lanes,
+                                  border_type='left',
+                                  turn_direction=turn_direction
+                                  )
     if left_border is None:
         return None
 
-    right_border = get_direct_right_turn_border(origin_lane,
-                                                destination_lane,
-                                                all_lanes,
-                                                border_type='right',
-                                                turn_direction=turn_direction
-                                                )
+    right_border = get_turn_border(origin_lane,
+                                   destination_lane,
+                                   all_lanes,
+                                   border_type='right',
+                                   turn_direction=turn_direction
+                                   )
     if right_border is None:
         return None
 
     guideway['left_border'] = left_border
     guideway['right_border'] = right_border
     return guideway
-
-
-def get_direct_right_turn_guideways(all_lanes):
-    """
-    Create a list of right turn guideways for lanes not having an additional link to the destination
-    :param all_lanes: list of dictionaries
-    :return: list of dictionaries
-    """
-    guideways = []
-    for origin_lane in [l for l in all_lanes if is_right_turn_allowed(l, all_lanes)]:
-        for destination_lane in get_destination_lanes_for_right_turn(origin_lane, all_lanes):
-            guideway = get_direct_right_turn_guideway(origin_lane, destination_lane, all_lanes)
-            if guideway is not None:
-                guideways.append(guideway)
-
-    return guideways
 
 
 def get_right_turn_guideways(all_lanes):

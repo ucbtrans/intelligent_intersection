@@ -290,7 +290,6 @@ def add_lane(lane_data, merged_lane=None):
             'shape_points': copy.deepcopy(lane_data['shape_points']),
             'shape_length': copy.deepcopy(lane_data['shape_length']),
             'split': [split],
-            #'lane_id': lane_data['lane_id']
         }
     else:
 
