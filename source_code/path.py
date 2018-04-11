@@ -266,7 +266,7 @@ def get_path_bearing(path_data, nodes_dict):
     :param nodes_dict: dictionary
     :return: float (degrees)
     """
-    if 'nodes' not in path_data and len(path_data['nodes']) < 2:
+    if 'nodes' not in path_data or len(path_data['nodes']) < 2:
         return None
 
     x0 = nodes_dict[path_data['nodes'][0]]['x']

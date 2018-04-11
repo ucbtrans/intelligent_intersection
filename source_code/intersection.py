@@ -18,7 +18,7 @@ from railway import split_railways
 from footway import get_crosswalks
 from correction import manual_correction, correct_paths
 from border import border_within_box, get_box
-
+from data import get_box_from_xml, get_box_data
 
 track_symbol = {
     'SW': '\\',
@@ -45,21 +45,25 @@ def get_street_structure(city_name):
     return paths, nodes_dict
 
 
-def create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
+def create_intersection(street_tuple, data, size=500.0, crop_radius=150.0):
     """
-    Create dictionary of intersection data.
+    Create dictionary of intersection data.  The input data can be either city data or selection data
     :param street_tuple: tuple of strings
-    :param city_data: dictionary
+    :param data: dictionary
     :param size: float in meters: initial size of osm data
     :param crop_radius: float in meters: the data within the initial size will be cropped to the specified radius
     :return: dictionary
     """
-    x_nodes = select_close_nodes(city_data['nodes'], get_intersection_nodes(city_data['paths'], street_tuple))
-    u, v = get_center(x_nodes, city_data['nodes'])
+    x_nodes = select_close_nodes(data['nodes'], get_intersection_nodes(data['paths'], street_tuple))
+    u, v = get_center(x_nodes, data['nodes'])
 
-    north, south, east, west = get_box(u, v, size=size)
+    if data['raw_data'] is None:
+        north, south, east, west = get_box(u, v, size=size)
+    else:
+        north, south, east, west = get_box_from_xml(data['raw_data'][0]['bounds'])
     x_data = {
-        'city': city_data['name'],
+        'city': data['name'],
+        'from_file': data['from_file'],
         'streets': street_tuple,
         'center_x': u,
         'center_y': v,
@@ -76,19 +80,17 @@ def create_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     return x_data
 
 
-def get_street_data(x_data, nodes_dict):
+def get_street_data(x_data, city_data):
     """
     Get a list of paths related to the intersection and a list of data matching the osmnx format.
     :param x_data: dictionary
-    :param nodes_dict: dictionary
+    :param city_data: dictionary
     :return: a tuple of lists
     """
-    intersection_jsons = ox.osm_net_download(north=x_data['north'],
-                                             south=x_data['south'],
-                                             east=x_data['east'],
-                                             west=x_data['west'],
-                                             network_type='drive'
-                                             )
+
+    nodes_dict = city_data['nodes']
+    intersection_jsons = get_box_data(x_data, city_data['raw_data'], infrastructure='way["highway"]', network_type='drive')
+
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
     add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
     manual_correction(intersection_paths)
@@ -115,20 +117,16 @@ def get_street_data(x_data, nodes_dict):
     return cleaned_intersection_paths, intersection_selection, intersection_jsons
 
 
-def get_railway_data(x_data, nodes_dict):
+def get_railway_data(x_data, city_data):
     """
     Get railway data if applicable for the intersection and crop within the radius.
     :param x_data: dictionary
-    :param nodes_dict: dictionary 
+    :param city_data: dictionary 
     :return: list of railway paths 
     """
-    railway_jsons = ox.osm_net_download(north=x_data['north'],
-                                        south=x_data['south'],
-                                        east=x_data['east'],
-                                        west=x_data['west'],
-                                        network_type='all',
-                                        infrastructure='way["railway"]'
-                                        )
+    nodes_dict = city_data['nodes']
+    railway_jsons = get_box_data(x_data, city_data['raw_data'], network_type='all', infrastructure='way["railway"]')
+
     railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
     referenced_nodes = {}
     referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
@@ -145,20 +143,16 @@ def get_railway_data(x_data, nodes_dict):
     return cropped_paths
 
 
-def get_footway_data(x_data, nodes_dict):
+def get_footway_data(x_data, city_data):
     """
     Get footway data if applicable for the intersection and crop within the radius.
     :param x_data: dictionary
-    :param nodes_dict: dictionary 
+    :param city_data: dictionary 
     :return: list of railway paths 
     """
-    footway_jsons = ox.osm_net_download(north=x_data['north'],
-                                        south=x_data['south'],
-                                        east=x_data['east'],
-                                        west=x_data['west'],
-                                        network_type='all',
-                                        infrastructure='way["highway"]'
-                                        )
+    nodes_dict = city_data['nodes']
+    footway_jsons = get_box_data(x_data, city_data['raw_data'], network_type='all')
+
     footway_paths = [e for e in footway_jsons[0]['elements']
                      if e['type'] == 'way'
                      and 'highway' in e['tags']
@@ -177,20 +171,19 @@ def get_footway_data(x_data, nodes_dict):
     return cropped_paths
 
 
-def get_public_transit_data(x_data, nodes_dict):
+def get_public_transit_data(x_data, city_data):
     """
     Get footway data if applicable for the intersection and crop within the radius.
     :param x_data: dictionary
-    :param nodes_dict: dictionary 
+    :param city_data: dictionary 
     :return: list of railway paths 
     """
-    public_transit_jsons = ox.osm_net_download(north=x_data['north'],
-                                               south=x_data['south'],
-                                               east=x_data['east'],
-                                               west=x_data['west'],
-                                               network_type='all',
-                                               infrastructure='node["highway"]'
-                                               )
+    nodes_dict = city_data['nodes']
+    public_transit_jsons = get_box_data(x_data,
+                                        city_data['raw_data'],
+                                        network_type='all',
+                                        infrastructure='node["highway"]'
+                                        )
 
     public_transit_nodes = [e for e in public_transit_jsons[0]['elements']
                             if e['type'] == 'node'
@@ -214,34 +207,40 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     """
 
     intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
-
-    cleaned_intersection_paths, cropped_intersection, raw_data = get_street_data(intersection_data,
-                                                                                 city_data['nodes']
-                                                                                 )
+    cleaned_intersection_paths, cropped_intersection, raw_data = get_street_data(intersection_data, city_data)
 
     lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
     merged_lanes = merge_lanes(lanes, city_data['nodes'])
-    shorten_lanes(merged_lanes)
+
     intersection_data['raw_data'] = raw_data
     intersection_data['lanes'] = lanes
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
-    intersection_data['railway'] = get_railway_data(intersection_data, city_data['nodes'])
+    intersection_data['railway'] = get_railway_data(intersection_data, city_data)
     intersection_data['rail_tracks'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
     intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_tracks'], city_data['nodes'])
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['lanes'],
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['rail_tracks'],
                                                                          city_data['nodes'],
                                                                          nodes_subset=intersection_data['nodes']
                                                                          )
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['rail_tracks'],
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['lanes'],
                                                                          city_data['nodes'],
                                                                          nodes_subset=intersection_data['nodes']
                                                                          )
     intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths, city_data['nodes'])
     intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
-    intersection_data['footway'] = get_footway_data(intersection_data, city_data['nodes'])
+    intersection_data['footway'] = get_footway_data(intersection_data, city_data)
     intersection_data['crosswalks'] = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
-    intersection_data['public_transit_nodes'] = get_public_transit_data(intersection_data, city_data['nodes'])
+    intersection_data['public_transit_nodes'] = get_public_transit_data(intersection_data, city_data)
+
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['cycleway_lanes'],
+                                                                         city_data['nodes'],
+                                                                         nodes_subset=intersection_data['nodes']
+                                                                         )
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['footway'],
+                                                                         city_data['nodes'],
+                                                                         nodes_subset=intersection_data['nodes']
+                                                                         )
 
     set_meta_data(intersection_data['merged_lanes']
                   + intersection_data['merged_tracks']

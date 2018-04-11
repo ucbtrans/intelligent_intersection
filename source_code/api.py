@@ -7,41 +7,74 @@
 #######################################################################
 
 
-import osmnx as ox
 from intersection import get_intersection_data, plot_lanes
 from street import insert_street_names
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
     get_through_guideways, set_guideway_ids, get_bicycle_left_turn_guideways, get_u_turn_guideways
 from city import get_city_name_from_address
 from node import get_nodes_dict
+from data import get_data_from_file, get_city_from_osm
 
 
-def get_city(city_name, network_type="drive"):
+def get_city(city_name):
     """
-    Get street structure of a city
+    Get city data as a dictionary.
     :param city_name: city name like 'Campbell, California, USA'
-    :param network_type: string: {'walk', 'bike', 'drive', 'drive_service', 'all', 'all_private', 'none'}
-    :return: a tuple of list of paths and a nodes dictionary
+    :return: city data dictionary
     """
-    city_paths_nodes = None
-    for which_result in range(1, 4):
-        try:
-            city_boundaries = ox.gdf_from_place(city_name, which_result=which_result)
-            city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type=network_type)
-            break
-        except ValueError:
-            continue
-    if city_paths_nodes is None:
-        return None
 
-    nodes_dict = get_nodes_dict(city_paths_nodes)
-    paths = [p for p in city_paths_nodes[0]['elements'] if p['type'] != 'node']
+    city_paths_nodes = get_city_from_osm(city_name)
     city_data = {
         'name': city_name,
-        'paths': paths,
-        'nodes': nodes_dict
+        'raw_data': None,
+        'from_file': 'no',
+        'paths': [p for p in city_paths_nodes[0]['elements'] if p['type'] == 'way'],
+        'nodes': get_nodes_dict(city_paths_nodes),
+        'relations': [p for p in city_paths_nodes[0]['elements'] if p['type'] == 'relation']
     }
     return insert_street_names(city_data)
+
+
+def get_selection(file_name):
+    """
+    Get selection from an XML file.  Returns a dictionary with the data from the file 
+    or None if unable to read/parse the file.
+    :param file_name: string
+    :return: selection data dictionary
+    """
+
+    selection = get_data_from_file(file_name)
+    if selection is None:
+        return None
+
+    selection_data = {
+        'name': file_name,
+        'raw_data': selection,
+        'from_file': 'yes',
+        'paths': [p for p in selection[0]['elements'] if p['type'] == 'way'],
+        'nodes': get_nodes_dict(selection),
+        'relations': [p for p in selection[0]['elements'] if p['type'] == 'relation']
+    }
+    return insert_street_names(selection_data)
+
+
+def get_data(city_name=None, file_name=None):
+    """
+    Get data either from OSM by city name or from an XML file by file name.
+    If the city name is not None, than data will be downloaded from OSM online.
+    If the file name is not None, the data will be loaded from the file.
+    If both are not None, the file will be ignored and the city name parameter prevails.
+    Returns a dictionary with the desired data or None if not found.
+    :param city_name: city name like 'Campbell, California, USA'
+    :param file_name: string
+    :return: selection data dictionary
+    """
+    if city_name is not None:
+        return get_city(city_name)
+    elif file_name is not None:
+        return get_selection(file_name)
+    else:
+        return None
 
 
 def get_streets(city_data):
@@ -56,7 +89,7 @@ def get_streets(city_data):
 
 def get_intersecting_streets(city_data):
     """
-    Get a list of intersecting street.  Each element is a tuple of two or more street names.
+    Get a list of crossing streets.  Each element is a tuple of two or more street names.
     :param city_data: dictionary
     :return: list of tuples
     """

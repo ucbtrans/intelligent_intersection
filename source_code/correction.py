@@ -40,7 +40,8 @@ def extrapolate_number_of_lanes(path_data, paths):
             and 'turn:lanes' not in path_data['tags']\
             and 'direction' in path_data['tags']\
             and path_data['tags']['direction'] == 'from_intersection'\
-            and 'bearing' in path_data\
+            and 'bearing' in path_data \
+            and path_data['bearing'] is not None \
             and len(path_data['nodes']) > 0\
             and 'name' in path_data['tags']:
 
@@ -50,6 +51,7 @@ def extrapolate_number_of_lanes(path_data, paths):
                      and 'direction' in p['tags']
                      # and p['tags']['direction'] == 'to_intersection'
                      and 'bearing' in p
+                     and p['bearing'] is not None
                      and abs(get_angle_between_bearings(p['bearing'], path_data['bearing'])) < 60.0
                      and len(p['nodes']) > 0
                      and p['nodes'][-1] == path_data['nodes'][0]
