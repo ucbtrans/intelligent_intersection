@@ -16,6 +16,11 @@ from border import get_angle_between_bearings, shift_by_bearing_and_distance, cu
 
 
 def is_u_turn_allowed(origin_lane):
+    """
+    Check if a U-turn is allowed for this lane
+    :param origin_lane: dictionary
+    :return: True if allowed, otherwise False
+    """
     if origin_lane['direction'] != 'to_intersection':
         return False
     if origin_lane['lane_type'] == 'cycleway' or 'rail' in origin_lane['lane_type']:

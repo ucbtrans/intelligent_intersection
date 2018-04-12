@@ -46,7 +46,7 @@ exclude_keywords = ['landuse']
 
 def get_data_from_file(file_name):
     """
-    Get data from an XML file as a dictionary
+    Get data from an XML file and covert to a dictionary
     :param file_name: string
     :return: dictionary with data
     """

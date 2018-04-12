@@ -900,6 +900,12 @@ def insert_referenced_nodes_to_lanes(lanes, nodes_dict):
 
 
 def get_link_from_and_to(lane_data, lanes):
+    """
+    Get street names for a link connecting two streets
+    :param lane_data: dictionary
+    :param lanes: list of dictionaries
+    :return: tuple of names (strings)
+    """
     if 'highway' not in lane_data or 'link' not in lane_data['highway'] or len(lane_data['nodes']) == 0:
         return None, None
 

@@ -17,11 +17,6 @@ def get_num_of_lanes(path_data):
     :param path_data: dictionary
     :return: integer
     """
-    # u'turn:lanes:forward': u'left;through|right'
-    # u'lanes': u'3',
-    # u'lanes:backward': u'1',
-    # u'lanes:forward': u'2',
-    # "u'lanes:forward'"
 
     if 'turn:lanes' in path_data['tags']:
         return len(path_data['tags']['turn:lanes'].split('|'))

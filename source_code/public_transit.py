@@ -31,6 +31,5 @@ def get_public_transit_stop(lane_data, stops, max_distance=20.0):
         distance = get_distance_between_points(stop_location, closest_point_on_the_border)
         if distance < max_distance:
             nearby_stops.add(stop['id'])
-            # print(s['osmid'], distance, lane_data['meta_data']['identification'], get_lane_index_from_right(lane_data))
 
     return [s for s in stops if s['id'] in nearby_stops]

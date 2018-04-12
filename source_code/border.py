@@ -38,6 +38,16 @@ def get_distance_between_points(point1, point2):
 
 
 def shift_by_bearing_and_distance(point, distance, direction_reference, bearing_delta=90.0):
+    """
+    Find coordinates of a point located at a distance from the starting point to the specified azimuth.  
+    The azimuth is defined by a vector plus bearing delta.  
+    For example, if the bearing delta is 90 degree, the azimuth is orthogonal to the vector.
+    :param point: point coordinates
+    :param distance: float in meters
+    :param direction_reference: list of two points (vector)
+    :param bearing_delta: float in degrees
+    :return: coordinates of a point
+    """
     starting_point = nv_frame.GeoPoint(latitude=point[1], longitude=point[0], degrees=True)
     azimuth = (360.0 + get_compass(direction_reference[0], direction_reference[1]) + bearing_delta) % 360
     result, _azimuthb = starting_point.geo_point(distance=abs(distance), azimuth=azimuth, degrees=True)
@@ -118,6 +128,9 @@ def extend_both_sides_of_a_border(border, length=20.0, relative=True):
     """
     Extend both ends of a border to a large size in order to clear crosswalk areas
     :param border: list of coordinates
+    :param length: float in meters
+    :param relative: True if extending the vector length to the current + length, 
+                     False if the resulting vector length should be equal length
     :return: list of coordinates representing new extended border
     """
     temp = extend_origin_border(border, length=length, relative=relative)
@@ -237,6 +250,12 @@ def get_closest_point(point, coordinates):
 
 
 def get_compass(x, y):
+    """
+    Get compass bearing in degrees between two points
+    :param x: point coordinates
+    :param y: point coordinates
+    :return: float inm degrees
+    """
     return get_compass_bearing(x[::-1], y[::-1])
 
 
@@ -361,6 +380,11 @@ def normalized_compass(starting_compass, turn_angle):
 
 
 def vector_len(coord):
+    """
+    Calculate length of a vector
+    :param coord: list of coordinates
+    :return: float in meters
+    """
     x0 = coord[0][0]
     y0 = coord[0][1]
     x1 = coord[1][0]
@@ -412,6 +436,14 @@ def get_box(x, y, size=500.0):
 
 
 def border_within_box(x0, y0, border, size):
+    """
+    Find a portion of a line within a box.  The box boundaries are defined by the center +/- size.
+    :param x0: longitude of the center
+    :param y0: latitude of the center
+    :param border: list of coordinates
+    :param size: float in meters
+    :return: list of coordinates
+    """
     try:
         north, south, east, west = get_box(x0, y0, size=size)
         polygon = geom.Polygon([(west, north), (east, north), (east, south), (west, south)])
@@ -512,5 +544,4 @@ def get_intersection_with_circle(vector, center, radius, margin=0.01):
     relative_distance = outside_of_circle/vector_len(vector) * (1.0 + margin)
     coord = line.interpolate(relative_distance, normalized=True).coords[0]
     new_dist = ox.great_circle_vec(center[1], center[0], coord[1], coord[0])
-    # print('angle, length, new, outside, rel:', angle, length, new_dist, outside_of_circle, relative_distance)
     return line.interpolate(relative_distance, normalized=True).coords[0]

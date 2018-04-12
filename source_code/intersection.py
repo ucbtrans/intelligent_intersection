@@ -173,7 +173,7 @@ def get_footway_data(x_data, city_data):
 
 def get_public_transit_data(x_data, city_data):
     """
-    Get footway data if applicable for the intersection and crop within the radius.
+    Get public transit data if applicable for the intersection and crop within the radius.
     :param x_data: dictionary
     :param city_data: dictionary 
     :return: list of railway paths 

@@ -17,7 +17,9 @@ from public_transit import get_public_transit_stop
 def set_meta_data(lanes, stops, max_distance=20.0):
     """
     Set meta data for all lanes related to the intersection
-    :param lanes: 
+    :param lanes: list of dictionaries
+    :param max_distance: max distance in meters for a transit stop to belong to a lane
+    :param stops: list of dictionaries (list of transit stops)
     :return: 
     """
 
@@ -31,6 +33,8 @@ def get_lane_meta_data(lane_data, all_lanes, stops, max_distance=20.0):
     Create meta data dictionary for a lane (i.e. approach or exit)
     :param lane_data: dictionary of all lanes related to the intersection
     :param all_lanes: list of all lanes related to the intersection
+    :param max_distance: max distance in meters for a transit stop to belong to a lane
+    :param stops: list of dictionaries (list of transit stops)
     :return: dictionary
     """
     meta_data = {}
@@ -152,7 +156,7 @@ def get_crosswalk_name(crosswalk_data):
     """
     Construct a name for a crosswalk from the streets it is crossing
     :param crosswalk_data: dictionary
-    :return: 
+    :return: string
     """
 
     if crosswalk_data['lane_type'] != 'crosswalk':

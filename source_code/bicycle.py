@@ -10,7 +10,11 @@
 
 
 def get_bicycle_lane_location(path_data):
-
+    """
+    Find where the bicycle lane is located for a given path.
+    :param path_data: dictionary
+    :return: dictionary with forward and backward bicycle lane location
+    """
     bicycle_forward_location = None
     bicycle_backward_location = None
 
