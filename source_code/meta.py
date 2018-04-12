@@ -42,18 +42,20 @@ def get_lane_meta_data(lane_data, all_lanes, stops, max_distance=20.0):
         meta_data['number_of_left-turning_lanes'] = lane_data['num_of_left_lanes']
         meta_data['number_of_right-turning_lanes'] = lane_data['num_of_right_lanes']
 
-    if 'name' in lane_data:
-
-        if 'no_name' in lane_data['name']:
-            from_name, to_name = get_link_from_and_to(lane_data, all_lanes)
-            if from_name is None or to_name is None:
-                meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
-            else:
-                meta_data['identification'] = from_name + ' - ' + to_name + ' Link ' + lane_data['direction']
-        else:
-            meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
+    if lane_data['lane_type'] == 'crosswalk':
+        meta_data['identification'] = get_crosswalk_name(lane_data)
     else:
-        meta_data['identification'] = 'undefined_name' + ' ' + lane_data['direction']
+        if 'name' in lane_data:
+            if 'no_name' in lane_data['name']:
+                from_name, to_name = get_link_from_and_to(lane_data, all_lanes)
+                if from_name is None or to_name is None:
+                    meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
+                else:
+                    meta_data['identification'] = from_name + ' - ' + to_name + ' Link ' + lane_data['direction']
+            else:
+                meta_data['identification'] = lane_data['name'] + ' ' + lane_data['direction']
+        else:
+            meta_data['identification'] = 'undefined_name' + ' ' + lane_data['direction']
 
     if 'id' in lane_data:
         meta_data['id'] = lane_data['id']
@@ -117,6 +119,11 @@ def get_lane_meta_data(lane_data, all_lanes, stops, max_distance=20.0):
     else:
         meta_data['public_transit_stop'] = None
 
+    if 'railway' in lane_data and lane_data['railway'] == 'level_crossing':
+        meta_data['crossing_railway'] = 'yes'
+    else:
+        meta_data['crossing_railway'] = None
+
     meta_data['timestamp'] = str(datetime.datetime.now())
 
     return meta_data
@@ -139,3 +146,34 @@ def where_is_bicycle_lane(p):
         left = 'yes'
 
     return right, left
+
+
+def get_crosswalk_name(crosswalk_data):
+    """
+    Construct a name for a crosswalk from the streets it is crossing
+    :param crosswalk_data: dictionary
+    :return: 
+    """
+
+    if crosswalk_data['lane_type'] != 'crosswalk':
+        return None
+
+    streets = [crosswalk_data['nodes_dict'][n]['street_name'] for n in crosswalk_data['nodes']
+               if 'street_name' in crosswalk_data['nodes_dict'][n]
+               and len(crosswalk_data['nodes_dict'][n]['street_name']) > 0
+               and 'no_name' not in crosswalk_data['nodes_dict'][n]['street_name']
+               and 'railway' not in crosswalk_data['nodes_dict'][n]
+               ]
+
+    if len(streets) == 0:
+        crosswalk_name = 'no_name'
+        end_street = ''
+    else:
+        crosswalk_name = ' '.join(sorted(list(streets[0])))
+        end_street = ' '.join(sorted(list(streets[-1])))
+
+    if crosswalk_name != end_street:
+        crosswalk_name = crosswalk_name + ' - ' + end_street
+
+    crosswalk_name += ' crosswalk'
+    return crosswalk_name

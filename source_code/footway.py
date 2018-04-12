@@ -7,6 +7,9 @@
 #######################################################################
 
 
+from lane import add_node_tags_to_lane, insert_referenced_nodes
+
+
 def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
     """
     Create a crosswalk from a path.
@@ -49,6 +52,9 @@ def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
         crosswalk['right_border'] = path_data['right_border']
     else:
         crosswalk['right_border'] = None
+
+    add_node_tags_to_lane(crosswalk, nodes_dict)
+    insert_referenced_nodes(crosswalk, nodes_dict)
 
     return crosswalk
 
