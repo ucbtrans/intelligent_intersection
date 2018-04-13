@@ -261,6 +261,8 @@ def get_city_from_osm(city_name, network_type="drive"):
     if city_paths_nodes is None:
         return None
 
+    return city_paths_nodes
+
 
 def get_box_data(x_data, selection, network_type='all', infrastructure='way["highway"]'):
     """
