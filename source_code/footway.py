@@ -8,6 +8,7 @@
 
 
 from lane import add_node_tags_to_lane, insert_referenced_nodes
+from border import shift_list_of_nodes
 
 
 def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
@@ -52,6 +53,8 @@ def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
         crosswalk['right_border'] = path_data['right_border']
     else:
         crosswalk['right_border'] = None
+
+    crosswalk['median'] = shift_list_of_nodes(crosswalk['left_border'], [width / 2.0] * len(crosswalk['left_border']))
 
     add_node_tags_to_lane(crosswalk, nodes_dict)
     insert_referenced_nodes(crosswalk, nodes_dict)

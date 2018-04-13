@@ -47,6 +47,7 @@ def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
 
                 if guideway_data is not None \
                         and guideway_data['left_border'] is not None \
+                        and guideway_data['median'] is not None \
                         and guideway_data['right_border'] is not None:
                     guideways.append(guideway_data)
 
@@ -68,7 +69,8 @@ def get_bicycle_left_guideway(origin_lane, destination_lane, origin_through, des
         'type': 'left',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
-        'left_border': get_bicycle_border(origin_through['left_border'], destination_through['left_border']),
+        'left_border':  get_bicycle_border(origin_through['left_border'], destination_through['left_border']),
+        'median':       get_bicycle_border(origin_through['median'], destination_through['median']),
         'right_border': get_bicycle_border(origin_through['right_border'], destination_through['right_border'])
     }
 
@@ -133,6 +135,10 @@ def create_right_turn_guideway(origin_lane, all_lanes):
                                                     link_lane['left_border'],
                                                     destination_lane['left_border']
                                                     )
+    guideway['median'] = get_right_turn_border(origin_lane['median'],
+                                               link_lane['median'],
+                                               destination_lane['median']
+                                               )
     guideway['right_border'] = get_right_turn_border(origin_lane[right_border_type],
                                                      link_lane['right_border'],
                                                      destination_lane['right_border']
@@ -155,6 +161,7 @@ def get_through_guideway(origin_lane, destination_lane):
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
         'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'][1:],
+        'median': origin_lane['left_border'][:-1] + destination_lane['median'][1:],
         'right_border': origin_lane['right_border'][:-1] + destination_lane['right_border'][1:]
     }
 
@@ -174,6 +181,7 @@ def get_u_turn_guideways(all_lanes):
                 guideway_data = get_u_turn_guideway(origin_lane, destination_lane, all_lanes)
                 if guideway_data is not None \
                         and guideway_data['left_border'] is not None \
+                        and guideway_data['median'] is not None \
                         and guideway_data['right_border'] is not None:
                     guideways.append(guideway_data)
 
@@ -193,6 +201,7 @@ def get_u_turn_guideway(origin_lane, destination_lane, all_lanes):
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
         'left_border': get_u_turn_border(origin_lane, destination_lane, all_lanes, 'left'),
+        'median': get_u_turn_border(origin_lane, destination_lane, all_lanes, 'median'),
         'right_border': get_u_turn_border(origin_lane, destination_lane, all_lanes, 'right')
     }
 
@@ -255,7 +264,17 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
     if right_border is None:
         return None
 
+    median = get_turn_border(origin_lane,
+                                   destination_lane,
+                                   all_lanes,
+                                   border_type='median',
+                                   turn_direction=turn_direction
+                                   )
+    if median is None:
+        return None
+
     guideway['left_border'] = left_border
+    guideway['median'] = median
     guideway['right_border'] = right_border
     return guideway
 

@@ -122,7 +122,10 @@ def get_turn_border(origin_lane,
     shaped_border = border_type + '_shaped_border'
     non_shaped_border = border_type + '_border'
 
-    if not use_shaped_border:
+    if border_type == 'median':
+        non_shaped_border = 'median'
+        origin_border = origin_lane['median']
+    elif not use_shaped_border:
         origin_border = origin_lane[non_shaped_border]
     elif shaped_border not in origin_lane or origin_lane[shaped_border] is None:
         origin_border = origin_lane[non_shaped_border]

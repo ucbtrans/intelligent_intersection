@@ -85,12 +85,16 @@ def get_u_turn_border(origin_lane, destination_lane, all_lanes, border_type='lef
     :param origin_lane: dictionary
     :param destination_lane: dictionary
     :param all_lanes: list of dictionaries
-    :param border_type: string: either 'left' or 'right'
+    :param border_type: string: either 'left' or 'right' or 'median'
     :return: list of coordinates
     """
 
-    destination_border = destination_lane[border_type + '_border']
-    origin_border = origin_lane[border_type + '_border']
+    if border_type == 'median':
+        destination_border = destination_lane['median']
+        origin_border = origin_lane['median']
+    else:
+        destination_border = destination_lane[border_type + '_border']
+        origin_border = origin_lane[border_type + '_border']
 
     shorten_origin_border = shorten_border_for_crosswalk(origin_border,
                                                          origin_lane['name'],

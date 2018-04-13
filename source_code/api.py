@@ -106,7 +106,7 @@ def get_intersecting_streets(city_data):
             for street_name in city_data['nodes'][node_id]['street_name']:
                 if street_name not in all_streets:
                     valid_street_name = False
-                    continue
+                    break
             if valid_street_name:
                 intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
 

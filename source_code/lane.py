@@ -265,6 +265,8 @@ def create_lane(p,
         lane_data['right_shaped_border'] = None
         lane_data['left_shaped_border'] = None
 
+    lane_data['median'] = shift_list_of_nodes(lane_data['left_border'], [width/2.0]*len(lane_data['left_border']))
+
     insert_referenced_nodes(lane_data, nodes_dict)
     return lane_data
 
@@ -283,6 +285,7 @@ def add_lane(lane_data, merged_lane=None):
             'path': [lane_data['path']],
             'nodes': copy.deepcopy(lane_data['nodes']),
             'left_border': copy.deepcopy(lane_data['left_border']),
+            'median': copy.deepcopy(lane_data['median']),
             'right_border': copy.deepcopy(lane_data['right_border']),
             'nodes_coordinates': copy.deepcopy(lane_data['nodes_coordinates']),
             'right_shaped_border': copy.deepcopy(lane_data['right_shaped_border']),
@@ -295,7 +298,7 @@ def add_lane(lane_data, merged_lane=None):
 
         split_transition = merged_lane['split'][-1] + '2' + split
         # split_transition options: yes2no, no2yes, yes2yes, no2no
-        for k in ['left_border', 'right_border']:
+        for k in ['left_border', 'right_border', 'median']:
             if split_transition == 'yes2no':
                 merged_lane[k] = merged_lane[k][:-1] + lane_data[k][1:]
             elif split_transition == 'no2yes':
@@ -322,6 +325,7 @@ def add_lane(lane_data, merged_lane=None):
                      'nodes',
                      'left_border',
                      'right_border',
+                     'median',
                      'nodes_coordinates',
                      'right_shaped_border',
                      'left_shaped_border',
