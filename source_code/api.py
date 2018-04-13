@@ -88,7 +88,7 @@ def get_streets(city_data):
     :return: return a set of street names
     """
 
-    return set([p['tags']['name'] for p in city_data['paths'] if 'name' in p['tags']])
+    return set([p['tags']['name'] for p in city_data['paths'] if 'name' in p['tags'] and 'highway' in p['tags']])
 
 
 def get_intersecting_streets(city_data):
@@ -98,10 +98,17 @@ def get_intersecting_streets(city_data):
     :return: list of tuples
     """
     intersecting_streets = set()
+    all_streets = get_streets(city_data)
 
     for node_id in city_data['nodes']:
         if 'street_name' in city_data['nodes'][node_id] and len(city_data['nodes'][node_id]['street_name']) > 1:
-            intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
+            valid_street_name = True
+            for street_name in city_data['nodes'][node_id]['street_name']:
+                if street_name not in all_streets:
+                    valid_street_name = False
+                    continue
+            if valid_street_name:
+                intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
 
     multiples = [x for x in intersecting_streets if len(x) > 2]
     duplicates = set()
