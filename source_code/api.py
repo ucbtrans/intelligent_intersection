@@ -24,6 +24,10 @@ def get_city(city_name):
     """
 
     city_paths_nodes = get_city_from_osm(city_name)
+
+    if city_paths_nodes is None:
+        return None
+
     city_data = {
         'name': city_name,
         'raw_data': None,
