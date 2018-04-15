@@ -394,7 +394,7 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all'):
         guideways.extend(get_u_turn_guideways(intersection_data['merged_lanes']))
 
-    if 'rail' in guideway_type:
+    if 'rail' in guideway_type or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
 
     if ('bicycle' in guideway_type and 'left' in guideway_type) \

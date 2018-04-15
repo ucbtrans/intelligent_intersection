@@ -66,7 +66,7 @@ def get_bicycle_left_guideway(origin_lane, destination_lane, origin_through, des
     :return: dictionary
     """
     return {
-        'type': 'left',
+        'direction': 'left',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
         'left_border':  get_bicycle_border(origin_through['left_border'], destination_through['left_border']),
@@ -103,7 +103,7 @@ def create_right_turn_guideway(origin_lane, all_lanes):
     """
 
     guideway = {
-        'type': 'right',
+        'direction': 'right',
         'origin_lane': origin_lane,
     }
 
@@ -157,7 +157,7 @@ def get_through_guideway(origin_lane, destination_lane):
     :return: dictionary
     """
     return {
-        'type': 'through',
+        'direction': 'through',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
         'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'][1:],
@@ -197,7 +197,7 @@ def get_u_turn_guideway(origin_lane, destination_lane, all_lanes):
     :return: dictionary
     """
     return {
-        'type': 'u_turn',
+        'direction': 'u_turn',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
         'left_border': get_u_turn_border(origin_lane, destination_lane, all_lanes, 'left'),
@@ -241,7 +241,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
         turn_direction = -1
 
     guideway = {
-        'type': turn_type,
+        'direction': turn_type,
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
     }
@@ -265,11 +265,11 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
         return None
 
     median = get_turn_border(origin_lane,
-                                   destination_lane,
-                                   all_lanes,
-                                   border_type='median',
-                                   turn_direction=turn_direction
-                                   )
+                             destination_lane,
+                             all_lanes,
+                             border_type='median',
+                             turn_direction=turn_direction
+                             )
     if median is None:
         return None
 
@@ -291,12 +291,21 @@ def get_right_turn_guideways(all_lanes):
 
 def set_guideway_ids(guideways):
     """
-    Set guideway ids as a combination of the origin and destination ids
+    Set guideway ids as a combination of the origin and destination ids.
+    Set guideway types based on the origin lane type
     :param guideways: list of dictionaries
     :return: list of dictionaries
     """
     for g in guideways:
         g['id'] = 100*g['origin_lane']['id'] + g['destination_lane']['id']
+        if g['origin_lane']['lane_type'] == 'cycleway':
+            g['type'] = 'bicycle'
+        elif 'rail' in g['origin_lane']['lane_type']:
+            g['type'] = 'railway'
+        elif g['origin_lane']['lane_type'] == 'crosswalk':
+            g['type'] = 'footway'
+        else:
+            g['type'] = 'drive'
 
     return guideways
 
