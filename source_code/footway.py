@@ -36,6 +36,7 @@ def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
         'nodes': path_data['nodes'],
         'nodes_coordinates': [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path_data['nodes']],
         'width': width,
+        'type': 'footway'
     }
 
     for x in path_data['tags']:
