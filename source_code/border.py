@@ -10,6 +10,7 @@ import osmnx as ox
 import math
 import shapely.geometry as geom
 import nvector as nv
+import copy
 
 
 rhumbs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -56,7 +57,8 @@ def shift_by_bearing_and_distance(point, distance, direction_reference, bearing_
 
 def shift_vector(node_coordinates, width, direction_reference=None):
     """
-    Parallel shift a vector to the distance of width
+    Parallel shift a vector to the distance of width.  
+    The shift direction is orthogonal to the direction reference or to the vector itself.
     :param node_coordinates: list of coordinates
     :param width: distance to shift
     :param direction_reference: reference vector used to define shift direction
@@ -65,27 +67,22 @@ def shift_vector(node_coordinates, width, direction_reference=None):
     if len(node_coordinates) < 2:
         return node_coordinates
 
-    x0 = node_coordinates[0][0]
-    y0 = node_coordinates[0][1]
-    x1 = node_coordinates[1][0]
-    y1 = node_coordinates[1][1]
-
     if direction_reference is not None:
-        vec = (direction_reference[1][0] - direction_reference[0][0],
-               direction_reference[1][1] - direction_reference[0][1])
+        direction_vec = direction_reference
     else:
-        vec = (x1 - x0, y1 - y0)
+        direction_vec = copy.deepcopy(node_coordinates)
 
-    norm = (vec[1], -vec[0])
-    if ox.great_circle_vec(y0, x0, y0 + norm[1], x0 + norm[0]) > 0.1:
-        scale = width / ox.great_circle_vec(y0, x0, y0 + norm[1], x0 + norm[0])
+    if width > 0.0:
+        bearing_delta = 90.0
+    elif width < 0.0:
+        bearing_delta = -90.0
     else:
-        scale = 0.0
-    xx0 = x0 + norm[0] * scale
-    yy0 = y0 + norm[1] * scale
-    xx1 = x1 + norm[0] * scale
-    yy1 = y1 + norm[1] * scale
-    return [(xx0, yy0), (xx1, yy1)]
+        return node_coordinates
+
+    shifted0 = shift_by_bearing_and_distance(node_coordinates[0], width, direction_vec, bearing_delta=bearing_delta)
+    shifted1 = shift_by_bearing_and_distance(node_coordinates[1], width, direction_vec, bearing_delta=bearing_delta)
+
+    return [shifted0, shifted1]
 
 
 def extend_vector(coord, length=300.0, backward=True, relative=False):

@@ -100,6 +100,7 @@ def get_u_turn_border(origin_lane, destination_lane, all_lanes, border_type='lef
                                                          origin_lane['name'],
                                                          all_lanes,
                                                          destination='to_intersection',
+                                                         crosswalk_width=0.0
                                                          )
 
     turn_arc = construct_u_turn_arc(shorten_origin_border, destination_border)

@@ -13,14 +13,28 @@ from lane import get_lane_index_from_right, get_turn_type, intersects
 
 
 def is_right_turn_allowed(lane_data, all_lanes):
+    """
+    Define if it it is OK to turn right from this lane
+    :param lane_data: dictionary
+    :param all_lanes: list of dictionaries
+    :return: True if right turn permitted, False otherwise
+    """
+
     if 'right' in lane_data['lane_type'] or 'R ' in lane_data['lane_id']:
         return True
-    if lane_data['lane_id'] == '1' and lane_data['lane_type'] == '' and lane_data['direction'] == 'to_intersection':
+
+    if lane_data['lane_id'] == '1' \
+            and lane_data['lane_type'] == '' \
+            and lane_data['direction'] == 'to_intersection' \
+            and get_lane_index_from_right(lane_data) == 0:
         return True
+
     if lane_data['lane_type'] == 'cycleway' and lane_data['direction'] == 'to_intersection':
         return True
+
     if lane_data['lane_type'] == 'through' \
             and lane_data['direction'] == 'to_intersection' \
+            and get_lane_index_from_right(lane_data) == 0 \
             and len(get_connected_links(lane_data, all_lanes)) > 0:
         return True
 
@@ -48,6 +62,13 @@ def get_connected_links(origin_lane, all_lanes):
 
 
 def get_link(origin_lane, all_lanes):
+    """
+    Check if a link for a turn exists for a lane and return it, or None if no link found
+    :param origin_lane: dictionary
+    :param all_lanes: list of dictionaries
+    :return: dictionary or None
+    """
+
     links = get_connected_links(origin_lane, all_lanes)
     if len(links) > 0:
         return links[0]

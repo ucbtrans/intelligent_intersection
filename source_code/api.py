@@ -14,7 +14,7 @@ from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_gui
 from city import get_city_name_from_address
 from node import get_nodes_dict
 from data import get_data_from_file, get_city_from_osm
-
+from conflict import get_conflict_zones_per_guideway
 
 def get_city(city_name):
     """
@@ -496,3 +496,29 @@ def get_guideway_image(guideways, intersection_data, alpha=1.0):
 
     guideway_fig, guideway_ax = plot_guideways(guideways, fig=fig, ax=ax, alpha=alpha, fc='#FFFF66', ec='b')
     return guideway_fig
+
+
+def get_conflict_zones(guideway_data, all_guideways):
+    """
+    Get a list of conflict zones for a guideway
+    :param guideway_data: guideway data dictionary
+    :param all_guideways: list of all guideway data dictionaries
+    :return: list of conflict zone dictionaries
+    """
+
+    return get_conflict_zones_per_guideway(guideway_data, all_guideways)
+
+
+def get_all_conflict_zones(intersection_data):
+    """
+    Get a list of conflict zones for all guideways
+    :param intersection_data: intersection data dictionary
+    :return: list of conflict zone dictionaries
+    """
+
+    all_conflict_zones = []
+    all_guideways = get_guideways(intersection_data, guideway_type='all')
+    for guideway_data in all_guideways:
+        all_conflict_zones.extend(get_conflict_zones_per_guideway(guideway_data, all_guideways))
+
+    return all_conflict_zones
