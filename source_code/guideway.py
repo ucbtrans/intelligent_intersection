@@ -312,7 +312,7 @@ def set_guideway_ids(guideways):
 
 def get_polygon_from_guideway(guideway, fc='y', ec='w', alpha=0.8, linestyle='dashed', joinstyle='round'):
     """
-    Get a polygon from a lane
+    Get a polygon from a guideway
     """
 
     polygon_sequence = guideway['left_border'] + guideway['right_border'][::-1]

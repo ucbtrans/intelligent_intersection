@@ -14,7 +14,8 @@ from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_gui
 from city import get_city_name_from_address
 from node import get_nodes_dict
 from data import get_data_from_file, get_city_from_osm
-from conflict import get_conflict_zones_per_guideway
+from conflict import get_conflict_zones_per_guideway, plot_conflict_zones, plot_conflict_zone
+
 
 def get_city(city_name):
     """
@@ -498,13 +499,19 @@ def get_guideway_image(guideways, intersection_data, alpha=1.0):
     return guideway_fig
 
 
-def get_conflict_zones(guideway_data, all_guideways):
+def get_conflict_zones(guideway_data, all_guideways=None, intersection_data=None):
     """
     Get a list of conflict zones for a guideway
     :param guideway_data: guideway data dictionary
     :param all_guideways: list of all guideway data dictionaries
+    :param intersection_data: intersection data dictionary
     :return: list of conflict zone dictionaries
     """
+
+    if all_guideways is None:
+        if intersection_data is None:
+            return []
+        all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(intersection_data)
 
     return get_conflict_zones_per_guideway(guideway_data, all_guideways)
 
@@ -517,8 +524,88 @@ def get_all_conflict_zones(intersection_data):
     """
 
     all_conflict_zones = []
-    all_guideways = get_guideways(intersection_data, guideway_type='all')
+    all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(intersection_data)
     for guideway_data in all_guideways:
         all_conflict_zones.extend(get_conflict_zones_per_guideway(guideway_data, all_guideways))
 
     return all_conflict_zones
+
+
+def get_single_conflict_zone_image(conflict_zone, intersection_data, alpha=1.0):
+    """
+    Get an image of a conflict zone in PNG format
+    :param conflict_zone: dictionary
+    :param intersection_data: dictionary
+    :param alpha: transparency: between 0.0 amd 1.0
+    :return: matplotlib.figure.Figure
+    """
+    fig, ax = plot_lanes(intersection_data['merged_lanes'],
+                         fig=None, ax=None,
+                         cropped_intersection=intersection_data['cropped_intersection'],
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         bgcolor='#CCFFE5',
+                         edge_color='#FF9933',
+                         alpha=alpha
+                         )
+
+    fig, ax = plot_lanes(intersection_data['merged_tracks'],
+                         fig=fig, ax=ax,
+                         cropped_intersection=None,
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         fcolor='#C0C0C0',
+                         edge_color='#000000',
+                         alpha=alpha,
+                         linestyle='solid'
+                         )
+
+    conflict_zone_fig, conflict_zone_ax = plot_conflict_zone(conflict_zone, fig=fig, ax=ax, alpha=alpha)
+
+    return conflict_zone_fig
+
+
+def get_conflict_zone_image(conflict_zones, intersection_data, alpha=1.0):
+    """
+    Get an image of a list of conflict zones in PNG format
+    :param conflict_zones: list of dictionaries
+    :param intersection_data: dictionary
+    :param alpha: transparency: between 0.0 amd 1.0
+    :return: matplotlib.figure.Figure
+    """
+    fig, ax = plot_lanes(intersection_data['merged_lanes'],
+                         fig=None, ax=None,
+                         cropped_intersection=intersection_data['cropped_intersection'],
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         bgcolor='#CCFFE5',
+                         edge_color='#FF9933',
+                         alpha=alpha
+                         )
+
+    fig, ax = plot_lanes(intersection_data['merged_tracks'],
+                         fig=fig, ax=ax,
+                         cropped_intersection=None,
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         fcolor='#C0C0C0',
+                         edge_color='#000000',
+                         alpha=alpha,
+                         linestyle='solid'
+                         )
+
+    conflict_zone_fig, conflict_zone_ax = plot_conflict_zones(conflict_zones, fig=fig, ax=ax, alpha=alpha)
+
+    return conflict_zone_fig
