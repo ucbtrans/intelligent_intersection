@@ -96,11 +96,13 @@ def get_conflict_zone_type(g1, g2):
     return 3
 
 
-def get_guideway_intersection(g1, g2):
+def get_guideway_intersection(g1, g2, polygons_dict):
     """
-    Get a conflict zone as an intersection of two guideways
+    Get a conflict zone as an intersection of two guideways.  
+    It uses a dictionary as polygon storage to avoid double execution of intersecting polygons.
     :param g1: guideway dictionary
     :param g2: guideway dictionary
+    :param polygons_dict: polygon storage dictionary
     :return: conflict zone dictionary
     """
 
@@ -130,19 +132,26 @@ def get_guideway_intersection(g1, g2):
 
     min_distance = min([median1.project(geom.Point(x_point), normalized=True) for x_point in x_points])
 
-    polygon1 = geom.Polygon(g1['left_border'] + g1['right_border'][::-1])
-    polygon2 = geom.Polygon(g2['left_border'] + g2['right_border'][::-1])
-
-    if not polygon1.is_valid:
-        polygon1 = polygon1.buffer(0)
-
-    if not polygon2.is_valid:
-        polygon2 = polygon2.buffer(0)
-
-    if polygon1.intersects(polygon2):
-        polygon_x = polygon1.intersection(polygon2)
+    polygon_id1 = str(g1['id']) + '_' + str(g2['id'])
+    polygon_id2 = str(g2['id']) + '_' + str(g1['id'])
+    if polygon_id2 in polygons_dict:
+        polygon_x = polygons_dict[polygon_id2]
     else:
-        polygon_x = None
+        polygon1 = geom.Polygon(g1['left_border'] + g1['right_border'][::-1])
+        polygon2 = geom.Polygon(g2['left_border'] + g2['right_border'][::-1])
+
+        if not polygon1.is_valid:
+            polygon1 = polygon1.buffer(0)
+
+        if not polygon2.is_valid:
+            polygon2 = polygon2.buffer(0)
+
+        if polygon1.intersects(polygon2):
+            polygon_x = polygon1.intersection(polygon2)
+        else:
+            polygon_x = None
+
+        polygons_dict[polygon_id1] = polygon_x
 
     conflict_zone = {
         'type': str(get_conflict_zone_type(g1, g2)) + conflict_type[g1['type']] + conflict_type[g2['type']],
@@ -154,7 +163,7 @@ def get_guideway_intersection(g1, g2):
     return conflict_zone
 
 
-def get_conflict_zones_per_guideway(guideway_data, all_guideways):
+def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict={}):
     """
     Get a list of conflict zones for a guideway
     :param guideway_data: guideway data dictionary
@@ -164,7 +173,7 @@ def get_conflict_zones_per_guideway(guideway_data, all_guideways):
 
     conflict_zones = []
     for g in all_guideways:
-        conflict_zone = get_guideway_intersection(guideway_data, g)
+        conflict_zone = get_guideway_intersection(guideway_data, g, polygons_dict)
         if conflict_zone is not None:
             conflict_zones.append(conflict_zone)
 

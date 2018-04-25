@@ -138,10 +138,8 @@ def construct_u_turn_arc(origin_border, destination_border, number_of_points=12)
               for i in range(0, number_of_points + 1)
               ]
 
-    temp = shift_list_of_nodes(vector, shift, direction_reference=origin_border[-2:])
+    arc = [shift_by_bearing_and_distance(vector[i], shift[i], origin_border[-2:], bearing_delta=-90.0)
+           for i in range(0, number_of_points + 1)
+           ]
 
-    for i in range(0, number_of_points + 1):
-        res = shift_by_bearing_and_distance(vector[i], shift[i], origin_border[-2:], bearing_delta=-90.0)
-        temp[i] = res
-
-    return temp[:-1] + landing_border  # shift_list_of_nodes(vector, shift, direction_reference=vec)
+    return arc[:-1] + landing_border

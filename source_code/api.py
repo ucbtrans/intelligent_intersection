@@ -525,8 +525,9 @@ def get_all_conflict_zones(intersection_data):
 
     all_conflict_zones = []
     all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(intersection_data)
+    polygons_dict = {}
     for guideway_data in all_guideways:
-        all_conflict_zones.extend(get_conflict_zones_per_guideway(guideway_data, all_guideways))
+        all_conflict_zones.extend(get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict))
 
     return all_conflict_zones
 
