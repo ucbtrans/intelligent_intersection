@@ -19,15 +19,58 @@ conflict_type = {
     }
 
 
+def get_destination_bearing(g):
+    """
+    Get destination bearing for a guideway or crosswalk
+    :param g: guideway or crosswalk dictionary
+    :return: float in degrees
+    """
+    if 'bearing' in g:
+        return g['bearing']
+    else:
+        return g['destination_lane']['bearing']
+
+
+def get_origin_bearing(g):
+    """
+    Get origin bearing for a guideway or crosswalk
+    :param g: guideway or crosswalk dictionary
+    :return: float in degrees
+    """
+    if 'bearing' in g:
+        return g['bearing']
+    else:
+        return g['origin_lane']['bearing']
+
+
+def get_origin_path_id(g):
+    """
+    Get origin path id for a guideway or crosswalk
+    :param g: guideway or crosswalk dictionary
+    :return: id as an integer
+    """
+    if 'path_id' in g:
+        path_id = g['path_id']
+    else:
+        path_id = g['origin_lane']['path_id']
+
+    if type(path_id) is list:
+        return path_id[-1]
+    else:
+        return path_id
+
+
 def get_conflict_zone_type(g1, g2):
     """
     Get severity type of a conflict zone
     :param g1: guideway dictionary
     :param g2: guideway dictionary
-    :return: integer 1 - 3
+    :return: integer 1 - 4
     """
 
     if g1['direction'] == 'right' or g2['direction'] == 'right':
+        if g1['type'] == 'footway' or g2['type'] == 'footway':
+            return 4
         return 1
 
     if 'meta_data' in g1:
@@ -35,14 +78,20 @@ def get_conflict_zone_type(g1, g2):
     else:
         meta = g1['origin_lane']['meta_data']
 
-    if 'traffic_signal' in meta and meta['traffic_signals'] == 'yes':
+    if 'traffic_signals' in meta and meta['traffic_signals'] == 'yes':
 
         if g1['type'] == 'footway' or g2['type'] == 'footway':
-            return 2
-
-        delta_angle = (g2['origin']['bearing'] - g1['origin']['bearing'] + 360) % 360
-        if delta_angle > 225.0 or delta_angle < 135.0:
+            delta_angle = (get_destination_bearing(g1) - get_destination_bearing(g2) + 360) % 360
+            if  225.0 < delta_angle < 315.0 or 45.0 < delta_angle < 135.0:
+                return 3
+            else:
                 return 2
+
+        delta_angle = (get_origin_bearing(g2) - get_origin_bearing(g1) + 360) % 360
+        if 225.0 < delta_angle < 315.0 or 45.0 < delta_angle < 135.0:
+            return 2
+        else:
+            return 3
 
     return 3
 
@@ -56,6 +105,9 @@ def get_guideway_intersection(g1, g2):
     """
 
     if g1['id'] == g2['id']:
+        return None
+
+    if get_origin_path_id(g1) == get_origin_path_id(g2):
         return None
 
     if g1['type'] == 'footway' and g2['type'] == 'footway':
