@@ -57,7 +57,7 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
                 ]
 
     destination_index = get_lane_index_from_left(origin_lane)
-
+    print('Searching for destinations')
     return [l for l in all_lanes
             if l['name'] != origin_lane['name']
             and l['name'] != 'no_name'

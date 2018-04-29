@@ -9,6 +9,7 @@
 
 import shapely.geometry as geom
 from matplotlib.patches import Polygon
+from border import cut_border_by_polygon
 
 
 conflict_type = {
@@ -81,13 +82,13 @@ def get_conflict_zone_type(g1, g2):
     if 'traffic_signals' in meta and meta['traffic_signals'] == 'yes':
 
         if g1['type'] == 'footway' or g2['type'] == 'footway':
-            delta_angle = (get_destination_bearing(g1) - get_destination_bearing(g2) + 360) % 360
-            if  225.0 < delta_angle < 315.0 or 45.0 < delta_angle < 135.0:
+            delta_angle = (get_destination_bearing(g1) - get_destination_bearing(g2) + 360.0) % 360.0
+            if 225.0 < delta_angle < 315.0 or 45.0 < delta_angle < 135.0:
                 return 3
             else:
                 return 2
 
-        delta_angle = (get_origin_bearing(g2) - get_origin_bearing(g1) + 360) % 360
+        delta_angle = (get_origin_bearing(g2) - get_origin_bearing(g1) + 360.0) % 360.0
         if 225.0 < delta_angle < 315.0 or 45.0 < delta_angle < 135.0:
             return 2
         else:
@@ -163,11 +164,13 @@ def get_guideway_intersection(g1, g2, polygons_dict):
     return conflict_zone
 
 
-def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict={}):
+def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict):
     """
-    Get a list of conflict zones for a guideway
+    Get a list of conflict zones for a guideway,
+    It uses a dictionary as polygon storage to avoid double execution of intersecting polygons.
     :param guideway_data: guideway data dictionary
     :param all_guideways: list of all guideway data dictionaries
+    :param polygons_dict: polygon storage dictionary
     :return: list of conflict zone dictionaries
     """
 
@@ -181,6 +184,10 @@ def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict=
     for i, conflict_zone in enumerate(conflict_zones):
         conflict_zone['sequence'] = i
         conflict_zone['id'] = '_'.join([str(conflict_zone[k]) for k in ['guideway1_id', 'guideway2_id', 'sequence']])
+
+    if len(conflict_zones) > 0:
+        for key in ['left_border', 'right_border', 'median']:
+            guideway_data['reduced_' + key] = cut_border_by_polygon(guideway_data[key], conflict_zones[-1]['polygon'])
 
     return conflict_zones
 
@@ -246,12 +253,12 @@ def plot_conflict_zone(conflict_zone,
 
 
 def plot_conflict_zones(conflict_zones,
-                       fig=None,
-                       ax=None,
-                       alpha=0.8,
-                       fc='#FF9933',
-                       ec='w'
-                       ):
+                        fig=None,
+                        ax=None,
+                        alpha=0.8,
+                        fc='#FF9933',
+                        ec='w'
+                        ):
     """
     Plot a list of conflict zones
     :param conflict_zones: list of dictionaries

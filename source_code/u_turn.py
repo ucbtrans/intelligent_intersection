@@ -12,7 +12,7 @@ import shapely.geometry as geom
 from lane import get_lane_index_from_left
 from turn import shorten_border_for_crosswalk
 from border import get_angle_between_bearings, shift_by_bearing_and_distance, cut_border_by_distance,\
-    get_distance_between_points, get_compass, extend_vector, to_rad, shift_list_of_nodes
+    get_distance_between_points, get_compass, extend_vector, to_rad
 
 
 def is_u_turn_allowed(origin_lane):

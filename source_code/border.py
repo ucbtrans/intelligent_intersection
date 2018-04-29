@@ -251,7 +251,7 @@ def get_compass(x, y):
     Get compass bearing in degrees between two points
     :param x: point coordinates
     :param y: point coordinates
-    :return: float inm degrees
+    :return: float in degrees
     """
     return get_compass_bearing(x[::-1], y[::-1])
 
@@ -454,7 +454,7 @@ def border_within_box(x0, y0, border, size):
 
 def cut_border_by_polygon(border, polygon, multi_string_index=0):
     """
-    Remove a portion of a border that overlaps wit a polygon
+    Remove a portion of a border that overlaps with a polygon
     :param border: list of coordinates
     :param polygon: polygon
     :param multi_string_index: either -1 if the border direction is from intersection or 0 otherwise
