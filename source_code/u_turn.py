@@ -50,6 +50,8 @@ def get_destination_lanes_for_u_turn(origin_lane, all_lanes):
             and l['direction'] == 'from_intersection'
             and get_lane_index_from_left(l) == 0
             and abs(get_angle_between_bearings(origin_lane['bearing'], l['bearing'])) > 150.0
+            and get_distance_between_points(l['left_border'][0], origin_lane['left_border'][-1]) < 25.0
+            and get_distance_between_points(l['left_border'][0], l['left_border'][-1]) > 25.0
             ]
 
 
@@ -74,7 +76,7 @@ def get_u_turn_radius_and_landing_border(origin_border, destination_border):
         cut_point = orthogonal.project(geom.Point(destination_border[0]))
         line0 = cut_border_by_distance(orthogonal, cut_point)[0]
         pt = list(line0.coords)[-1]
-        landing_line = destination_border
+        landing_line = geom.LineString(destination_border)
 
     return get_distance_between_points(origin_border[-1], pt)/2.0, list(landing_line.coords)
 

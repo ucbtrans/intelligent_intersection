@@ -108,6 +108,7 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
     :param turn_direction: -1 if left turn otherwise 1
     :return: list of coordinates
     """
+
     intersection_point, vector1, vector2 = get_turn_angle(origin_border, destination_border)
 
     if intersection_point is None:
@@ -190,6 +191,8 @@ def get_turn_border(origin_lane,
                                                               destination='from_intersection'
                                                               )
 
+    #print('origin', origin_lane['id'], origin_lane['name'])
+    #print('dest', destination_lane['id'], destination_lane['name'])
     if turn_direction < 0:
         # turn_arc = construct_turn_arc_with_initial_angle(shorten_origin_border,
         turn_arc = construct_turn_arc(shorten_origin_border,

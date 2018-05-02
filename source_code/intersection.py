@@ -13,7 +13,7 @@ from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes
-from street import select_close_nodes
+from street import select_close_nodes, split_streets
 from railway import split_railways
 from footway import get_crosswalks
 from correction import manual_correction, correct_paths
@@ -92,9 +92,13 @@ def get_street_data(x_data, city_data):
     intersection_jsons = get_box_data(x_data, city_data['raw_data'], infrastructure='way["highway"]', network_type='drive')
 
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
-    add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
+    add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'],
+                            nodes_dict,
+                            paths=intersection_paths
+                            )
     manual_correction(intersection_paths)
-    oneway_paths = split_bidirectional_paths(intersection_paths, nodes_dict)
+    split_x_streets = split_streets(intersection_paths, nodes_dict, x_data['streets'])
+    oneway_paths = split_bidirectional_paths(split_x_streets, nodes_dict)
     set_direction(oneway_paths, x_data, nodes_dict)
     correct_paths(oneway_paths)
     oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
@@ -131,7 +135,10 @@ def get_railway_data(x_data, city_data):
     referenced_nodes = {}
     referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
     split_railway_paths = split_railways(railway_paths, referenced_nodes)
-    add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
+    add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'],
+                            nodes_dict,
+                            paths=railway_paths
+                            )
     paths_with_borders = add_borders_to_paths(split_railway_paths, nodes_dict, width=2.0)
     cropped_paths = remove_elements_beyond_radius(paths_with_borders,
                                                   nodes_dict,
@@ -159,7 +166,10 @@ def get_footway_data(x_data, city_data):
                      and 'foot' in e['tags']['highway']
                      ]
 
-    add_nodes_to_dictionary([e for e in footway_jsons[0]['elements'] if e['type'] == 'node'], nodes_dict)
+    add_nodes_to_dictionary([e for e in footway_jsons[0]['elements'] if e['type'] == 'node'],
+                            nodes_dict,
+                            paths=footway_paths
+                            )
     paths_with_borders = add_borders_to_paths(footway_paths, nodes_dict, width=1.8)
     cropped_paths = remove_elements_beyond_radius(paths_with_borders,
                                                   nodes_dict,
@@ -191,7 +201,7 @@ def get_public_transit_data(x_data, city_data):
                             and 'stop' in ' '.join(e['tags'].values())
                             ]
 
-    add_nodes_to_dictionary(public_transit_nodes, nodes_dict)
+    add_nodes_to_dictionary(public_transit_nodes, nodes_dict, paths=None)
 
     return public_transit_nodes
 

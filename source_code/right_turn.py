@@ -141,6 +141,7 @@ def get_destination_lanes_for_right_turn(origin_lane, all_lanes):
     :param all_lanes: list of dictionaries
     :return: list of valid lane destinations for the left turn
     """
+
     if origin_lane['name'] == 'no_name':
         return []
     if not is_right_turn_allowed(origin_lane, all_lanes):

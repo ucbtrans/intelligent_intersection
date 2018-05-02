@@ -372,6 +372,8 @@ def get_guideways(intersection_data, guideway_type='all'):
     :param guideway_type: string
     :return: list of dictionaries
     """
+
+    guideway_type = guideway_type.lower()
     guideways = []
     if 'vehicle' in guideway_type and 'left' in guideway_type \
             or (guideway_type == 'all vehicle') \

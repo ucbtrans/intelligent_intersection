@@ -9,6 +9,7 @@
 
 import copy
 from border import get_intersection_with_circle
+from street import add_street_names_to_nodes
 
 
 def get_nodes_dict(city_paths_nodes, nodes_dict={}):
@@ -148,7 +149,7 @@ def get_center(nodes, nodes_d):
     return x, y
 
 
-def add_nodes_to_dictionary(nodes, nodes_dict):
+def add_nodes_to_dictionary(nodes, nodes_dict, paths=None):
     """
     Add nodes to the node dictionary if missing
     :param nodes: list of nodes in the osm format
@@ -158,6 +159,9 @@ def add_nodes_to_dictionary(nodes, nodes_dict):
     for n in nodes:
         if n['id'] not in nodes_dict:
             nodes_dict[n['id']] = get_node(n)
+
+    if paths is not None:
+        add_street_names_to_nodes(paths, nodes_dict)
 
 
 def remove_nodes_outside_of_radius(node_list, nodes_dict, center, radius):

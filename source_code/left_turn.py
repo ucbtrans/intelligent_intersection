@@ -41,6 +41,7 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
     :param nodes_dict: dictionary
     :return: list of valid lane destinations for the left turn
     """
+
     if origin_lane['name'] == 'no_name':
         return []
     if not is_left_turn_allowed(origin_lane):
@@ -57,7 +58,7 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
                 ]
 
     destination_index = get_lane_index_from_left(origin_lane)
-    print('Searching for destinations')
+
     return [l for l in all_lanes
             if l['name'] != origin_lane['name']
             and l['name'] != 'no_name'

@@ -30,12 +30,16 @@ def get_turn_type(origin_lane, destination_lane):
 
     turn_angle = (destination_lane['bearing'] - origin_lane['bearing'] + 360.0) % 360
 
-    if turn_angle > 225.0:
+    if turn_angle > 315.0:
+        return 'u_turn'
+    elif turn_angle > 225.0:
         return 'left_turn'
-    elif turn_angle < 135.0:
+    elif 45.0 < turn_angle < 135.0:
         return 'right_turn'
-    else:
+    elif turn_angle < 45.0:
         return 'through'
+    else:
+        return None
 
 
 def add_space_for_crosswalk(lane_data, crosswalk_width=1.82):
@@ -874,6 +878,8 @@ def is_lane_crossing_another_street(lane_data, another_street, nodes_dict):
     :return: True if crosses, False otherwise
     """
     for n in lane_data['nodes']:
+        if 'street_name' not in nodes_dict[n]:
+            continue
         if another_street in nodes_dict[n]['street_name']:
             return True
     return False

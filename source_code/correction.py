@@ -48,8 +48,7 @@ def extrapolate_number_of_lanes(path_data, paths):
         prev_path = [p for p in paths
                      if 'name' in p['tags']
                      and p['tags']['name'] == path_data['tags']['name']
-                     and 'direction' in p['tags']
-                     # and p['tags']['direction'] == 'to_intersection'
+                     and ('turn:lanes' in p['tags'] or 'lanes' in p['tags'])
                      and 'bearing' in p
                      and p['bearing'] is not None
                      and abs(get_angle_between_bearings(p['bearing'], path_data['bearing'])) < 60.0
@@ -61,13 +60,15 @@ def extrapolate_number_of_lanes(path_data, paths):
             num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(prev_path[0])
             path_data['tags']['lanes'] = num_of_trunk_lanes
             path_data['tags']['corrected'] = 'yes'
+            path_data['tags']['correction_source_id'] = prev_path[0]['id']
 
 
 def correct_paths(paths):
     """
-    Apply corrections to all paths in the list
+    Apply corrections to all paths in the list.  Repeat twice to propagate correction
     :param paths: list of dictionaries
     :return: None
     """
-    for p in paths:
-        extrapolate_number_of_lanes(p, paths)
+    for i in range(2):
+        for p in paths:
+            extrapolate_number_of_lanes(p, paths)
