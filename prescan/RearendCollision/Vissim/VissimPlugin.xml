@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<VissimConfigurerData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" VissimRunDuringSimulation="false" ReportUnsupportedRoads="true" GenerateOnBuild="false">
+  <EgoVehicle UniqueID="0" />
+  <PreScanVehicles>
+    <Vehicle UniqueID="485" />
+    <Vehicle UniqueID="564" />
+    <Vehicle UniqueID="565" />
+    <Vehicle UniqueID="673" />
+    <Vehicle UniqueID="676" />
+    <Vehicle UniqueID="1227" />
+    <Vehicle UniqueID="1228" />
+    <Vehicle UniqueID="1253" />
+    <Vehicle UniqueID="1257" />
+  </PreScanVehicles>
+  <ExternallyControlledVehicles />
+</VissimConfigurerData>
