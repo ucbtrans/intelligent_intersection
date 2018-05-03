@@ -1,0 +1,11 @@
+CameraView {
+  name "ubercar_camera"
+  nodeMask 0xffffffff
+  cullingActive TRUE
+  referenceFrame RELATIVE
+  position 85.1444 134.694 1.4
+  attitude 0.707107 -8.12516e-008 -8.12516e-008 0.707107
+  fieldOfView 35.4893
+  fieldOfViewMode VERTICAL
+  focalLength 0
+}

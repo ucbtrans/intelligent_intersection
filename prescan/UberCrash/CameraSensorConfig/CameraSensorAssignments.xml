@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<ExperimentConfig>
+  <Federates>
+    <Federate federateId="0" hostId="localhost" gpuId="default gpu" />
+  </Federates>
+  <SensorAssignments>
+    <SensorAssignment sensorId="Camera_conventional" federateId="0" />
+    <SensorAssignment sensorId="forward" federateId="0" />
+  </SensorAssignments>
+</ExperimentConfig>

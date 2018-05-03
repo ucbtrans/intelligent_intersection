@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<ExperimentConfig>
+  <Federates>
+    <Federate federateId="0" hostId="localhost" gpuId="default gpu" />
+  </Federates>
+  <SensorAssignments>
+    <SensorAssignment sensorId="CameraSensor_AV_front" federateId="0" />
+    <SensorAssignment sensorId="CameraSensor_AV_side" federateId="0" />
+    <SensorAssignment sensorId="CameraSensor_behind" federateId="0" />
+    <SensorAssignment sensorId="CameraSensor_intersection" federateId="0" />
+  </SensorAssignments>
+</ExperimentConfig>

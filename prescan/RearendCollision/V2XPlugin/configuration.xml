@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<V2XConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Transceivers />
+  <TransmissionRange rangeMeters="500" isRangeInfinite="false" />
+  <ChannelModel communicationModel="cutoff" />
+  <RootMessages />
+</V2XConfiguration>

@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<ExperimentConfig>
+  <Federates>
+    <Federate federateId="0" hostId="localhost" gpuId="default gpu" enableOpenCL="False" />
+  </Federates>
+  <SensorAssignments>
+    <SensorAssignment sensorId="Lidar_Uber" federateId="0" />
+  </SensorAssignments>
+</ExperimentConfig>
