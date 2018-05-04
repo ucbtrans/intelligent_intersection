@@ -16,6 +16,10 @@ from left_turn import is_left_turn_allowed, get_destination_lanes_for_left_turn
 from through import is_through_allowed, get_destination_lane
 from u_turn import is_u_turn_allowed, get_destination_lanes_for_u_turn, get_u_turn_border
 from turn import get_turn_border
+from log import get_logger, dictionary_to_log
+
+
+logger = get_logger()
 
 
 def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
@@ -25,7 +29,7 @@ def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
     :param nodes_dict: dictionary
     :return: list of dictionaries
     """
-
+    logger.info('Starting bicycle left turn guideways')
     guideways = []
     through_guideways = get_through_guideways(all_lanes)
 
@@ -37,11 +41,19 @@ def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
                                           if g['destination_lane']['id'] == destination_lane['id']
                                           ]
                 if origin_candidates and destination_candidates:
-                    guideway_data = get_bicycle_left_guideway(origin_lane,
-                                                              destination_lane,
-                                                              origin_candidates[0],
-                                                              destination_candidates[0]
-                                                              )
+                    logger.debug('Origin Lane ' + dictionary_to_log(origin_candidates[0]))
+                    logger.debug('Destin Lane ' + dictionary_to_log(destination_candidates[0]))
+                    try:
+                        guideway_data = get_bicycle_left_guideway(origin_lane,
+                                                                  destination_lane,
+                                                                  origin_candidates[0],
+                                                                  destination_candidates[0]
+                                                                  )
+                        set_guideway_id(guideway_data)
+                    except Exception as e:
+                        logger.exception(e)
+                        guideway_data = None
+
                 else:
                     guideway_data = None
 
@@ -49,8 +61,10 @@ def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
                         and guideway_data['left_border'] is not None \
                         and guideway_data['median'] is not None \
                         and guideway_data['right_border'] is not None:
+                    logger.debug('Guideway ' + dictionary_to_log(guideway_data))
                     guideways.append(guideway_data)
 
+    logger.info('Created %d guideways' % len(guideways))
     return guideways
 
 
@@ -82,15 +96,25 @@ def get_left_turn_guideways(all_lanes, nodes_dict):
     :param nodes_dict: dictionary
     :return: list of dictionaries
     """
-
+    logger.info('Starting left turn guideways')
     guideways = []
     for origin_lane in all_lanes:
         if is_left_turn_allowed(origin_lane):
+            logger.debug('Origin Lane ' + dictionary_to_log(origin_lane))
             for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
-                guideway_data = get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='left')
+                logger.debug('Destin Lane ' + dictionary_to_log(destination_lane))
+                try:
+                    guideway_data = get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='left')
+                    set_guideway_id(guideway_data)
+                except Exception as e:
+                    logger.exception(e)
+                    guideway_data = None
 
                 if guideway_data is not None:
+                    logger.debug('Guideway ' + dictionary_to_log(guideway_data))
                     guideways.append(guideway_data)
+
+    logger.info('Created %d guideways' % len(guideways))
     return guideways
 
 
@@ -173,18 +197,29 @@ def get_u_turn_guideways(all_lanes):
     :return: list of dictionaries
     """
 
+    logger.info('Starting U-turn guideways')
     guideways = []
 
     for origin_lane in all_lanes:
         if is_u_turn_allowed(origin_lane):
+            logger.debug('Origin Lane ' + dictionary_to_log(origin_lane))
             for destination_lane in get_destination_lanes_for_u_turn(origin_lane, all_lanes):
-                guideway_data = get_u_turn_guideway(origin_lane, destination_lane, all_lanes)
+                logger.debug('Destin Lane ' + dictionary_to_log(destination_lane))
+                try:
+                    guideway_data = get_u_turn_guideway(origin_lane, destination_lane, all_lanes)
+                    set_guideway_id(guideway_data)
+                except Exception as e:
+                    logger.exception(e)
+                    guideway_data = None
+
                 if guideway_data is not None \
                         and guideway_data['left_border'] is not None \
                         and guideway_data['median'] is not None \
                         and guideway_data['right_border'] is not None:
+                    logger.debug('Guideway ' + dictionary_to_log(guideway_data))
                     guideways.append(guideway_data)
 
+    logger.info('Created %d guideways' % len(guideways))
     return guideways
 
 
@@ -212,12 +247,24 @@ def get_through_guideways(all_lanes):
     :param all_lanes: list of dictionaries
     :return: list of dictionaries
     """
+
+    logger.info('Starting through guideways')
     guideways = []
     for origin_lane in all_lanes:
         if is_through_allowed(origin_lane):
+            logger.debug('Origin Lane ' + dictionary_to_log(origin_lane))
             destination_lane = get_destination_lane(origin_lane, all_lanes)
             if destination_lane is not None:
-                guideways.append(get_through_guideway(origin_lane, destination_lane))
+                logger.debug('Destin Lane ' + dictionary_to_log(destination_lane))
+                try:
+                    guideway_data = get_through_guideway(origin_lane, destination_lane)
+                    set_guideway_id(guideway_data)
+                    guideways.append(guideway_data)
+                    logger.debug('Guideway ' + dictionary_to_log(guideway_data))
+                except Exception as e:
+                    logger.exception(e)
+
+    logger.info('Created %d guideways' % len(guideways))
     return guideways
 
 
@@ -285,8 +332,25 @@ def get_right_turn_guideways(all_lanes):
     :param all_lanes: list of dictionaries
     :return: list of dictionaries
     """
-    guideways = [create_right_turn_guideway(l, all_lanes) for l in all_lanes if is_right_turn_allowed(l, all_lanes)]
-    return [g for g in guideways if g is not None]
+
+    logger.info('Starting right guideways')
+    guideways = []
+    for origin_lane in all_lanes:
+        if is_right_turn_allowed(origin_lane, all_lanes):
+            logger.debug('Origin Lane ' + dictionary_to_log(origin_lane))
+            try:
+                guideway_data = create_right_turn_guideway(origin_lane, all_lanes)
+                set_guideway_id(guideway_data)
+            except Exception as e:
+                logger.exception(e)
+                guideway_data = None
+
+            if guideway_data is not None:
+                logger.debug('Guideway ' + dictionary_to_log(guideway_data))
+                guideways.append(guideway_data)
+
+    logger.info('Created %d guideways' % len(guideways))
+    return guideways
 
 
 def set_guideway_ids(guideways):
@@ -296,7 +360,22 @@ def set_guideway_ids(guideways):
     :param guideways: list of dictionaries
     :return: list of dictionaries
     """
+
     for g in guideways:
+        set_guideway_id(g)
+
+    return guideways
+
+
+def set_guideway_id(g):
+    """
+    Set guideway id as a combination of the origin and destination ids.
+    Set guideway types based on the origin lane type
+    :param g: guideway dictionary
+    :return: None
+    """
+
+    if g is not None:
         g['id'] = 100*g['origin_lane']['id'] + g['destination_lane']['id']
         if g['origin_lane']['lane_type'] == 'cycleway':
             g['type'] = 'bicycle'
@@ -306,8 +385,6 @@ def set_guideway_ids(guideways):
             g['type'] = 'footway'
         else:
             g['type'] = 'drive'
-
-    return guideways
 
 
 def get_polygon_from_guideway(guideway, fc='y', ec='w', alpha=0.8, linestyle='dashed', joinstyle='round'):

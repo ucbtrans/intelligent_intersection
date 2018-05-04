@@ -10,7 +10,11 @@
 import xmltodict
 import osmnx as ox
 import json
+import time
+from log import get_logger, dictionary_to_log
 
+
+logger = get_logger()
 
 parameters = {'version': '@version',
               'generator': '@generator',
@@ -256,10 +260,9 @@ def get_city_from_osm(city_name, network_type="drive"):
             city_boundaries = ox.gdf_from_place(city_name, which_result=which_result)
             city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type=network_type)
             break
-        except ValueError:
-            continue
-    if city_paths_nodes is None:
-        return None
+        except Exception as e:
+            logger.exception(e)
+            return None
 
     return city_paths_nodes
 
@@ -278,10 +281,15 @@ def get_box_data(x_data, selection, network_type='all', infrastructure='way["hig
     if x_data['from_file'] == 'yes':
         return get_data_subset(selection, network_type=network_type, infrastructure=infrastructure)
     else:
-        return ox.osm_net_download(north=x_data['north'],
-                                   south=x_data['south'],
-                                   east=x_data['east'],
-                                   west=x_data['west'],
-                                   network_type=network_type,
-                                   infrastructure=infrastructure
-                                   )
+        try:
+            return ox.osm_net_download(north=x_data['north'],
+                                       south=x_data['south'],
+                                       east=x_data['east'],
+                                       west=x_data['west'],
+                                       network_type=network_type,
+                                       infrastructure=infrastructure
+                                       )
+        except Exception as e:
+            logger.exception(e)
+            time.sleep(5)
+            return [{'elements':[]}]

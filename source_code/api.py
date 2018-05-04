@@ -373,6 +373,9 @@ def get_guideways(intersection_data, guideway_type='all'):
     :return: list of dictionaries
     """
 
+    if intersection_data is None:
+        return []
+
     guideway_type = guideway_type.lower()
     guideways = []
     if 'vehicle' in guideway_type and 'left' in guideway_type \
@@ -418,7 +421,7 @@ def get_guideways(intersection_data, guideway_type='all'):
             or (guideway_type == 'all'):
         guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
 
-    return set_guideway_ids(guideways)
+    return guideways
 
 
 def get_meta_data(data):

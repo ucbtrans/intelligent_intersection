@@ -16,6 +16,10 @@ from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
     cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border, get_lane_bearing
 from path import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
+from log import get_logger, dictionary_to_log
+
+
+logger = get_logger()
 
 
 def get_turn_type(origin_lane, destination_lane):
@@ -749,6 +753,21 @@ def merge_lanes(lanes, nodes_dict):
     :param nodes_dict: dictionary of nodes
     :return: list of dictionaries
     """
+    if lanes:
+        lane_type = lanes[0]['lane_type']
+        if lane_type == 'cycleway':
+            lane_type = 'bicycle'
+        elif lane_type == 'footway':
+            lane_type = 'footway'
+        elif lane_type == 'railway':
+            lane_type = 'railway'
+        else:
+            lane_type = 'vehicle'
+
+        logger.info('Start merging %d lanes of type %s' % (len(lanes), lane_type))
+    else:
+        return []
+
     merged_lanes = []
     set_ids(lanes)
     for lane in [l for l in lanes if l['name'] == 'no_name']:
@@ -779,7 +798,10 @@ def merge_lanes(lanes, nodes_dict):
                     if len(next_lanes) == 0:
                         similar_lane['next'] = None
                     else:
-                        similar_lane['next'] = next_lanes[0]['path_id']
+                        if next_lanes[0]['path_id'] != similar_lane['path_id']:
+                            similar_lane['next'] = next_lanes[0]['path_id']
+                        else:
+                            similar_lane['next'] = None
 
                     prev_lanes = [l for l in similar_lanes
                                   if similar_lane['nodes'][0] == l['nodes'][-1]
@@ -788,16 +810,20 @@ def merge_lanes(lanes, nodes_dict):
                     if len(prev_lanes) == 0:
                         similar_lane['prev'] = None
                     else:
-                        similar_lane['prev'] = prev_lanes[0]['path_id']
+                        if prev_lanes[0]['path_id'] != similar_lane['path_id']:
+                            similar_lane['prev'] = prev_lanes[0]['path_id']
+                        else:
+                            similar_lane['prev'] = None
 
-                reshape_lanes(lanes)
+                #reshape_lanes(lanes)
 
                 for start_lane in [l for l in similar_lanes if l['prev'] is None]:
                     merged_lane = add_lane(start_lane, merged_lane=None)
+                    #logger.debug('Merged lane ' + dictionary_to_log(merged_lane))
                     nxt = start_lane['next']
                     while nxt is not None:
                         next_lane = [l for l in similar_lanes if l['path_id'] == nxt][0]
-
+                        #logger.debug('Next lane ' + dictionary_to_log(next_lane))
                         merged_lane = add_lane(next_lane, merged_lane=merged_lane)
 
                         nxt = next_lane['next']
@@ -807,7 +833,7 @@ def merge_lanes(lanes, nodes_dict):
     set_lane_bearing(merged_lanes)
     add_node_tags_to_lanes(merged_lanes, nodes_dict)
     insert_referenced_nodes_to_lanes(merged_lanes, nodes_dict)
-
+    logger.info('Total %d merged lanes' % len(merged_lanes))
     return merged_lanes
 
 

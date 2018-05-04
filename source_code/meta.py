@@ -14,30 +14,33 @@ from lane import set_ids, get_link_from_and_to
 from public_transit import get_public_transit_stop
 
 
-def set_meta_data(lanes, stops, max_distance=20.0):
+def set_meta_data(lanes, intersection_data, max_distance=20.0):
     """
     Set meta data for all lanes related to the intersection
     :param lanes: list of dictionaries
     :param max_distance: max distance in meters for a transit stop to belong to a lane
-    :param stops: list of dictionaries (list of transit stops)
+    :param intersection_data: intersection data dictionary
     :return: 
     """
 
     set_ids(lanes)
     for lane_data in lanes:
-        lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, stops, max_distance=max_distance)
+        lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, intersection_data, max_distance=max_distance)
 
 
-def get_lane_meta_data(lane_data, all_lanes, stops, max_distance=20.0):
+def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.0):
     """
     Create meta data dictionary for a lane (i.e. approach or exit)
     :param lane_data: dictionary of all lanes related to the intersection
     :param all_lanes: list of all lanes related to the intersection
     :param max_distance: max distance in meters for a transit stop to belong to a lane
-    :param stops: list of dictionaries (list of transit stops)
+    :param intersection_data: intersection data dictionary
     :return: dictionary
     """
-    meta_data = {}
+
+    meta_data = {'city': intersection_data['city']}
+    stops = intersection_data['public_transit_nodes']
+    lane_data['city'] = intersection_data['city']
 
     if 'num_of_trunk_lanes' in lane_data:
         meta_data['total_number_of_vehicle_lanes'] = lane_data['num_of_left_lanes'] \

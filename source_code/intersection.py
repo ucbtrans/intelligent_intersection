@@ -19,7 +19,10 @@ from footway import get_crosswalks
 from correction import manual_correction, correct_paths
 from border import border_within_box, get_box
 from data import get_box_from_xml, get_box_data
+from log import get_logger, dictionary_to_log
 
+
+logger = get_logger()
 track_symbol = {
     'SW': '\\',
     'NE': '\\',
@@ -55,6 +58,11 @@ def create_intersection(street_tuple, data, size=500.0, crop_radius=150.0):
     :return: dictionary
     """
     x_nodes = select_close_nodes(data['nodes'], get_intersection_nodes(data['paths'], street_tuple))
+
+    if x_nodes is None or len(x_nodes) < 1:
+        logger.error('Unable to find common nodes referenced in all streets %r' % ', '.join(street_tuple))
+        return None
+
     u, v = get_center(x_nodes, data['nodes'])
 
     if data['raw_data'] is None:
@@ -77,6 +85,7 @@ def create_intersection(street_tuple, data, size=500.0, crop_radius=150.0):
         'nodes': {}
         }
 
+    logger.info('Creating Intersection ' + dictionary_to_log(x_data))
     return x_data
 
 
@@ -217,6 +226,10 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     """
 
     intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
+    if intersection_data is None:
+        logger.error('Invalid intersection %r, %r' % (', '.join(street_tuple), city_data['name']))
+        return None
+
     cleaned_intersection_paths, cropped_intersection, raw_data = get_street_data(intersection_data, city_data)
 
     lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
@@ -256,9 +269,10 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
                   + intersection_data['merged_tracks']
                   + intersection_data['merged_cycleways']
                   + intersection_data['crosswalks'],
-                  intersection_data['public_transit_nodes']
+                  intersection_data
                   )
 
+    logger.info('Intersection Created')
     return intersection_data
 
 
