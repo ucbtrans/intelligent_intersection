@@ -190,7 +190,7 @@ def get_through_guideway(origin_lane, destination_lane):
     }
 
 
-def get_u_turn_guideways(all_lanes):
+def get_u_turn_guideways(all_lanes, x_data):
     """
     Compile a list of bicycle guideways for all legal u-turns
     :param all_lanes: list of dictionaries
@@ -201,7 +201,7 @@ def get_u_turn_guideways(all_lanes):
     guideways = []
 
     for origin_lane in all_lanes:
-        if is_u_turn_allowed(origin_lane):
+        if is_u_turn_allowed(origin_lane, x_data):
             logger.debug('Origin Lane ' + dictionary_to_log(origin_lane))
             for destination_lane in get_destination_lanes_for_u_turn(origin_lane, all_lanes):
                 logger.debug('Destin Lane ' + dictionary_to_log(destination_lane))

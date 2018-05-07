@@ -21,7 +21,8 @@ nv_frame = nv.FrameE(a=6371e3, f=0)
 
 def shorten_border_for_crosswalk(input_border,
                                  street_name,
-                                 lanes, crosswalk_width=10,
+                                 lanes,
+                                 crosswalk_width=10,
                                  destination='from_intersection'):
     """
     Remove the portion of the input border overlapping with any crosswalk crossing the input border.
@@ -180,15 +181,23 @@ def get_turn_border(origin_lane,
 
     destination_border = destination_lane[non_shaped_border]
 
+
+    if turn_direction > 0:
+        crosswalk_width = origin_lane['crosswalk_width']
+    else:
+        crosswalk_width = 5*origin_lane['crosswalk_width']
+
     shorten_origin_border = shorten_border_for_crosswalk(origin_border,
                                                          origin_lane['name'],
                                                          all_lanes,
-                                                         destination='to_intersection'
+                                                         destination='to_intersection',
+                                                         crosswalk_width=crosswalk_width
                                                          )
     shorten_destination_border = shorten_border_for_crosswalk(destination_border,
                                                               destination_lane['name'],
                                                               all_lanes,
-                                                              destination='from_intersection'
+                                                              destination='from_intersection',
+                                                              crosswalk_width=crosswalk_width
                                                               )
 
     #print('origin', origin_lane['id'], origin_lane['name'])

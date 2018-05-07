@@ -20,6 +20,8 @@ def get_num_of_lanes(path_data):
 
     if 'turn:lanes' in path_data['tags']:
         return len(path_data['tags']['turn:lanes'].split('|'))
+    if 'lanes:forward' in path_data['tags']:
+        return int(path_data['tags']['lanes:forward'])
     if 'lanes' in path_data['tags']:
         return int(path_data['tags']['lanes'])
 
@@ -37,6 +39,8 @@ def count_lanes(path_data):
 
     if 'turn:lanes' in path_data['tags']:
         lane_types = path_data['tags']['turn:lanes'].split('|')
+    elif 'turn:lanes:forward' in path_data['tags']:
+        lane_types = path_data['tags']['turn:lanes:forward'].split('|')
     elif 'railway' in path_data['tags']:
         lane_types = ['rail_track'] * num_of_lanes
     else:
@@ -94,12 +98,13 @@ def add_borders_to_paths(paths, nodes_dict, width=3.048):
     return paths
 
 
-def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0):
+def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0, width=3.048):
     """
     Split a bidirectional path to two oneway paths
     :param path_data: dictionary
     :param nodes_dict: dictionary
     :param space_between_direction: float in meters
+    :param width: lane width in meters
     :return: a tuple of dictionaries: forward and backward paths
     """
 
@@ -110,41 +115,61 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0)
     forward_path = copy.deepcopy(path_data)
     forward_path['tags']['split'] = 'yes'
     forward_path['tags']['oneway'] = 'yes'
-    forward_path['id'] = forward_path['id']*1000
-    if 'turn:lanes:forward' in forward_path['tags']:
-        forward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:forward']
-    if 'turn:lanes:both_ways' in forward_path['tags']:
-        forward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
-    if 'lanes:forward' in forward_path['tags']:
-        forward_path['tags']['lanes'] = forward_path['tags']['lanes:forward']
+    forward_path['id'] = forward_path['id']*100
+
+    if 'lanes' in path_data['tags'] \
+            and 'lanes:forward' not in path_data['tags'] \
+            and 'lanes:backward' not in path_data['tags'] \
+            and int(path_data['tags']['lanes']) % 2 == 0:
+
+        forward_path['tags']['lanes'] = int(path_data['tags']['lanes'])/2
+    else:
+        if 'turn:lanes:forward' in path_data['tags']:
+            forward_path['tags']['turn:lanes'] = path_data['tags']['turn:lanes:forward']
+        if 'turn:lanes:both_ways' in path_data['tags']:
+            forward_path['tags']['turn:lanes'] = path_data['tags']['turn:lanes:both_ways']
+        if 'lanes:forward' in path_data['tags']:
+            forward_path['tags']['lanes'] = path_data['tags']['lanes:forward']
 
     # process bicycle lanes
-    if 'bicycle' not in forward_path['tags'] or forward_path['tags']['bicycle'] == 'yes':
+    if 'bicycle' not in path_data['tags'] or path_data['tags']['bicycle'] == 'yes':
         if 'cycleway:left' in forward_path:
             del forward_path['cycleway:left']
         if 'cycleway:both' in forward_path['tags']:
             forward_path['tags']['cycleway:right'] = forward_path['tags']['cycleway:both']
             del forward_path['tags']['cycleway:both']
 
-    forward_path['left_border'] = shift_border(forward_path, nodes_dict, space_between_direction/2.0)
-
     backward_path = copy.deepcopy(path_data)
     backward_path['tags']['split'] = 'yes'
-    backward_path['id'] = backward_path['id'] * 1000 + 1
+    backward_path['id'] = backward_path['id'] * 100 + 1
     backward_path['tags']['oneway'] = 'yes'
     backward_path['nodes'] = backward_path['nodes'][::-1]
 
-    if 'turn:lanes:backward' in forward_path['tags']:
-        backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:backward']
-    if 'turn:lanes:both_ways' in forward_path['tags']:
-        forward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
-        backward_path['tags']['turn:lanes'] = forward_path['tags']['turn:lanes:both_ways']
-    if 'lanes:backward' in forward_path['tags']:
-        backward_path['tags']['lanes'] = forward_path['tags']['lanes:backward']
-    if 'destination:ref:backward' in forward_path['tags']:
-        backward_path['tags']['destination:ref'] = forward_path['tags']['destination:ref:backward']
-    if 'destination:backward' in forward_path['tags']:
-        backward_path['tags']['destination'] = forward_path['tags']['destination:backward']
+    if 'turn:lanes:backward' in path_data['tags']:
+        backward_path['tags']['turn:lanes'] = path_data['tags']['turn:lanes:backward']
+    if 'turn:lanes:forward' in backward_path['tags']:
+        del backward_path['tags']['turn:lanes:forward']
+    if 'turn:lanes:both_ways' in path_data['tags']:
+        backward_path['tags']['turn:lanes'] = path_data['tags']['turn:lanes:both_ways']
+
+    if 'lanes' in path_data['tags'] \
+            and 'lanes:forward' not in path_data['tags'] \
+            and 'lanes:backward' not in path_data['tags'] \
+            and int(path_data['tags']['lanes']) % 2 == 0:
+
+        backward_path['tags']['lanes'] = int(path_data['tags']['lanes']) / 2
+    else:
+        if 'lanes:backward' in path_data['tags']:
+            backward_path['tags']['lanes'] = path_data['tags']['lanes:backward']
+        if 'lanes:forward' in backward_path['tags']:
+            del backward_path['tags']['lanes:forward']
+
+    if 'destination:ref:backward' in path_data['tags']:
+        backward_path['tags']['destination:ref'] = path_data['tags']['destination:ref:backward']
+    if 'destination:ref:forward' in backward_path['tags']:
+        del backward_path['tags']['destination:ref:forward']
+    if 'destination:backward' in path_data['tags']:
+        backward_path['tags']['destination'] = path_data['tags']['destination:backward']
 
     # process bicycle lanes
     if 'bicycle' not in backward_path['tags'] or backward_path['tags']['bicycle'] == 'yes':
@@ -157,7 +182,21 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0)
             backward_path['tags']['cycleway:right'] = backward_path['tags']['cycleway:both']
             del backward_path['tags']['cycleway:both']
 
-    backward_path['left_border'] = shift_border(backward_path, nodes_dict, space_between_direction / 2.0)
+    forward_left_lanes, forward_right_lanes, forward_trunk_lanes = count_lanes(forward_path)
+    backward_left_lanes, backward_right_lanes, backward_trunk_lanes = count_lanes(backward_path)
+    distance_to_right_border = ((forward_left_lanes
+                                + forward_right_lanes
+                                + forward_trunk_lanes
+                                + backward_left_lanes
+                                + backward_right_lanes
+                                + backward_trunk_lanes
+                                )*width + space_between_direction)/2.0
+
+    forward_border_offset = distance_to_right_border - (forward_right_lanes + forward_trunk_lanes)*width
+    forward_path['left_border'] = shift_border(forward_path, nodes_dict, forward_border_offset)
+    offset_from_forward_left_border = space_between_direction + (backward_left_lanes + forward_left_lanes)*width
+    backward_path['left_border'] = shift_list_of_nodes(forward_path['left_border'][::-1],
+                                                       [offset_from_forward_left_border]*len(forward_path['left_border']))
 
     return forward_path, backward_path
 

@@ -15,7 +15,7 @@ from border import get_angle_between_bearings, shift_by_bearing_and_distance, cu
     get_distance_between_points, get_compass, extend_vector, to_rad
 
 
-def is_u_turn_allowed(origin_lane):
+def is_u_turn_allowed(origin_lane, x_data):
     """
     Check if a U-turn is allowed for this lane
     :param origin_lane: dictionary
@@ -29,6 +29,8 @@ def is_u_turn_allowed(origin_lane):
         return False
     if 'through' in origin_lane['lane_type'] and 'left' not in origin_lane['lane_type']:
         return False
+    if get_distance_between_points(origin_lane['left_border'][-1], (x_data['center_x'], x_data['center_y'])) > 25.0:
+        return False
     return True
 
 
@@ -41,8 +43,6 @@ def get_destination_lanes_for_u_turn(origin_lane, all_lanes):
     :return: list of valid lane destinations for the left turn
     """
     if origin_lane['name'] == 'no_name':
-        return []
-    if not is_u_turn_allowed(origin_lane):
         return []
 
     return [l for l in all_lanes
