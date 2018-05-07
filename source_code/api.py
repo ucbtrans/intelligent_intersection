@@ -513,12 +513,13 @@ def get_conflict_zones(guideway_data, all_guideways=None, intersection_data=None
     :return: list of conflict zone dictionaries
     """
 
+    polygons_dict = {}
     if all_guideways is None:
         if intersection_data is None:
             return []
         all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(intersection_data)
 
-    return get_conflict_zones_per_guideway(guideway_data, all_guideways)
+    return get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict)
 
 
 def get_all_conflict_zones(intersection_data):
