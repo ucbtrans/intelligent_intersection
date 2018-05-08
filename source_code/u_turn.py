@@ -12,7 +12,7 @@ import shapely.geometry as geom
 from lane import get_lane_index_from_left
 from turn import shorten_border_for_crosswalk
 from border import get_angle_between_bearings, shift_by_bearing_and_distance, cut_border_by_distance,\
-    get_distance_between_points, get_compass, extend_vector, to_rad
+    get_distance_between_points, get_compass, extend_vector, to_rad, extend_origin_border, extend_destination_border
 
 
 def is_u_turn_allowed(origin_lane, x_data):
@@ -98,14 +98,35 @@ def get_u_turn_border(origin_lane, destination_lane, all_lanes, border_type='lef
         destination_border = destination_lane[border_type + '_border']
         origin_border = origin_lane[border_type + '_border']
 
+    cut_size = origin_lane['crosswalk_width']*5.0
     shorten_origin_border = shorten_border_for_crosswalk(origin_border,
+                                                         origin_lane['name'],
+                                                         all_lanes,
+                                                         destination='to_intersection',
+                                                         crosswalk_width=cut_size
+                                                         )
+    shorten_origin_border = extend_origin_border(shorten_origin_border, length=cut_size, relative=True)
+    shorten_origin_border = shorten_border_for_crosswalk(shorten_origin_border,
                                                          origin_lane['name'],
                                                          all_lanes,
                                                          destination='to_intersection',
                                                          crosswalk_width=0.0
                                                          )
+    shorten_destination_border = shorten_border_for_crosswalk(destination_border,
+                                                              destination_lane['name'],
+                                                              all_lanes,
+                                                              destination='from_intersection',
+                                                              crosswalk_width=cut_size
+                                                              )
+    shorten_destination_border = extend_destination_border(shorten_destination_border, length=cut_size, relative=True)
+    shorten_destination_border = shorten_border_for_crosswalk(shorten_destination_border,
+                                                              destination_lane['name'],
+                                                              all_lanes,
+                                                              destination='from_intersection',
+                                                              crosswalk_width=0.0
+                                                              )
 
-    turn_arc = construct_u_turn_arc(shorten_origin_border, destination_border)
+    turn_arc = construct_u_turn_arc(shorten_origin_border, shorten_destination_border)
 
     if turn_arc is None:
         return None
