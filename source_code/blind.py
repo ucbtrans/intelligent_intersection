@@ -8,7 +8,7 @@
 
 
 import shapely.geometry as geom
-from border import get_compass, get_distance_between_points
+from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon
 import nvector as nv
 
 
@@ -121,5 +121,40 @@ def get_shadows(point, all_guidways, shadowed_guideway):
     return result
 
 
-def normalized_to_geo(point, conflict_zone, guideway_data):
-    return point
+def normalized_to_geo(point, guideway_data, conflict_zone=None):
+    """
+    Convert normalized coordinates (between 0 and 1) to lon and lat.
+    point[0] is relative distance from the beginning of the median to the intersection with the conflict zone.
+    point[1] is position within the width of the guideway, 
+    where 0.5 is on the median, 0 on the left border and 1 on the right border.
+    :param point: a tuple of floats between 0 and 1
+    :param conflict_zone: conflict zone dictionary
+    :param guideway_data: guideway dictionary
+    :return: a tuple of lon and lat
+    """
+
+    if point[0] < 0:
+        return guideway_data['median'][0]
+    elif point[0] > 1.0:
+        return guideway_data['median'][-1]
+
+    if conflict_zone is None:
+        shortened_median = guideway_data['median']
+    else:
+        shortened_median = cut_border_by_polygon(guideway_data['median'], conflict_zone['polygon'], multi_string_index=0)
+    if shortened_median is None:
+        return None
+
+    point_on_median = geom.LineString(shortened_median).interpolate(point[0], normalized=True).coords[0]
+    point_on_left_border = get_closest_point(point_on_median, guideway_data['left_border'])
+    point_on_right_border = get_closest_point(point_on_median, guideway_data['right_border'])
+
+    if point[1] < 0:
+        return point_on_left_border
+    elif point[1] > 1.0:
+        return point_on_right_border
+    elif point[1] == 0.5:
+        return point_on_median
+    else:
+        cross_line = geom.LineString([point_on_left_border, point_on_median, point_on_right_border])
+        return cross_line.interpolate(point[1], normalized=True).coords[0]
