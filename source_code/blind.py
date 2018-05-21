@@ -8,7 +8,10 @@
 
 
 import shapely.geometry as geom
-from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon
+from matplotlib.patches import Polygon
+from guideway import get_polygon_from_guideway
+from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon,\
+    polygon_within_box
 import nvector as nv
 
 
@@ -158,3 +161,64 @@ def normalized_to_geo(point, guideway_data, conflict_zone=None):
     else:
         cross_line = geom.LineString([point_on_left_border, point_on_median, point_on_right_border])
         return cross_line.interpolate(point[1], normalized=True).coords[0]
+
+
+def shapely_to_matplotlib(shapely_polygon,
+                          x_data,
+                          alpha=0.8,
+                          fc='#FF9933',
+                          ec='w',
+                          linestyle='solid',
+                          joinstyle='round'
+                          ):
+
+    return Polygon(polygon_within_box(x_data['center_x'], x_data['center_y'], shapely_polygon, x_data['crop_radius']),
+                   closed=True,
+                   fc=fc,
+                   ec=ec,
+                   alpha=alpha,
+                   linestyle=linestyle,
+                   joinstyle=joinstyle
+                   )
+
+
+def plot_sector(shapely_polygon,
+                current_guideway=None,
+                block=None,
+                x_data=None,
+                fig=None,
+                ax=None,
+                alpha=0.5,
+                fc='#E0E0E0',
+                ec='#E0E0E0'
+                ):
+    """
+    Plot a conflict zone
+    :param conflict_zone: dictionary
+    :param fig: MatPlotLib figure
+    :param ax: MatPlotLib plot
+    :param alpha: transparency
+    :param fc: foreground color
+    :param ec: edge color
+    :return: a tuple of a MatPlotLib image and plot
+    """
+
+    if fig is None or ax is None or x_data is None:
+        return None, None
+
+    if isinstance(shapely_polygon, geom.multipolygon.MultiPolygon):
+        polygons = list(shapely_polygon)
+    else:
+        polygons = [shapely_polygon]
+
+    if current_guideway is not None:
+        ax.add_patch(get_polygon_from_guideway(current_guideway, alpha=1.0, fc='#FFFF00', ec='w'))
+
+    for polygon in polygons:
+        ax.add_patch(shapely_to_matplotlib(polygon, x_data, alpha=alpha, fc=fc, ec=ec))
+
+    if block is not None:
+        ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#FFFF00', ec='w'))
+        ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#000000', ec='#FFFF00', reduced=True))
+
+    return fig, ax

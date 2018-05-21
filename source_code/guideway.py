@@ -387,12 +387,22 @@ def set_guideway_id(g):
             g['type'] = 'drive'
 
 
-def get_polygon_from_guideway(guideway, fc='y', ec='w', alpha=0.8, linestyle='dashed', joinstyle='round'):
+def get_polygon_from_guideway(guideway_data,
+                              fc='y',
+                              ec='w',
+                              alpha=0.8,
+                              linestyle='dashed',
+                              joinstyle='round',
+                              reduced=False
+                              ):
     """
     Get a polygon from a guideway
     """
 
-    polygon_sequence = guideway['left_border'] + guideway['right_border'][::-1]
+    if reduced:
+        polygon_sequence = guideway_data['reduced_left_border'] + guideway_data['reduced_right_border'][::-1]
+    else:
+        polygon_sequence = guideway_data['left_border'] + guideway_data['right_border'][::-1]
 
     return Polygon(polygon_sequence,
                    closed=True,

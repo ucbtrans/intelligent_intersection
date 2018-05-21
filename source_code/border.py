@@ -452,6 +452,25 @@ def border_within_box(x0, y0, border, size):
     return result
 
 
+def polygon_within_box(x0, y0, shapely_polygon, size):
+    """
+    Find a portion of a line within a box.  The box boundaries are defined by the center +/- size.
+    :param x0: longitude of the center
+    :param y0: latitude of the center
+    :param shapely_polygon: shapely polygon
+    :param size: float in meters
+    :return: list of coordinates
+    """
+    try:
+        north, south, east, west = get_box(x0, y0, size=size)
+        boundary_polygon = geom.Polygon([(west, north), (east, north), (east, south), (west, south)])
+        polygon_within_boundaries = shapely_polygon.intersection(boundary_polygon)
+        result = list(geom.mapping(polygon_within_boundaries)['coordinates'][0])
+    except:
+        return []
+    return result
+
+
 def cut_border_by_polygon(border, polygon, multi_string_index=0):
     """
     Remove a portion of a border that overlaps with a polygon

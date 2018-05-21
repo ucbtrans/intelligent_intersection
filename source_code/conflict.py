@@ -116,23 +116,6 @@ def get_guideway_intersection(g1, g2, polygons_dict):
     if g1['type'] == 'footway' and g2['type'] == 'footway':
         return None
 
-    median1 = geom.LineString(g1['median'])
-    median2 = geom.LineString(g2['median'])
-
-    if not median1.intersects(median2):
-        return None
-
-    x = median1.intersection(median2)
-
-    if isinstance(x, geom.collection.GeometryCollection) \
-            or isinstance(x, geom.multipoint.MultiPoint) \
-            or isinstance(x, geom.multilinestring.MultiLineString):
-        x_points = [list(y.coords)[0] for y in list(x)]
-    else:
-        x_points = [list(x.coords)[0]]
-
-    min_distance = min([median1.project(geom.Point(x_point), normalized=True) for x_point in x_points])
-
     polygon_id1 = str(g1['id']) + '_' + str(g2['id'])
     polygon_id2 = str(g2['id']) + '_' + str(g1['id'])
     if polygon_id2 in polygons_dict:
@@ -153,6 +136,23 @@ def get_guideway_intersection(g1, g2, polygons_dict):
             polygon_x = None
 
         polygons_dict[polygon_id1] = polygon_x
+
+        if polygon_x is None:
+            return None
+
+        median1 = geom.LineString(g1['median'])
+        if median1.intersects(polygon_x):
+            x = median1.intersection(polygon_x)
+            if isinstance(x, geom.collection.GeometryCollection) \
+                    or isinstance(x, geom.multipoint.MultiPoint) \
+                    or isinstance(x, geom.multilinestring.MultiLineString):
+                x_points = [list(y.coords)[0] for y in list(x)]
+            else:
+                x_points = [list(x.coords)[0]]
+
+            min_distance = min([median1.project(geom.Point(x_point), normalized=True) for x_point in x_points])
+        else:
+            return None
 
     conflict_zone = {
         'type': str(get_conflict_zone_type(g1, g2)) + conflict_type[g1['type']] + conflict_type[g2['type']],
