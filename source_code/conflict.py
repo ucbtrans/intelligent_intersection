@@ -9,7 +9,7 @@
 
 import shapely.geometry as geom
 from matplotlib.patches import Polygon
-from border import cut_border_by_polygon
+from border import cut_border_by_polygon, cut_border_by_distance
 
 
 conflict_type = {
@@ -186,8 +186,13 @@ def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict)
         conflict_zone['id'] = '_'.join([str(conflict_zone[k]) for k in ['guideway1_id', 'guideway2_id', 'sequence']])
 
     if len(conflict_zones) > 0:
-        for key in ['left_border', 'right_border', 'median']:
-            guideway_data['reduced_' + key] = cut_border_by_polygon(guideway_data[key], conflict_zones[-1]['polygon'])
+        guideway_data['reduced_median'] = cut_border_by_polygon(guideway_data['median'], conflict_zones[-1]['polygon'])
+        for key in ['left_border', 'right_border']:
+            border_line = geom.LineString(guideway_data[key])
+            reduced_line = cut_border_by_distance(border_line,
+                                                  border_line.project(geom.Point(guideway_data['reduced_median'][-1]))
+                                                  )[0]
+            guideway_data['reduced_' + key] = list(reduced_line.coords)
 
     return conflict_zones
 

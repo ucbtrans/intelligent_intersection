@@ -49,7 +49,7 @@ def get_sector(point, block):
     return min_azimuth, max_azimuth, min_point, max_point
 
 
-def get_point_by_azimuth(point, azimuth, distance=1000.0):
+def get_point_by_azimuth(point, azimuth, distance=100000.0):
     pt = nv_frame.GeoPoint(latitude=point[1], longitude=point[0], degrees=True)
     result, _azimuthb = pt.geo_point(distance=distance, azimuth=azimuth, degrees=True)
     return result.longitude_deg, result.latitude_deg
@@ -59,11 +59,11 @@ def iz_azimuth_in_the_shadow(point, border, azimuth=0.0):
     return geom.LineString(border).intersects(geom.LineString([point, get_point_by_azimuth(point, azimuth)]))
 
 
-def get_sector_polygon(point, blocking_guideway):
-    min_azimuth, max_azimuth, min_point, max_point = get_sector(point, blocking_guideway)
+def get_sector_polygon(point, block):
+    min_azimuth, max_azimuth, min_point, max_point = get_sector(point, block)
 
     bissectrice = (min_azimuth + max_azimuth)/2.0
-    if iz_azimuth_in_the_shadow(point, blocking_guideway['median']):
+    if not iz_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=bissectrice):
         # Azimuth at 0 degrees is in the shadow.  Invert the bissectrice direction
         bissectrice = (bissectrice + 180.0) % 360.0
 
@@ -75,6 +75,22 @@ def get_sector_polygon(point, blocking_guideway):
                          max_point
                          ]
                         )
+
+
+def combine_sector_polygons(point, block):
+    polygon = None
+    polygons = []
+    pt0 = block['reduced_left_border'][0]
+    for pt1 in (block['reduced_left_border'] + block['reduced_right_border'])[1:]:
+        temp_block = {'reduced_left_border':[pt0,pt1], 'median':block['median'], 'reduced_right_border': []}
+        pol = get_sector_polygon(point, temp_block)
+        pt0 = pt1
+        if polygon is None:
+            polygon = pol
+        else:
+            polygon = polygon.union(pol)
+        polygons.append(pol)
+    return polygon
 
 
 def get_shadow_polygon(point, block):
@@ -90,7 +106,7 @@ def get_shadow_polygon(point, block):
     :return: polygon
     """
     block_polygon = geom.Polygon(block['left_border'] + block['right_border'][::-1])
-    sector_polygon = get_sector_polygon(point, block)
+    sector_polygon = combine_sector_polygons(point, block)
 
     if sector_polygon.intersects(block_polygon):
         polygons = list(sector_polygon.difference(block_polygon))
@@ -186,6 +202,7 @@ def plot_sector(shapely_polygon,
                 current_guideway=None,
                 block=None,
                 x_data=None,
+                blind_zone=None,
                 fig=None,
                 ax=None,
                 alpha=0.5,
@@ -220,5 +237,13 @@ def plot_sector(shapely_polygon,
     if block is not None:
         ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#FFFF00', ec='w'))
         ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#000000', ec='#FFFF00', reduced=True))
+
+    if blind_zone is not None:
+        if isinstance(blind_zone, geom.multipolygon.MultiPolygon):
+            bzs = list(blind_zone)
+        else:
+            bzs = [blind_zone]
+        for bz in bzs:
+            ax.add_patch(shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'))
 
     return fig, ax
