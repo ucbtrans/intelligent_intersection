@@ -638,7 +638,7 @@ def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guid
     return get_blind_zone_data(point_of_view, current_guideway, conflict_zone, blocking_guideways)
 
 
-def get_blind_zone_image(blind_zone, current_guideway, intersection_data, alpha=1.0,fc='r', ec='r'):
+def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0,fc='r', ec='r'):
     """
     Get an image of a list of conflict zones in PNG format
     :param blind_zone: blind zone dictionary
@@ -678,6 +678,7 @@ def get_blind_zone_image(blind_zone, current_guideway, intersection_data, alpha=
 
     blind_zone_fig, blind_zone_ax = plot_sector(current_guideway=current_guideway,
                                                 x_data=intersection_data,
+                                                blocks=blocks,
                                                 fig=fig,
                                                 ax=ax,
                                                 blind_zone=blind_zone['polygon'],
