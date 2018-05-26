@@ -137,22 +137,22 @@ def get_guideway_intersection(g1, g2, polygons_dict):
 
         polygons_dict[polygon_id1] = polygon_x
 
-        if polygon_x is None:
-            return None
+    if polygon_x is None:
+        return None
 
-        median1 = geom.LineString(g1['median'])
-        if median1.intersects(polygon_x):
-            x = median1.intersection(polygon_x)
-            if isinstance(x, geom.collection.GeometryCollection) \
-                    or isinstance(x, geom.multipoint.MultiPoint) \
-                    or isinstance(x, geom.multilinestring.MultiLineString):
-                x_points = [list(y.coords)[0] for y in list(x)]
-            else:
-                x_points = [list(x.coords)[0]]
-
-            min_distance = min([median1.project(geom.Point(x_point), normalized=True) for x_point in x_points])
+    median1 = geom.LineString(g1['median'])
+    if median1.intersects(polygon_x):
+        x = median1.intersection(polygon_x)
+        if isinstance(x, geom.collection.GeometryCollection) \
+                or isinstance(x, geom.multipoint.MultiPoint) \
+                or isinstance(x, geom.multilinestring.MultiLineString):
+            x_points = [list(y.coords)[0] for y in list(x)]
         else:
-            return None
+            x_points = [list(x.coords)[0]]
+
+        min_distance = min([median1.project(geom.Point(x_point), normalized=True) for x_point in x_points])
+    else:
+        return None
 
     conflict_zone = {
         'type': str(get_conflict_zone_type(g1, g2)) + conflict_type[g1['type']] + conflict_type[g2['type']],

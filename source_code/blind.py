@@ -13,8 +13,10 @@ from guideway import get_polygon_from_guideway
 from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon,\
     polygon_within_box
 import nvector as nv
+from log import get_logger, dictionary_to_log
 
 
+logger = get_logger()
 nv_frame = nv.FrameE(a=6371e3, f=0)
 
 
@@ -80,16 +82,31 @@ def get_sector_polygon(point, block):
 def combine_sector_polygons(point, block):
     polygon = None
     polygons = []
+    if 'reduced_left_border' not in block:
+        return None
     pt0 = block['reduced_left_border'][0]
     for pt1 in (block['reduced_left_border'] + block['reduced_right_border'])[1:]:
         temp_block = {'reduced_left_border':[pt0,pt1], 'median':block['median'], 'reduced_right_border': []}
         pol = get_sector_polygon(point, temp_block)
         pt0 = pt1
+        if not isinstance(pol, geom.polygon.Polygon):
+            continue
+        if not pol.is_valid:
+            pol = pol.buffer(0)
         if polygon is None:
             polygon = pol
         else:
-            polygon = polygon.union(pol)
-        polygons.append(pol)
+            try:
+                polygon = polygon.union(pol)
+            except Exception as e:
+                logger.exception("Block Id: %d, type: %s, sector type: %s" % (block['id'], type(pol), type(polygon)))
+                logger.exception(e)
+                polygons.append(pol)
+                continue
+
+    if not polygon.is_valid:
+        polygon = polygon.buffer(0)
+
     return polygon
 
 
@@ -106,22 +123,38 @@ def get_shadow_polygon(point, block):
     :return: polygon
     """
     block_polygon = geom.Polygon(block['left_border'] + block['right_border'][::-1])
+    if not block_polygon.is_valid:
+        block_polygon = block_polygon.buffer(0)
     sector_polygon = combine_sector_polygons(point, block)
+    if sector_polygon is None:
+        return None
 
     if sector_polygon.intersects(block_polygon):
-        polygons = list(sector_polygon.difference(block_polygon))
+        try:
+            polygons = list(sector_polygon.difference(block_polygon))
+        except Exception as e:
+            logger.exception("Block Id: %d. Can not intersect with the sector" % block['id'])
+            logger.exception(e)
+            return sector_polygon
         polygons.sort(key=lambda x: x.area)
         return polygons[-1]
     else:
-        # Something went terribly wrong
+        logger.error("Block Id: %d. Something went terribly wrong" % block['id'])
         return None
 
 
 def get_shadow(point, blocking_guideway, shadowed_guideway):
     polygon = geom.Polygon(shadowed_guideway['left_border'] + shadowed_guideway['right_border'][::-1])
+    if not polygon.is_valid:
+        polygon = polygon.buffer(0)
     shadow_polygon = get_shadow_polygon(point, blocking_guideway)
     if shadow_polygon is not None and polygon.intersects(shadow_polygon):
-        return polygon.intersection(shadow_polygon)
+        x = polygon.intersection(shadow_polygon)
+        if isinstance(x, geom.polygon.Polygon):
+            return x
+        elif isinstance(x, geom.multipolygon.MultiPolygon):
+            return x
+        return None
     else:
         return None
 
@@ -198,9 +231,9 @@ def shapely_to_matplotlib(shapely_polygon,
                    )
 
 
-def plot_sector(shapely_polygon,
+def plot_sector(shapely_polygon=None,
                 current_guideway=None,
-                block=None,
+                blocks=None,
                 x_data=None,
                 blind_zone=None,
                 fig=None,
@@ -223,27 +256,34 @@ def plot_sector(shapely_polygon,
     if fig is None or ax is None or x_data is None:
         return None, None
 
-    if isinstance(shapely_polygon, geom.multipolygon.MultiPolygon):
-        polygons = list(shapely_polygon)
+    if not isinstance(shapely_polygon, list):
+        if shapely_polygon is not None:
+            if isinstance(shapely_polygon, geom.multipolygon.MultiPolygon):
+                polygons = list(shapely_polygon)
+            else:
+                polygons = [shapely_polygon]
     else:
-        polygons = [shapely_polygon]
+        polygons = shapely_polygon
 
     if current_guideway is not None:
         ax.add_patch(get_polygon_from_guideway(current_guideway, alpha=1.0, fc='#FFFF00', ec='w'))
 
-    for polygon in polygons:
-        ax.add_patch(shapely_to_matplotlib(polygon, x_data, alpha=alpha, fc=fc, ec=ec))
+    if shapely_polygon is not None:
+        for polygon in polygons:
+            ax.add_patch(shapely_to_matplotlib(polygon, x_data, alpha=alpha, fc=fc, ec=ec))
 
-    if block is not None:
-        ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#FFFF00', ec='w'))
-        ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#000000', ec='#FFFF00', reduced=True))
+    if blocks is not None:
+        for block in blocks:
+            ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#FFFF00', ec='w'))
+            ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#000000', ec='#FFFF00', reduced=True))
 
     if blind_zone is not None:
-        if isinstance(blind_zone, geom.multipolygon.MultiPolygon):
+        if isinstance(blind_zone, geom.multipolygon.MultiPolygon) or isinstance(blind_zone, geom.collection.GeometryCollection):
             bzs = list(blind_zone)
         else:
             bzs = [blind_zone]
         for bz in bzs:
-            ax.add_patch(shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'))
+            if isinstance(blind_zone, geom.polygon.Polygon):
+                ax.add_patch(shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'))
 
     return fig, ax
