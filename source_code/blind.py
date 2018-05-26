@@ -9,6 +9,7 @@
 
 import shapely.geometry as geom
 from matplotlib.patches import Polygon
+from matplotlib.patches import Circle
 from guideway import get_polygon_from_guideway
 from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon,\
     polygon_within_box
@@ -230,6 +231,7 @@ def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guidewa
     blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, current_guideway)
 
     blind_zone_data = {'point': point,
+                       'geo_point': point_of_view,
                        'guideway_id': current_guideway['id'],
                        'conflict_zone': conflict_zone,
                        'blocking_ids': [g['id'] for g in blocking_guideways],
@@ -263,6 +265,7 @@ def plot_sector(shapely_polygon=None,
                 blocks=None,
                 x_data=None,
                 blind_zone=None,
+                point_of_view=None,
                 fig=None,
                 ax=None,
                 alpha=0.5,
@@ -293,7 +296,7 @@ def plot_sector(shapely_polygon=None,
         polygons = shapely_polygon
 
     if current_guideway is not None:
-        ax.add_patch(get_polygon_from_guideway(current_guideway, alpha=1.0, fc='#FFFF00', ec='w'))
+        ax.add_patch(get_polygon_from_guideway(current_guideway, alpha=1.0, fc='#CCFF99', ec='#000000', linestyle='solid'))
 
     if shapely_polygon is not None:
         for polygon in polygons:
@@ -312,5 +315,11 @@ def plot_sector(shapely_polygon=None,
         for bz in bzs:
             if isinstance(blind_zone, geom.polygon.Polygon):
                 ax.add_patch(shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'))
+
+    if point_of_view is not None:
+        marker = Circle(point_of_view, radius=.000015, fc='#005500', ec='w')
+        ax.add_patch(marker)
+        #small_marker = Circle(point_of_view, radius=.000005, fc='y', ec='y')
+        #ax.add_patch(small_marker)
 
     return fig, ax

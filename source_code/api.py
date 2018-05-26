@@ -679,6 +679,7 @@ def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks
     blind_zone_fig, blind_zone_ax = plot_sector(current_guideway=current_guideway,
                                                 x_data=intersection_data,
                                                 blocks=blocks,
+                                                point_of_view=blind_zone['geo_point'],
                                                 fig=fig,
                                                 ax=ax,
                                                 blind_zone=blind_zone['polygon'],
