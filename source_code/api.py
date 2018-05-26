@@ -15,6 +15,7 @@ from city import get_city_name_from_address
 from node import get_nodes_dict
 from data import get_data_from_file, get_city_from_osm
 from conflict import get_conflict_zones_per_guideway, plot_conflict_zones, plot_conflict_zone
+from blind import get_blind_zone_data, plot_sector
 
 
 def get_city(city_name):
@@ -618,3 +619,70 @@ def get_conflict_zone_image(conflict_zones, intersection_data, alpha=1.0):
     conflict_zone_fig, conflict_zone_ax = plot_conflict_zones(conflict_zones, fig=fig, ax=ax, alpha=alpha)
 
     return conflict_zone_fig
+
+
+def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guideways, all_guideways):
+    """
+    Get a blind zone
+    :param point_of_view: normalized coordinates along the current guideway: (x,y), where x and y within [0.0,1.0]
+    :param current_guideway: guideway dictionary
+    :param conflict_zone: conflict zone dictionary.  It must belong to the current guideway
+    :param blocking_guideways: list of guideway dictionaries representing guideways creating blind zones
+    :param all_guideways: list of all guideway dictionaries in the intersection
+    :return: blind zone dictionary
+    """
+
+    for guideway_data in all_guideways:
+        if 'reduced_left_border' not in guideway_data:
+            get_conflict_zones_per_guideway(guideway_data, all_guideways, {})
+    return get_blind_zone_data(point_of_view, current_guideway, conflict_zone, blocking_guideways)
+
+
+def get_blind_zone_image(blind_zone, current_guideway, intersection_data, alpha=1.0,fc='r', ec='r'):
+    """
+    Get an image of a list of conflict zones in PNG format
+    :param blind_zone: blind zone dictionary
+    :param current_guideway: guideway dictionary
+    :param intersection_data: intersection dictionary
+    :param fc: foreground color
+    :param ec: edge color
+    :param alpha: transparency: between 0.0 amd 1.0
+    :return: matplotlib.figure.Figure
+    """
+    fig, ax = plot_lanes(intersection_data['merged_lanes'],
+                         fig=None, ax=None,
+                         cropped_intersection=intersection_data['cropped_intersection'],
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         bgcolor='#CCFFE5',
+                         edge_color='#FF9933',
+                         alpha=alpha
+                         )
+
+    fig, ax = plot_lanes(intersection_data['merged_tracks'],
+                         fig=fig, ax=ax,
+                         cropped_intersection=None,
+                         fig_height=15,
+                         fig_width=15,
+                         axis_off=False,
+                         edge_linewidth=1,
+                         margin=0.02,
+                         fcolor='#C0C0C0',
+                         edge_color='#000000',
+                         alpha=alpha,
+                         linestyle='solid'
+                         )
+
+    blind_zone_fig, blind_zone_ax = plot_sector(current_guideway=current_guideway,
+                                                x_data=intersection_data,
+                                                fig=fig,
+                                                ax=ax,
+                                                blind_zone=blind_zone['polygon'],
+                                                fc=fc,
+                                                ec=ec
+                                                )
+
+    return blind_zone_fig

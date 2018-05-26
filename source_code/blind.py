@@ -173,22 +173,31 @@ def get_shadows(point, all_guidways, shadowed_guideway):
     return result
 
 
-def normalized_to_geo(point, guideway_data, conflict_zone=None):
+def normalized_to_geo(point_of_view, guideway_data, conflict_zone=None):
     """
     Convert normalized coordinates (between 0 and 1) to lon and lat.
     point[0] is relative distance from the beginning of the median to the intersection with the conflict zone.
     point[1] is position within the width of the guideway, 
     where 0.5 is on the median, 0 on the left border and 1 on the right border.
-    :param point: a tuple of floats between 0 and 1
+    :param point_of_view: a tuple of floats between 0 and 1
     :param conflict_zone: conflict zone dictionary
     :param guideway_data: guideway dictionary
     :return: a tuple of lon and lat
     """
 
-    if point[0] < 0:
+    if point_of_view[0] < 0:
         return guideway_data['median'][0]
-    elif point[0] > 1.0:
+    elif point_of_view[0] > 1.0:
         return guideway_data['median'][-1]
+
+    if point_of_view[0] < 0.0001:
+        x = 0.0001
+    elif point_of_view[0] > 0.9999:
+        x = 0.9999
+    else:
+        x = point_of_view[0]
+
+    point = (x, point_of_view[1])
 
     if conflict_zone is None:
         shortened_median = guideway_data['median']
@@ -210,6 +219,24 @@ def normalized_to_geo(point, guideway_data, conflict_zone=None):
     else:
         cross_line = geom.LineString([point_on_left_border, point_on_median, point_on_right_border])
         return cross_line.interpolate(point[1], normalized=True).coords[0]
+
+
+def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guideways):
+
+    if conflict_zone['guideway1_id'] != current_guideway['id']:
+        return None
+
+    point_of_view = normalized_to_geo(point, current_guideway, conflict_zone)
+    blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, current_guideway)
+
+    blind_zone_data = {'point': point,
+                       'guideway_id': current_guideway['id'],
+                       'conflict_zone': conflict_zone,
+                       'blocking_ids': [g['id'] for g in blocking_guideways],
+                       'polygon': blind_zone_polygon
+                       }
+
+    return blind_zone_data
 
 
 def shapely_to_matplotlib(shapely_polygon,
