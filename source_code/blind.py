@@ -11,10 +11,9 @@ import shapely.geometry as geom
 from matplotlib.patches import Polygon
 from matplotlib.patches import Circle
 from guideway import get_polygon_from_guideway
-from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon,\
-    polygon_within_box
+from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon, get_box
 import nvector as nv
-from log import get_logger, dictionary_to_log
+from log import get_logger
 
 
 logger = get_logger()
@@ -52,7 +51,7 @@ def get_sector(point, block):
     return min_azimuth, max_azimuth, min_point, max_point
 
 
-def get_point_by_azimuth(point, azimuth, distance=100000.0):
+def get_point_by_azimuth(point, azimuth, distance=10000.0):
     pt = nv_frame.GeoPoint(latitude=point[1], longitude=point[0], degrees=True)
     result, _azimuthb = pt.geo_point(distance=distance, azimuth=azimuth, degrees=True)
     return result.longitude_deg, result.latitude_deg
@@ -66,9 +65,18 @@ def get_sector_polygon(point, block):
     min_azimuth, max_azimuth, min_point, max_point = get_sector(point, block)
 
     bissectrice = (min_azimuth + max_azimuth)/2.0
+    inverted_bissectrice = (bissectrice + 180.0) % 360.0
+
     if not iz_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=bissectrice):
-        # Azimuth at 0 degrees is in the shadow.  Invert the bissectrice direction
-        bissectrice = (bissectrice + 180.0) % 360.0
+        if iz_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=inverted_bissectrice):
+            # Invert the bissectrice direction
+            logger.debug("Inverting bissectrice direction. Block: %d, %r %r"
+                         % (block['id'], bissectrice, inverted_bissectrice)
+                         )
+            bissectrice = inverted_bissectrice
+        else:
+            logger.warning("Bissectrice does not intersect the blocking element. Block Id: %d" % block['id'])
+            return None
 
     return geom.Polygon([point,
                          min_point,
@@ -86,8 +94,12 @@ def combine_sector_polygons(point, block):
     if 'reduced_left_border' not in block:
         return None
     pt0 = block['reduced_left_border'][0]
-    for pt1 in (block['reduced_left_border'] + block['reduced_right_border'])[1:]:
-        temp_block = {'reduced_left_border':[pt0,pt1], 'median':block['median'], 'reduced_right_border': []}
+    for pt1 in (block['reduced_left_border'] + block['reduced_right_border'][::-1])[1:]:
+        temp_block = {'reduced_left_border': [pt0, pt1],
+                      'median': block['median'],
+                      'reduced_right_border': [],
+                      'id': block['id']
+                      }
         pol = get_sector_polygon(point, temp_block)
         pt0 = pt1
         if not isinstance(pol, geom.polygon.Polygon):
@@ -111,6 +123,23 @@ def combine_sector_polygons(point, block):
     return polygon
 
 
+def get_shapely_polygon_from_guideway(guideway_data, prefix=''):
+    """
+    Get a shapely pogon from a guidewya using either the entire left and right border 
+    or reduced borders (up to the last conflict zone)
+    :param guideway_data: guideway dictionary
+    :param prefix: string: either empty or 'reduced'
+    :return: shapely polygon
+    """
+    if prefix + 'left_border' in guideway_data and prefix + 'right_border' in guideway_data:
+        polygon = geom.Polygon(guideway_data[prefix + 'left_border'] + guideway_data[prefix + 'right_border'][::-1])
+        if not polygon.is_valid:
+            polygon = polygon.buffer(0)
+        return polygon
+    else:
+        return None
+
+
 def get_shadow_polygon(point, block):
     """
     Get a sector defined by a point and a blocking object.  Assuming that a source of light is located at the point.
@@ -123,9 +152,8 @@ def get_shadow_polygon(point, block):
     :param block: guideway dictionary
     :return: polygon
     """
-    block_polygon = geom.Polygon(block['left_border'] + block['right_border'][::-1])
-    if not block_polygon.is_valid:
-        block_polygon = block_polygon.buffer(0)
+
+    block_polygon = get_shapely_polygon_from_guideway(block)
     sector_polygon = combine_sector_polygons(point, block)
     if sector_polygon is None:
         return None
@@ -144,6 +172,46 @@ def get_shadow_polygon(point, block):
         return None
 
 
+def get_shadow_polygon_list(point, block):
+    """
+    Get a sector defined by a point and a blocking object.  Assuming that a source of light is located at the point.
+    Then split the sector into two pieces: one that is closer to the point and therefore not in the shadow,
+    and another one that is behind the block and is in the shadow. 
+    The split gets obtained by subtracting the block polygon from the sector.
+    The shadow piece gets identified by having the largest area versus other pieces.
+    Return a polygon representing the are shadow area.
+    :param point: point coordinates
+    :param block: guideway dictionary
+    :return: polygon
+    """
+    block_polygon = geom.Polygon(block['left_border'] + block['right_border'][::-1])
+    if not block_polygon.is_valid:
+        block_polygon = block_polygon.buffer(0)
+    sector_polygon = combine_sector_polygons(point, block)
+    if sector_polygon is None:
+        return []
+
+    if sector_polygon.intersects(block_polygon):
+        try:
+            polygons = list(sector_polygon.difference(block_polygon))
+        except Exception as e:
+            logger.exception("Block Id: %d. Can not intersect with the sector" % block['id'])
+            logger.exception(e)
+            return sector_polygon
+
+        for i, x in enumerate(polygons):
+            if(isinstance(x, geom.polygon.Polygon) or isinstance(x, geom.multipolygon.MultiPolygon)) and not x.is_valid:
+                polygons[i] = x.buffer(0)
+        pt = geom.Point(point)
+        polygons.sort(key=lambda xx: pt.distance(xx))
+        logger.debug("Difference between sector and block %d identified, distances: %s"
+                     % (block['id'], ",".join([str(pt.distance(x)) for x in polygons])))
+        return polygons[1:]
+    else:
+        logger.error("Block Id: %d. Something went terribly wrong" % block['id'])
+        return []
+
+
 def get_shadow(point, blocking_guideway, shadowed_guideway):
     polygon = geom.Polygon(shadowed_guideway['left_border'] + shadowed_guideway['right_border'][::-1])
     if not polygon.is_valid:
@@ -160,17 +228,46 @@ def get_shadow(point, blocking_guideway, shadowed_guideway):
         return None
 
 
+def get_shadow_from_list(point, blocking_guideway, shadowed_guideway):
+    polygon = geom.Polygon(shadowed_guideway['left_border'] + shadowed_guideway['right_border'][::-1])
+    if not polygon.is_valid:
+        polygon = polygon.buffer(0)
+
+    result = None
+
+    for shadow_polygon in get_shadow_polygon_list(point, blocking_guideway):
+        if shadow_polygon is not None and polygon.intersects(shadow_polygon):
+            x = polygon.intersection(shadow_polygon)
+            if isinstance(x, geom.polygon.Polygon) or isinstance(x, geom.multipolygon.MultiPolygon):
+                if not x.is_valid:
+                    x = x.buffer(0)
+                logger.debug("Adding blind element. Area: %r" % x.area)
+                if result is None:
+                    result = x
+                else:
+                    result = result.union(x)
+            else:
+                logger.warning("Unexpected difference type: %s, block: %d, shadowed guideway %d"
+                               % (type(x), blocking_guideway['id'], shadowed_guideway['id'])
+                               )
+
+    return result
+
+
 def get_shadows(point, all_guidways, shadowed_guideway):
     result = None
     for g in all_guidways:
         if g['type'] == 'bicycle' or g['type'] == 'footway' or g['id'] == shadowed_guideway['id']:
             continue
-        p = get_shadow(point, g, shadowed_guideway)
+        p = get_shadow_from_list(point, g, shadowed_guideway)
+
         if p is not None:
+            logger.debug("Adding blind zone blocked by guideway id: %d. Area: %r" % (g['id'], p.area))
             if result is None:
                 result = p
             else:
                 result = result.union(p)
+
     return result
 
 
@@ -203,7 +300,10 @@ def normalized_to_geo(point_of_view, guideway_data, conflict_zone=None):
     if conflict_zone is None:
         shortened_median = guideway_data['median']
     else:
-        shortened_median = cut_border_by_polygon(guideway_data['median'], conflict_zone['polygon'], multi_string_index=0)
+        shortened_median = cut_border_by_polygon(guideway_data['median'],
+                                                 conflict_zone['polygon'],
+                                                 multi_string_index=0
+                                                 )
     if shortened_median is None:
         return None
 
@@ -223,12 +323,19 @@ def normalized_to_geo(point_of_view, guideway_data, conflict_zone=None):
 
 
 def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guideways):
-
+    logger.debug("============================")
+    logger.debug("Starting search for blind zones. Current guideway: %d, Point %r" % (current_guideway['id'], point))
     if conflict_zone['guideway1_id'] != current_guideway['id']:
         return None
 
     point_of_view = normalized_to_geo(point, current_guideway, conflict_zone)
     blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, current_guideway)
+
+    if blind_zone_polygon is not None:
+        logger.info("Blind zone found for the current guideway: %d. Area: %r"
+                    % (current_guideway['id'], blind_zone_polygon.area))
+    else:
+        logger.debug("Blind zone not found. Current guideway: %d." % current_guideway['id'])
 
     blind_zone_data = {'point': point,
                        'geo_point': point_of_view,
@@ -249,15 +356,34 @@ def shapely_to_matplotlib(shapely_polygon,
                           linestyle='solid',
                           joinstyle='round'
                           ):
+    north, south, east, west = get_box(x_data['center_x'], x_data['center_y'], size=x_data['crop_radius'])
+    boundary_polygon = geom.Polygon([(west, north), (east, north), (east, south), (west, south)])
+    polygon_within_boundaries = shapely_polygon.intersection(boundary_polygon)
 
-    return Polygon(polygon_within_box(x_data['center_x'], x_data['center_y'], shapely_polygon, x_data['crop_radius']),
-                   closed=True,
-                   fc=fc,
-                   ec=ec,
-                   alpha=alpha,
-                   linestyle=linestyle,
-                   joinstyle=joinstyle
-                   )
+    if isinstance(polygon_within_boundaries, geom.multipolygon.MultiPolygon):
+        pols = []
+        for p in list(polygon_within_boundaries):
+            pol = Polygon(list(geom.mapping(p)['coordinates'][0]),
+                          closed=True,
+                          fc=fc,
+                          ec=ec,
+                          alpha=alpha,
+                          linestyle=linestyle,
+                          joinstyle=joinstyle
+                          )
+            pols.append(pol)
+        return pols
+
+    else:
+        return [Polygon(list(geom.mapping(polygon_within_boundaries)['coordinates'][0]),
+                        closed=True,
+                        fc=fc,
+                        ec=ec,
+                        alpha=alpha,
+                        linestyle=linestyle,
+                        joinstyle=joinstyle
+                        )
+                ]
 
 
 def plot_sector(shapely_polygon=None,
@@ -296,11 +422,18 @@ def plot_sector(shapely_polygon=None,
         polygons = shapely_polygon
 
     if current_guideway is not None:
-        ax.add_patch(get_polygon_from_guideway(current_guideway, alpha=1.0, fc='#CCFF99', ec='#000000', linestyle='solid'))
+        ax.add_patch(get_polygon_from_guideway(current_guideway,
+                                               alpha=1.0,
+                                               fc='#CCFF99',
+                                               ec='#000000',
+                                               linestyle='solid'
+                                               )
+                     )
 
     if shapely_polygon is not None:
         for polygon in polygons:
-            ax.add_patch(shapely_to_matplotlib(polygon, x_data, alpha=alpha, fc=fc, ec=ec))
+            for pol in shapely_to_matplotlib(polygon, x_data, alpha=alpha, fc=fc, ec=ec):
+                ax.add_patch(pol)
 
     if blocks is not None:
         for block in blocks:
@@ -308,18 +441,21 @@ def plot_sector(shapely_polygon=None,
             ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#000000', ec='#FFFF00', reduced=True))
 
     if blind_zone is not None:
-        if isinstance(blind_zone, geom.multipolygon.MultiPolygon) or isinstance(blind_zone, geom.collection.GeometryCollection):
+        if isinstance(blind_zone, geom.multipolygon.MultiPolygon) or isinstance(blind_zone,
+                                                                                geom.collection.GeometryCollection
+                                                                                ):
             bzs = list(blind_zone)
         else:
             bzs = [blind_zone]
+        logger.debug("Blind zone consists of %d polygons" % len(bzs))
         for bz in bzs:
-            if isinstance(blind_zone, geom.polygon.Polygon):
-                ax.add_patch(shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'))
+            if isinstance(bz, geom.polygon.Polygon):
+                logger.debug("Area %r" % bz.area)
+                for pol in shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'):
+                    ax.add_patch(pol)
 
     if point_of_view is not None:
         marker = Circle(point_of_view, radius=.000015, fc='#005500', ec='w')
         ax.add_patch(marker)
-        #small_marker = Circle(point_of_view, radius=.000005, fc='y', ec='y')
-        #ax.add_patch(small_marker)
 
     return fig, ax
