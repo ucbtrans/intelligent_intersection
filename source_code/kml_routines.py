@@ -214,6 +214,49 @@ class KML:
 
 
 
+    def blind_zones(self, bz_list, color="ff000000"):
+        '''
+
+        :param bz_list:
+        :param color:
+        :return:
+        '''
+
+        k = 0
+        for bz in bz_list:
+            name = "({}) Blind Zone for Guideway {} and Conflict Zone {}".format(k, bz['guideway_id'], bz['conflict_zone']['id'])
+            description = "My Guideway: {}\nConflict Zone: {}\nConflict Zone Type: {}\nPoint of View: {}\nBlocking Guideways: {}".format(
+                          bz['guideway_id'], bz['conflict_zone']['id'], bz['conflict_zone']['type'], bz['point'], bz['blocking_ids'])
+            mg = self.kml.newmultigeometry()
+            mg.name = name
+            mg.description = description
+            pol = mg.newpolygon()
+            pol.style.linestyle.width = 1
+            pol.style.linestyle.color = color
+            pol.style.polystyle.color = color
+
+            poly = bz['polygon'].exterior.coords.xy
+            sz = len(poly[0])
+
+            coords = []
+            for i in range(sz):
+                coords.append((poly[0][i], poly[1][i], 0))
+
+            pol.outerboundaryis = coords
+            #pol.extrude = 1
+            #pol.altitudemode = simplekml.AltitudeMode.relativetoground
+
+
+            pnt = mg.newpoint()
+            pnt.name = "Point of View {} in Guideway {}".format(bz['point'], bz['guideway_id'])
+            pnt.coords = [(bz['geo_point'][0], bz['geo_point'][1], 0)]
+
+            k += 1
+
+        return
+
+
+
 
 
 
