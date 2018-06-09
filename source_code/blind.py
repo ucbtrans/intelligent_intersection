@@ -57,7 +57,7 @@ def get_point_by_azimuth(point, azimuth, distance=10000.0):
     return result.longitude_deg, result.latitude_deg
 
 
-def iz_azimuth_in_the_shadow(point, border, azimuth=0.0):
+def is_azimuth_in_the_shadow(point, border, azimuth=0.0):
     return geom.LineString(border).intersects(geom.LineString([point, get_point_by_azimuth(point, azimuth)]))
 
 
@@ -67,8 +67,8 @@ def get_sector_polygon(point, block):
     bissectrice = (min_azimuth + max_azimuth)/2.0
     inverted_bissectrice = (bissectrice + 180.0) % 360.0
 
-    if not iz_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=bissectrice):
-        if iz_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=inverted_bissectrice):
+    if not is_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=bissectrice):
+        if is_azimuth_in_the_shadow(point, block['reduced_left_border'], azimuth=inverted_bissectrice):
             # Invert the bissectrice direction
             logger.debug("Inverting bissectrice direction. Block: %d, %r %r"
                          % (block['id'], bissectrice, inverted_bissectrice)
@@ -241,7 +241,7 @@ def get_shadow_from_list(point, blocking_guideway, shadowed_guideway):
             if isinstance(x, geom.polygon.Polygon) or isinstance(x, geom.multipolygon.MultiPolygon):
                 if not x.is_valid:
                     x = x.buffer(0)
-                logger.debug("Adding blind element. Area: %r" % x.area)
+                logger.debug("Adding a blind element. Area: %r" % x.area)
                 if result is None:
                     result = x
                 else:
@@ -262,7 +262,7 @@ def get_shadows(point, all_guidways, shadowed_guideway):
         p = get_shadow_from_list(point, g, shadowed_guideway)
 
         if p is not None:
-            logger.debug("Adding blind zone blocked by guideway id: %d. Area: %r" % (g['id'], p.area))
+            logger.debug("Adding a blind zone blocked by guideway id: %d. Area: %r" % (g['id'], p.area))
             if result is None:
                 result = p
             else:

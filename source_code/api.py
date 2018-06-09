@@ -10,12 +10,12 @@
 from intersection import get_intersection_data, plot_lanes
 from street import insert_street_names
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
-    get_through_guideways, set_guideway_ids, get_bicycle_left_turn_guideways, get_u_turn_guideways
+    get_through_guideways, get_bicycle_left_turn_guideways, get_u_turn_guideways
 from city import get_city_name_from_address
 from node import get_nodes_dict
 from data import get_data_from_file, get_city_from_osm
 from conflict import get_conflict_zones_per_guideway, plot_conflict_zones, plot_conflict_zone
-from blind import get_blind_zone_data, plot_sector
+from blind import get_blind_zone_data, plot_sector, normalized_to_geo
 
 
 def get_city(city_name):
@@ -527,6 +527,7 @@ def get_all_conflict_zones(intersection_data, all_guideways=[]):
     """
     Get a list of conflict zones for all guideways
     :param intersection_data: intersection data dictionary
+    :param all_guideways: list of all guideway dictionaries
     :return: list of conflict zone dictionaries
     """
 
@@ -621,6 +622,25 @@ def get_conflict_zone_image(conflict_zones, intersection_data, alpha=1.0):
     return conflict_zone_fig
 
 
+def get_geo_coordinates(point_of_view, guideway_data, conflict_zone=None):
+    """
+    Convert normalized coordinates (between 0 and 1) to lon and lat.
+    point_of_view[0] is relative distance from the beginning of the median to the intersection with the conflict zone.
+    The first parameter of the point_of_view tuple is a distance along the median of the guideway.
+    0 is a point at the beginning of the guideway.
+    1 is a point at the intersection of the guideway median and the conflict zone.
+    If the conflict zone is None (not specified), then 1 means the end of the guideway.    
+    point_of_view[1] is position within the width of the guideway, 
+    where 0.5 is on the median, 0 on the left border and 1 on the right border.
+    :param point_of_view: a tuple of floats between 0 and 1
+    :param conflict_zone: conflict zone dictionary
+    :param guideway_data: guideway dictionary
+    :return: a tuple of lon and lat
+    """
+
+    return normalized_to_geo(point_of_view, guideway_data, conflict_zone=conflict_zone)
+
+
 def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guideways, all_guideways):
     """
     Get a blind zone
@@ -638,7 +658,7 @@ def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guid
     return get_blind_zone_data(point_of_view, current_guideway, conflict_zone, blocking_guideways)
 
 
-def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0,fc='r', ec='r'):
+def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0, fc='r', ec='r'):
     """
     Get an image of a list of conflict zones in PNG format
     :param blind_zone: blind zone dictionary
@@ -647,6 +667,7 @@ def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks
     :param fc: foreground color
     :param ec: edge color
     :param alpha: transparency: between 0.0 amd 1.0
+    :param blocks: reserved for future use
     :return: matplotlib.figure.Figure
     """
     fig, ax = plot_lanes(intersection_data['merged_lanes'],
