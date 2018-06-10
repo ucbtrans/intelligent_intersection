@@ -255,7 +255,7 @@ def get_shadow_from_list(point, blocking_guideway, shadowed_guideway):
     return result
 
 
-def get_shadows(point, all_guidways, shadowed_guideway):
+def get_shadows(point, all_guidways, shadowed_guideway, blocking_ids=[]):
     result = None
     for g in all_guidways:
         if g['type'] == 'bicycle' or g['type'] == 'footway' or g['id'] == shadowed_guideway['id']:
@@ -264,6 +264,7 @@ def get_shadows(point, all_guidways, shadowed_guideway):
 
         if p is not None:
             logger.debug("Adding a blind zone blocked by guideway id: %d. Area: %r" % (g['id'], p.area))
+            blocking_ids.append(g['id'])
             if result is None:
                 result = p
             else:
@@ -346,7 +347,8 @@ def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guidewa
         return None
 
     point_of_view = normalized_to_geo(point, current_guideway, conflict_zone)
-    blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, conflict_guideway)
+    blocking_ids = []
+    blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, conflict_guideway, blocking_ids)
 
     if blind_zone_polygon is not None:
         logger.info("Blind zone found for the current guideway: %d. Area: %r"
@@ -358,7 +360,7 @@ def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guidewa
                        'geo_point': point_of_view,
                        'guideway_id': current_guideway['id'],
                        'conflict_zone': conflict_zone,
-                       'blocking_ids': [g['id'] for g in blocking_guideways],
+                       'blocking_ids': blocking_ids,
                        'polygon': blind_zone_polygon
                        }
 
