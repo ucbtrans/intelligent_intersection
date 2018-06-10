@@ -12,6 +12,7 @@ from matplotlib.patches import Polygon
 from matplotlib.patches import Circle
 from guideway import get_polygon_from_guideway
 from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon, get_box
+from conflict import get_polygon_from_conflict_zone
 import nvector as nv
 from log import get_logger
 
@@ -322,14 +323,30 @@ def normalized_to_geo(point_of_view, guideway_data, conflict_zone=None):
         return cross_line.interpolate(point[1], normalized=True).coords[0]
 
 
-def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guideways):
+def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guideways, all_guideways):
+    """
+    Get blind zone data
+    :param point_of_view: normalized coordinates along the current guideway: (x,y), where x and y within [0.0,1.0]
+    :param current_guideway: guideway dictionary
+    :param conflict_zone: conflict zone dictionary.  It must belong to the current guideway
+    :param blocking_guideways: list of guideway dictionaries representing guideways creating blind zones
+    :param all_guideways: list of all guideway dictionaries in the intersection
+    :return: blind zone dictionary
+    """
+
     logger.debug("============================")
     logger.debug("Starting search for blind zones. Current guideway: %d, Point %r" % (current_guideway['id'], point))
     if conflict_zone['guideway1_id'] != current_guideway['id']:
         return None
 
+    candidates_for_conflict_guideway = [g for g in all_guideways if g['id'] == conflict_zone['guideway2_id']]
+    if candidates_for_conflict_guideway:
+        conflict_guideway = candidates_for_conflict_guideway[0]
+    else:
+        return None
+
     point_of_view = normalized_to_geo(point, current_guideway, conflict_zone)
-    blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, current_guideway)
+    blind_zone_polygon = get_shadows(point_of_view, blocking_guideways, conflict_guideway)
 
     if blind_zone_polygon is not None:
         logger.info("Blind zone found for the current guideway: %d. Area: %r"
@@ -392,6 +409,7 @@ def plot_sector(shapely_polygon=None,
                 x_data=None,
                 blind_zone=None,
                 point_of_view=None,
+                conflict_zone=None,
                 fig=None,
                 ax=None,
                 alpha=0.5,
@@ -440,6 +458,15 @@ def plot_sector(shapely_polygon=None,
             ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#FFFF00', ec='w'))
             ax.add_patch(get_polygon_from_guideway(block, alpha=1.0, fc='#000000', ec='#FFFF00', reduced=True))
 
+    if conflict_zone is not None:
+        if isinstance(conflict_zone['polygon'], geom.multipolygon.MultiPolygon):
+            polygons = list(conflict_zone['polygon'])
+        else:
+            polygons = [conflict_zone['polygon']]
+
+        for polygon in polygons:
+            ax.add_patch(get_polygon_from_conflict_zone(polygon, alpha=1.0, fc='#660066', ec='w'))
+
     if blind_zone is not None:
         if isinstance(blind_zone, geom.multipolygon.MultiPolygon) or isinstance(blind_zone,
                                                                                 geom.collection.GeometryCollection
@@ -451,7 +478,7 @@ def plot_sector(shapely_polygon=None,
         for bz in bzs:
             if isinstance(bz, geom.polygon.Polygon):
                 logger.debug("Area %r" % bz.area)
-                for pol in shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='r'):
+                for pol in shapely_to_matplotlib(bz, x_data, alpha=1.0, fc='r', ec='w'):
                     ax.add_patch(pol)
 
     if point_of_view is not None:

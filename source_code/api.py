@@ -655,7 +655,7 @@ def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guid
     for guideway_data in all_guideways:
         if 'reduced_left_border' not in guideway_data:
             get_conflict_zones_per_guideway(guideway_data, all_guideways, {})
-    return get_blind_zone_data(point_of_view, current_guideway, conflict_zone, blocking_guideways)
+    return get_blind_zone_data(point_of_view, current_guideway, conflict_zone, blocking_guideways, all_guideways)
 
 
 def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0, fc='r', ec='r'):
@@ -701,6 +701,7 @@ def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks
                                                 x_data=intersection_data,
                                                 blocks=blocks,
                                                 point_of_view=blind_zone['geo_point'],
+                                                conflict_zone=blind_zone['conflict_zone'],
                                                 fig=fig,
                                                 ax=ax,
                                                 blind_zone=blind_zone['polygon'],
