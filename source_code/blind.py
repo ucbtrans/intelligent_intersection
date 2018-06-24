@@ -12,7 +12,7 @@ from matplotlib.patches import Polygon
 from matplotlib.patches import Circle
 from guideway import get_polygon_from_guideway
 from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon, get_box
-from conflict import get_polygon_from_conflict_zone
+from conflict import get_polygon_from_conflict_zone, cut_guideway_borders_by_conflict_zone
 import nvector as nv
 from log import get_logger
 
@@ -324,6 +324,34 @@ def normalized_to_geo(point_of_view, guideway_data, conflict_zone=None):
         return cross_line.interpolate(point[1], normalized=True).coords[0]
 
 
+def cut_blind_zone_by_conflict_zone(blind_zone_polygon, conflict_zone, guideway_data):
+    """
+    Cut blind zone by the conflict zone, 
+    i.e. leaving the portion of the blind zone that is located before the conflict zone along the traffic
+    :param blind_zone_polygon: blind zone dictionary
+    :param conflict_zone: conflict zone dictionary
+    :param guideway_data: guideway dictionary
+    :return: 
+    """
+    if blind_zone_polygon is None:
+        return None
+    if not blind_zone_polygon.is_valid:
+        blind_zone_polygon = blind_zone_polygon.buffer(0)
+
+    left_border, median, right_border = cut_guideway_borders_by_conflict_zone(guideway_data, conflict_zone)
+    reduced_polygon = geom.Polygon(left_border + right_border[::-1])
+    if not reduced_polygon.is_valid:
+        reduced_polygon = reduced_polygon.buffer(0)
+
+    if reduced_polygon.intersects(blind_zone_polygon):
+        reduced_blind_zone = blind_zone_polygon.intersection(reduced_polygon)
+        if not reduced_blind_zone.is_valid:
+            reduced_blind_zone = reduced_blind_zone.buffer(0)
+        return reduced_blind_zone
+    else:
+        return blind_zone_polygon
+
+
 def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guideways, all_guideways):
     """
     Get blind zone data
@@ -361,7 +389,7 @@ def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guidewa
                        'guideway_id': current_guideway['id'],
                        'conflict_zone': conflict_zone,
                        'blocking_ids': blocking_ids,
-                       'polygon': blind_zone_polygon
+                       'polygon': cut_blind_zone_by_conflict_zone(blind_zone_polygon, conflict_zone, conflict_guideway)
                        }
 
     return blind_zone_data

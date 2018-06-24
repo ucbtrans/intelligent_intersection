@@ -10,7 +10,10 @@
 import shapely.geometry as geom
 from matplotlib.patches import Polygon
 from border import cut_border_by_polygon, cut_border_by_distance
+from log import get_logger
 
+
+logger = get_logger()
 
 conflict_type = {
     'drive': 'v',
@@ -162,6 +165,30 @@ def get_guideway_intersection(g1, g2, polygons_dict):
         'polygon': polygon_x
     }
     return conflict_zone
+
+
+def cut_guideway_borders_by_conflict_zone(guideway_data, conflict_zone):
+    """
+    Cut guideway borders from the beginning up to a conflict zone
+    :param guideway_data: guideway dictionary
+    :param conflict_zone: conflict zone dictionary
+    :return: left border, median, right border - all reduced
+    """
+
+    if not (conflict_zone['guideway1_id'] == guideway_data['id']
+            or conflict_zone['guideway2_id'] == guideway_data['id']):
+        logger.warning("Conflict zone (%d, %d) does not belong to the guideway %d"
+                       % (conflict_zone['guideway1_id'], conflict_zone['guideway2_id'], guideway_data['id']))
+        return None, None, None
+
+    reduced_median = cut_border_by_polygon(guideway_data['median'], conflict_zone['polygon'])
+
+    left_line = geom.LineString(guideway_data['left_border'])
+    reduced_left_line = cut_border_by_distance(left_line, left_line.project(geom.Point(reduced_median[-1])))[0]
+    right_line = geom.LineString(guideway_data['right_border'])
+    reduced_right_line = cut_border_by_distance(right_line, right_line.project(geom.Point(reduced_median[-1])))[0]
+
+    return list(reduced_left_line.coords), reduced_median, list(reduced_right_line.coords)
 
 
 def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict):
