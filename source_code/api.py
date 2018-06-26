@@ -10,7 +10,7 @@
 from intersection import get_intersection_data, plot_lanes
 from street import insert_street_names
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
-    get_through_guideways, get_bicycle_left_turn_guideways, get_u_turn_guideways
+    get_through_guideways, get_bicycle_left_turn_guideways, get_u_turn_guideways, relative_cut
 from city import get_city_name_from_address
 from node import get_nodes_dict
 from data import get_data_from_file, get_city_from_osm
@@ -423,6 +423,22 @@ def get_guideways(intersection_data, guideway_type='all'):
         guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
 
     return guideways
+
+
+def get_reduced_guideway(guideway_data, relative_distance, starting_point_for_cut="b"):
+    """
+    Reduce guideway by relative distance from either end.  The distance is in the range [0;1].
+    The starting point can be either 'b' or 'e';  The guideway left and right borders and median will truncated.
+    For example, if relative_distance = 0.3 and starting_point_for_cut="b", 
+    then the function returns 30% of the original length starting from the beginning of the guideway.
+    If relative_distance = 0.3 and starting_point_for_cut="e", 
+    then the function returns 30% of the original length adjacent to the end of the guideway.
+    :param guideway_data: guideway dictionary
+    :param relative_distance: relative length
+    :param starting_point_for_cut: string, either 'b' or 'e'
+    :return: guideway dictionary with reduced borders and median
+    """
+    return relative_cut(guideway_data, relative_distance, starting_point_for_cut)
 
 
 def get_meta_data(data):

@@ -8,7 +8,8 @@
 #######################################################################
 
 
-from border import get_bicycle_border
+import copy
+from border import get_bicycle_border, cut_line_by_relative_distance, cut_border_by_point
 from matplotlib.patches import Polygon
 from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
     get_destination_lanes_for_right_turn
@@ -194,6 +195,7 @@ def get_u_turn_guideways(all_lanes, x_data):
     """
     Compile a list of bicycle guideways for all legal u-turns
     :param all_lanes: list of dictionaries
+    :param x_data: intersection dictionary
     :return: list of dictionaries
     """
 
@@ -457,3 +459,51 @@ def plot_guideways(guideways, fig=None, ax=None, cropped_intersection=None,
         ax.add_patch(get_polygon_from_guideway(guideway_data, alpha=alpha, fc=fcolor, ec=ecolor))
 
     return fig, ax
+
+
+def relative_cut(guideway_data, relative_distance, starting_point="b"):
+    """
+    Reduce guideway by relative distance from either end.  The distance is in the range [0;1].
+    The starting point can be either 'b' or 'e';  The guideway left and right borders and median will truncated.
+    For example, if relative_distance = 0.3 and starting_point_for_cut="b", 
+    then the function returns 30% of the original length starting from the beginning of the guideway.
+    If relative_distance = 0.3 and starting_point_for_cut="e", 
+    then the function returns 30% of the original length adjacent to the end of the guideway.
+    :param guideway_data: guideway dictionary
+    :param relative_distance: relative length
+    :param starting_point: string, either 'b' or 'e'
+    :return: guideway dictionary with reduced borders and median
+    """
+
+    if guideway_data is None:
+        return None
+
+    cut_guideway = copy.deepcopy(guideway_data)
+    if 'cut_history' in cut_guideway:
+        cut_guideway['cut_history'].append(str(relative_distance) + '_' + starting_point)
+    else:
+        cut_guideway['cut_history'] = [str(relative_distance) + '_' + starting_point]
+
+    if starting_point == "b":
+        median = guideway_data['median']
+        left_border = guideway_data['left_border']
+        right_border = guideway_data['right_border']
+    else:
+        median = guideway_data['median'][::-1]
+        left_border = guideway_data['left_border'][::-1]
+        right_border = guideway_data['right_border'][::-1]
+
+    cut_median = cut_line_by_relative_distance(median, relative_distance)
+    cut_left_border = cut_border_by_point(left_border, cut_median[-1])
+    cut_right_border = cut_border_by_point(right_border, cut_median[-1])
+
+    if starting_point == "b":
+        cut_guideway['median'] = cut_median
+        cut_guideway['left_border'] = cut_left_border
+        cut_guideway['right_border'] = cut_right_border
+    else:
+        cut_guideway['median'] = cut_median[::-1]
+        cut_guideway['left_border'] = cut_left_border[::-1]
+        cut_guideway['right_border'] = cut_right_border[::-1]
+
+    return cut_guideway

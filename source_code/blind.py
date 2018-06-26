@@ -12,7 +12,8 @@ from matplotlib.patches import Polygon
 from matplotlib.patches import Circle
 from guideway import get_polygon_from_guideway
 from border import get_compass, get_distance_between_points, get_closest_point, cut_border_by_polygon, get_box
-from conflict import get_polygon_from_conflict_zone, cut_guideway_borders_by_conflict_zone
+from conflict import get_polygon_from_conflict_zone, cut_guideway_borders_by_conflict_zone, \
+    is_conflict_zone_matching_guideway
 import nvector as nv
 from log import get_logger
 
@@ -355,7 +356,7 @@ def cut_blind_zone_by_conflict_zone(blind_zone_polygon, conflict_zone, guideway_
 def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guideways, all_guideways):
     """
     Get blind zone data
-    :param point_of_view: normalized coordinates along the current guideway: (x,y), where x and y within [0.0,1.0]
+    :param point: normalized coordinates along the current guideway: (x,y), where x and y within [0.0,1.0]
     :param current_guideway: guideway dictionary
     :param conflict_zone: conflict zone dictionary.  It must belong to the current guideway
     :param blocking_guideways: list of guideway dictionaries representing guideways creating blind zones
@@ -365,13 +366,23 @@ def get_blind_zone_data(point, current_guideway, conflict_zone, blocking_guidewa
 
     logger.debug("============================")
     logger.debug("Starting search for blind zones. Current guideway: %d, Point %r" % (current_guideway['id'], point))
-    if conflict_zone['guideway1_id'] != current_guideway['id']:
+    if not is_conflict_zone_matching_guideway(conflict_zone, current_guideway, number=1):
+        logger.error("Conflict zone (%d,%d) %r does not match guideway %d %r" % (conflict_zone['guideway1_id'],
+                                                                                 conflict_zone['guideway2_id'],
+                                                                                 conflict_zone['guideway1_cut_history'],
+                                                                                 current_guideway['id'],
+                                                                                 current_guideway['cut_history'])
+                     )
         return None
 
-    candidates_for_conflict_guideway = [g for g in all_guideways if g['id'] == conflict_zone['guideway2_id']]
-    if candidates_for_conflict_guideway:
-        conflict_guideway = candidates_for_conflict_guideway[0]
+    conflict_guideway_candidates = [g for g in all_guideways if is_conflict_zone_matching_guideway(conflict_zone, g)]
+    if conflict_guideway_candidates:
+        conflict_guideway = conflict_guideway_candidates[0]
     else:
+        logger.error("Unable to find guideway matching conflict zone %d %r" % (conflict_zone['guideway2_id'],
+                                                                               conflict_zone['guideway2_cut_history']
+                                                                               )
+                     )
         return None
 
     point_of_view = normalized_to_geo(point, current_guideway, conflict_zone)

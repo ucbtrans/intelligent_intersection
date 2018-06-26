@@ -235,6 +235,19 @@ def cut_border_by_distance(line, distance):
                 geom.LineString([(cp.x, cp.y)] + coords[i:])]
 
 
+def cut_line_by_relative_distance(coordinates, relative_distance):
+    line = geom.LineString(coordinates)
+    point = line.interpolate(relative_distance, normalized=True)
+    reduced_line = cut_border_by_distance(line, line.project(point))[0]
+    return list(reduced_line.coords)
+
+
+def cut_border_by_point(border, point_coordinate):
+    line = geom.LineString(border)
+    reduced_line = cut_border_by_distance(line, line.project(geom.Point(point_coordinate)))[0]
+    return list(reduced_line.coords)
+
+
 def get_closest_point(point, coordinates):
     """
     Get closest point on a line to a point somewhere
@@ -445,7 +458,7 @@ def border_within_box(x0, y0, border, size):
         north, south, east, west = get_box(x0, y0, size=size)
         polygon = geom.Polygon([(west, north), (east, north), (east, south), (west, south)])
         line = geom.LineString(border)
-        line.intersection(polygon)
+        line = line.intersection(polygon)
         result = list(line.coords)
     except:
         return []

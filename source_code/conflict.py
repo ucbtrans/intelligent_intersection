@@ -157,13 +157,21 @@ def get_guideway_intersection(g1, g2, polygons_dict):
     else:
         return None
 
+    if 'cut_history' not in g1:
+        g1['cut_history'] = []
+    if 'cut_history' not in g2:
+        g2['cut_history'] = []
+
     conflict_zone = {
         'type': str(get_conflict_zone_type(g1, g2)) + conflict_type[g1['type']] + conflict_type[g2['type']],
         'guideway1_id': g1['id'],
         'guideway2_id': g2['id'],
+        'guideway1_cut_history': g1['cut_history'],
+        'guideway2_cut_history': g2['cut_history'],
         'distance': min_distance,
         'polygon': polygon_x
     }
+
     return conflict_zone
 
 
@@ -222,6 +230,33 @@ def get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict)
             guideway_data['reduced_' + key] = list(reduced_line.coords)
 
     return conflict_zones
+
+
+def is_conflict_zone_matching_guideway(conflict_zone, guideway_data, number=2):
+    """
+    Validate if the conflict_zone belongs to the specified guideway.  
+    The guideway id must match along with the guideway cut history.
+    :param conflict_zone: conflict zone dictionary
+    :param guideway_data: guideway dictionary
+    :param number: either 1 or 2.  Defines which of two guideways creating the conflict zone to match
+    :return: True if matching, otherwise False
+    """
+
+    if 'cut_history' not in guideway_data:
+        guideway_data['cut_history'] = []
+
+    guideway_id = 'guideway' + str(number) + '_id'
+    cut_history = 'guideway' + str(number) + '_cut_history'
+    if guideway_data['id'] == conflict_zone[guideway_id] \
+            and len(guideway_data['cut_history']) == len(conflict_zone[cut_history]):
+        match = True
+        for i, cut in enumerate(guideway_data['cut_history']):
+            if cut != conflict_zone['cut_history2']:
+                match = False
+                break
+        return match
+    else:
+        return False
 
 
 def get_polygon_from_conflict_zone(shapely_polygon,
