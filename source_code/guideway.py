@@ -9,7 +9,7 @@
 
 
 import copy
-from border import get_bicycle_border, cut_line_by_relative_distance, cut_border_by_point
+from border import get_bicycle_border, cut_line_by_relative_distance, cut_border_by_point, get_border_length
 from matplotlib.patches import Polygon
 from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
     get_destination_lanes_for_right_turn
@@ -358,21 +358,33 @@ def get_right_turn_guideways(all_lanes):
 def set_guideway_ids(guideways):
     """
     Set guideway ids as a combination of the origin and destination ids.
+    This function also sets guideway length.
     Set guideway types based on the origin lane type
     :param guideways: list of dictionaries
     :return: list of dictionaries
     """
 
     for g in guideways:
+        set_guideway_length(g)
         set_guideway_id(g)
 
     return guideways
 
 
+def set_guideway_length(g):
+    """
+    Set guideway length as the length of its median
+    :param g: guideway dictionary
+    :return: None
+    """
+    g['length'] = get_border_length(g['median'])
+
+
 def set_guideway_id(g):
     """
     Set guideway id as a combination of the origin and destination ids.
-    Set guideway types based on the origin lane type
+    Set guideway types based on the origin lane type.
+    This function also sets guideway length.
     :param g: guideway dictionary
     :return: None
     """
@@ -387,6 +399,7 @@ def set_guideway_id(g):
             g['type'] = 'footway'
         else:
             g['type'] = 'drive'
+    set_guideway_length(g)
 
 
 def get_polygon_from_guideway(guideway_data,
@@ -469,6 +482,8 @@ def relative_cut(guideway_data, relative_distance, starting_point="b"):
     then the function returns 30% of the original length starting from the beginning of the guideway.
     If relative_distance = 0.3 and starting_point_for_cut="e", 
     then the function returns 30% of the original length adjacent to the end of the guideway.
+    In addition this function sets the new guideway length.  The origin and destination lane lengths are preserved 
+    in the lane meta data sections.
     :param guideway_data: guideway dictionary
     :param relative_distance: relative length
     :param starting_point: string, either 'b' or 'e'
@@ -506,4 +521,5 @@ def relative_cut(guideway_data, relative_distance, starting_point="b"):
         cut_guideway['left_border'] = cut_left_border[::-1]
         cut_guideway['right_border'] = cut_right_border[::-1]
 
+    set_guideway_length(cut_guideway)
     return cut_guideway

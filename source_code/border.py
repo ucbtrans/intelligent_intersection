@@ -38,6 +38,17 @@ def get_distance_between_points(point1, point2):
     return ox.great_circle_vec(point1[1], point1[0], point2[1], point2[0])
 
 
+def get_border_length(border):
+    """
+    Calculate border length
+    :param border: list of points
+    :return: length in meters
+    """
+    if border and len(border) > 1:
+        return sum([get_distance_between_points(border[i-1], border[i]) for i in range(1,len(border))])
+    return 0
+
+
 def shift_by_bearing_and_distance(point, distance, direction_reference, bearing_delta=90.0):
     """
     Find coordinates of a point located at a distance from the starting point to the specified azimuth.  

@@ -12,7 +12,7 @@ from right_turn import get_connected_links
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 from lane import set_ids, get_link_from_and_to
 from public_transit import get_public_transit_stop
-
+from border import get_border_length
 
 def set_meta_data(lanes, intersection_data, max_distance=20.0):
     """
@@ -120,6 +120,7 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
             meta_data['traffic_signals'] = 'no'
 
     meta_data['compass'] = lane_data['compass']
+    meta_data['length'] = get_border_length(lane_data['median'])
 
     if get_public_transit_stop(lane_data, stops, max_distance=max_distance):
         meta_data['public_transit_stop'] = 'yes'

@@ -369,6 +369,17 @@ def get_guideways(intersection_data, guideway_type='all'):
     all rail
     rail
     
+    Guideway is dictionary with the following keys: 
+     'direction',
+     'origin_lane',
+     'destination_lane',
+     'right_border',
+     'left_border',
+     'median',
+     'id',
+     'type',
+     'length'
+
     :param intersection_data: dictionary
     :param guideway_type: string
     :return: list of dictionaries
@@ -433,6 +444,8 @@ def get_reduced_guideway(guideway_data, relative_distance, starting_point_for_cu
     then the function returns 30% of the original length starting from the beginning of the guideway.
     If relative_distance = 0.3 and starting_point_for_cut="e", 
     then the function returns 30% of the original length adjacent to the end of the guideway.
+    The length of the reduced guideway is updated to reflect the new actual length 
+    while the lengths in the origin and destination lane lengths are preserved in the lane meta data sections.
     :param guideway_data: guideway dictionary
     :param relative_distance: relative length
     :param starting_point_for_cut: string, either 'b' or 'e'
