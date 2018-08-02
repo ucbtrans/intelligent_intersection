@@ -445,13 +445,32 @@ def get_reduced_guideway(guideway_data, relative_distance, starting_point_for_cu
     If relative_distance = 0.3 and starting_point_for_cut="e", 
     then the function returns 30% of the original length adjacent to the end of the guideway.
     The length of the reduced guideway is updated to reflect the new actual length 
-    while the lengths in the origin and destination lane lengths are preserved in the lane meta data sections.
+    while the lengths of the origin and destination lanes are preserved in the lane meta data.
     :param guideway_data: guideway dictionary
     :param relative_distance: relative length
     :param starting_point_for_cut: string, either 'b' or 'e'
     :return: guideway dictionary with reduced borders and median
     """
     return relative_cut(guideway_data, relative_distance, starting_point_for_cut)
+
+
+def get_length(data):
+    """
+    Get length of a guideway, approach, exit or lane. 
+    The length is calculated as a sum of distances between sequential nodes of the median.
+    Generally the length of a guideway is not equal to the origin lane + destination lane lengths 
+    because the guideway includes a curved turn from the origin lane to the destination one.
+    For reduced guideways the length is reduced and reflects the actual length of the reduced guideway.
+
+    :param data: dictionary of a guideway, approach, exit or lane
+    :return: float in meters
+    """
+    if 'length' in data:
+        return data['length']
+    elif 'meta_data' in data and 'length' in data['meta_data']:
+        return data['meta_data']['length']
+    else:
+        return None
 
 
 def get_meta_data(data):
@@ -487,6 +506,10 @@ def get_meta_data(data):
         }
         if 'link_lane' in data:
             meta_data['link_lane'] = data['link_lane']['meta_data']
+
+        if 'length' in data:
+            meta_data['length'] = data['length']
+
         return meta_data
     else:
         if 'meta_data' in data:
