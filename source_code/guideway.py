@@ -377,7 +377,11 @@ def set_guideway_length(g):
     :param g: guideway dictionary
     :return: None
     """
-    g['length'] = get_border_length(g['median'])
+    if g is None:
+        logger.error('Guideway is None')
+    else:
+        g['length'] = get_border_length(g['median'])
+        logger.debug('Guideway id %d length %r' % (g['id'], g['length']))
 
 
 def set_guideway_id(g):
@@ -399,7 +403,7 @@ def set_guideway_id(g):
             g['type'] = 'footway'
         else:
             g['type'] = 'drive'
-    set_guideway_length(g)
+        set_guideway_length(g)
 
 
 def get_polygon_from_guideway(guideway_data,

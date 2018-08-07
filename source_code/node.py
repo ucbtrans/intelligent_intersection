@@ -15,7 +15,7 @@ from street import add_street_names_to_nodes
 def get_nodes_dict(city_paths_nodes, nodes_dict={}):
     """
     Parse nodes from an osm response and convert them into the osmnx format
-    :param city_paths_nodes: list of dictinaries
+    :param city_paths_nodes: list of dictionaries
     :param nodes_dict: dictionary
     :return: list of dictionaries
     """
@@ -46,7 +46,7 @@ def get_node_dict_subset_from_list_of_lanes(lanes, nodes_dict, nodes_subset={}):
 
 def get_node(element):
     """
-    Convert an OSM node element into the format for a networkx node mathcing the osmnx data format
+    Convert an OSM node element into the format for a networkx node matching the osmnx data format
     :param element: dictionary: osm element
     :return: dictionary representing a node
     """
@@ -101,7 +101,7 @@ def get_node_subset(city_paths_nodes, section, nodes_dict):
     :return: list of nodes
     """
     section_node_ids = []
-    result =[]
+    result = []
     [section_node_ids.extend(p['nodes']) for p in section]
     section_node_set = set(section_node_ids)
 
@@ -154,6 +154,7 @@ def add_nodes_to_dictionary(nodes, nodes_dict, paths=None):
     Add nodes to the node dictionary if missing
     :param nodes: list of nodes in the osm format
     :param nodes_dict: dictionary
+    :param paths: list of path dictionaries
     :return: None
     """
     for n in nodes:
@@ -223,11 +224,31 @@ def create_a_new_node_from_existing_one(node_data, nodes_dict, within_selection=
     if 'street_name' in node_data:
         new_node['street_name'] = copy.deepcopy(node_data['street_name'])
     for i in range(1, 1000000):
-        new_id = node_data['osmid'] * 1000 + i
+        new_id = node_data['osmid'] * 100 + i
         if new_id not in nodes_dict:
             new_node['osmid'] = new_id
             break
 
     nodes_dict[new_id] = new_node
+
+    return new_node
+
+
+def create_a_node_from_coordinates(point, nodes_dict, street_name=None):
+    """
+    Create a new node from a point.
+    :param point: tuple of coordinates
+    :param nodes_dict: dictionary
+    :param street_name: set of strings
+    :return: dictionary
+    """
+    new_node = {'x': point[0], 'y': point[1], 'street_name': street_name}
+
+    for i in range(1, 1000000):
+        if i not in nodes_dict:
+            new_node['osmid'] = i
+            break
+
+    nodes_dict[i] = new_node
 
     return new_node

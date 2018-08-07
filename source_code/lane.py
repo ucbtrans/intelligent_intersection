@@ -632,7 +632,7 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
     :param bicycle_lane_width: float in meters
     :return: list of dictionaries
     """
-    if len(path_data['nodes']) < 2:
+    if len(path_data['nodes']) < 1:
         return []
 
     lanes = []
@@ -786,7 +786,7 @@ def merge_lanes(lanes, nodes_dict):
                                  if l['lane_id'] == lane_id
                                  and l['name'] == name
                                  and l['direction'] == direction
-                                 and len(l['nodes']) > 1
+                                 and len(l['nodes']) > 0
                                  ]
 
                 for similar_lane in similar_lanes:

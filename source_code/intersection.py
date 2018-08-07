@@ -12,7 +12,7 @@ from meta import set_meta_data
 from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
-    add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes
+    add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
 from street import select_close_nodes, split_streets
 from railway import split_railways
 from footway import get_crosswalks
@@ -98,7 +98,10 @@ def get_street_data(x_data, city_data):
     """
 
     nodes_dict = city_data['nodes']
-    intersection_jsons = get_box_data(x_data, city_data['raw_data'], infrastructure='way["highway"]', network_type='drive')
+    intersection_jsons = get_box_data(x_data, city_data['raw_data'],
+                                      infrastructure='way["highway"]',
+                                      network_type='drive'
+                                      )
 
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
     add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'],
@@ -117,7 +120,7 @@ def get_street_data(x_data, city_data):
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    cleaned_intersection_paths = remove_zero_length_paths(clean_paths(cropped_paths, x_data['streets']))
+    cleaned_intersection_paths = clean_paths(cropped_paths, x_data['streets'])
     node_subset = get_node_subset(intersection_jsons, cleaned_intersection_paths, nodes_dict)
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
@@ -315,7 +318,7 @@ def smart_crop(elements, nodes_dict, x0, y0, radius):
             if 0 < len(cropped_node_list) < len(e['nodes']):
                 if 'left_border' in e:
                     e['left_border'] = border_within_box(x0, y0, e['left_border'], radius)
-                if 'left_border' in e:
+                if 'right_border' in e:
                     e['right_border'] = border_within_box(x0, y0, e['right_border'], radius)
 
             e['nodes'] = cropped_node_list
@@ -343,12 +346,22 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
             if 0 < len(cropped_node_list) < len(e['nodes']):
                 if 'left_border' in e:
                     e['left_border'] = border_within_box(x0, y0, e['left_border'], radius)
-                if 'left_border' in e:
+                if 'right_border' in e:
                     e['right_border'] = border_within_box(x0, y0, e['right_border'], radius)
+                if 'median' in e:
+                    e['median'] = border_within_box(x0, y0, e['median'], radius)
+
+                x = (e['left_border'][-1][0] + e['right_border'][-1][0]) / 2.0
+                y = (e['left_border'][-1][1] + e['right_border'][-1][1]) / 2.0
+                if 'name' in e:
+                    street_name = set([e['name']])
+                else:
+                    street_name = set(['no_name'])
+                    cropped_node_list.append(create_a_node_from_coordinates((x,y), nodes_dict, street_name)['osmid'])
 
             e['nodes'] = cropped_node_list
 
-    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 1]
+    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 0]
 
 
 def set_font_size(ax, font_size=14):
