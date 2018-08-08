@@ -351,13 +351,21 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                 if 'median' in e:
                     e['median'] = border_within_box(x0, y0, e['median'], radius)
 
-                x = (e['left_border'][-1][0] + e['right_border'][-1][0]) / 2.0
-                y = (e['left_border'][-1][1] + e['right_border'][-1][1]) / 2.0
-                if 'name' in e:
-                    street_name = set([e['name']])
+                if 'name' in e['tags']:
+                    street_name = set([e['tags']['name']])
                 else:
                     street_name = set(['no_name'])
+
+                x = e['left_border'][-1][0]
+                y = e['left_border'][-1][1]
+                if ox.great_circle_vec(y0, x0, y, x) > 5.0:
                     cropped_node_list.append(create_a_node_from_coordinates((x,y), nodes_dict, street_name)['osmid'])
+
+                x = e['left_border'][0][0]
+                y = e['left_border'][0][1]
+                if ox.great_circle_vec(y0, x0, y, x) > 5.0:
+                    new_node = create_a_node_from_coordinates((x, y), nodes_dict, street_name)
+                    cropped_node_list = [new_node['osmid']] + cropped_node_list
 
             e['nodes'] = cropped_node_list
 
