@@ -358,12 +358,16 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
                 x = e['left_border'][-1][0]
                 y = e['left_border'][-1][1]
-                if ox.great_circle_vec(y0, x0, y, x) > 5.0:
+                yy = nodes_dict[cropped_node_list[-1]]['y']
+                xx = nodes_dict[cropped_node_list[-1]]['x']
+                if ox.great_circle_vec(yy, xx, y, x) > 5.0:
                     cropped_node_list.append(create_a_node_from_coordinates((x,y), nodes_dict, street_name)['osmid'])
 
                 x = e['left_border'][0][0]
                 y = e['left_border'][0][1]
-                if ox.great_circle_vec(y0, x0, y, x) > 5.0:
+                yy = nodes_dict[cropped_node_list[0]]['y']
+                xx = nodes_dict[cropped_node_list[0]]['x']
+                if ox.great_circle_vec(yy, xx, y, x) > 5.0:
                     new_node = create_a_node_from_coordinates((x, y), nodes_dict, street_name)
                     cropped_node_list = [new_node['osmid']] + cropped_node_list
 
