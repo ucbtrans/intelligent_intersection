@@ -17,12 +17,12 @@ def insert_street_names(city_data):
     :param city_data: dictionary
     :return: dictionary
     """
-    for path in city_data['paths']:
-        if 'name' in path['tags'] and path['tags']['name'] != 'no_name':
-            for node_id in path['nodes']:
+    for path_data in city_data['paths']:
+        if 'name' in path_data['tags'] and path_data['tags']['name'] != 'no_name':
+            for node_id in path_data['nodes']:
                 if 'street_name' not in city_data['nodes'][node_id]:
                     city_data['nodes'][node_id]['street_name'] = set()
-                city_data['nodes'][node_id]['street_name'].add(path['tags']['name'])
+                city_data['nodes'][node_id]['street_name'].add(path_data['tags']['name'])
 
     return city_data
 

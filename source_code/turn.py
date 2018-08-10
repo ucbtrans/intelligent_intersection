@@ -12,9 +12,12 @@ import shapely.geometry as geom
 import nvector as nv
 import osmnx as ox
 from lane import add_space_for_crosswalk
-from border import cut_border_by_polygon, get_turn_angle, to_rad, shift_list_of_nodes, extend_vector, get_compass, \
-    shift_by_bearing_and_distance
+from border import cut_border_by_polygon, get_turn_angle, to_rad, extend_vector, get_compass, \
+    shift_by_bearing_and_distance, drop_small_edges
+from log import get_logger
 
+
+logger = get_logger()
 
 nv_frame = nv.FrameE(a=6371e3, f=0)
 
@@ -51,6 +54,7 @@ def shorten_border_for_crosswalk(input_border,
         temp = cut_border_by_polygon(border, polygon, multi_string_index)
         if temp is not None:
             border = temp
+            border = drop_small_edges(border)
 
     return border
 
@@ -113,6 +117,9 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
     intersection_point, vector1, vector2 = get_turn_angle(origin_border, destination_border)
 
     if intersection_point is None:
+        logger.debug('Origin %r' % destination_border)
+        logger.debug('Destin %r' % destination_border)
+        logger.debug('Cannot find intersection point')
         return None
 
     from_origin_to_intersection = ox.great_circle_vec(intersection_point[1], intersection_point[0],
@@ -181,7 +188,6 @@ def get_turn_border(origin_lane,
 
     destination_border = destination_lane[non_shaped_border]
 
-
     if turn_direction > 0:
         crosswalk_width = origin_lane['crosswalk_width']
     else:
@@ -200,10 +206,7 @@ def get_turn_border(origin_lane,
                                                               crosswalk_width=crosswalk_width
                                                               )
 
-    #print('origin', origin_lane['id'], origin_lane['name'])
-    #print('dest', destination_lane['id'], destination_lane['name'])
     if turn_direction < 0:
-        # turn_arc = construct_turn_arc_with_initial_angle(shorten_origin_border,
         turn_arc = construct_turn_arc(shorten_origin_border,
                                       shorten_destination_border,
                                       turn_direction=turn_direction,
@@ -215,6 +218,7 @@ def get_turn_border(origin_lane,
                                       )
 
     if turn_arc is None:
+        logger.debug('Turn arc failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
         return None
 
     return shorten_origin_border + turn_arc[1:-1] + shorten_destination_border
