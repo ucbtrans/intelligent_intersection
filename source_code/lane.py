@@ -236,6 +236,8 @@ def create_lane(p,
 
     if 'name' in p['tags']:
         name = p['tags']['name']
+    elif 'highway' in p['tags'] and 'link' in p['tags']['highway']:
+        name = p['tags']['highway']
     else:
         name = 'no_name'
 

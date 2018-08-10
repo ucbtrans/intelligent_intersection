@@ -11,7 +11,10 @@ import math
 import shapely.geometry as geom
 import nvector as nv
 import copy
+from log import get_logger, dictionary_to_log
 
+
+logger = get_logger()
 
 rhumbs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 nv_frame = nv.FrameE(a=6371e3, f=0)
@@ -114,6 +117,7 @@ def extend_vector(coord, length=300.0, backward=True, relative=False):
     x1 = coord[1][0]
     y1 = coord[1][1]
     current_distance = ox.great_circle_vec(y0, x0, y1, x1)
+
     if current_distance < 0.01:
         return coord
 
@@ -532,7 +536,11 @@ def get_turn_angle(origin_border, destination_border):
     destination_line = geom.LineString(extend_destination_border(destination_border))
 
     if not origin_line.intersects(destination_line):
-        # Something went terribly wrong
+        logger.debug('Origin and Destination borders do not intersect')
+        logger.debug('Origin %r' % origin_border)
+        logger.debug('Extended Origin %r' % extend_origin_border(origin_border))
+        logger.debug('Destin %r' % destination_border)
+        logger.debug('Extended Destin %r' % extend_destination_border(destination_border))
         return None, None, None
 
     intersection_point = origin_line.intersection(destination_line)
@@ -585,3 +593,32 @@ def get_intersection_with_circle(vector, center, radius, margin=0.01):
     coord = line.interpolate(relative_distance, normalized=True).coords[0]
     new_dist = ox.great_circle_vec(center[1], center[0], coord[1], coord[0])
     return line.interpolate(relative_distance, normalized=True).coords[0]
+
+
+def drop_small_edges(b):
+    """
+    Checking if the first or last edge are less than 15 cm.
+    If yes, then removing the second node or the next to the last node.
+    This preserves the overall border start and finish, while eliminating short edges.
+    :param b: list of points
+    :return: list of points
+    """
+    if not b or len(b) < 3:
+        return b
+
+    if get_border_length(b[:2]) < 0.15:
+        logger.debug('The first edge is less than 15 cm %r' % b)
+        updated_b = [b[0]] + b[2:]
+        logger.debug('The second node has been removed %r' % updated_b)
+    else:
+        updated_b = b
+
+    if len(updated_b) < 3:
+        return updated_b
+
+    if get_border_length(updated_b[-2:]) < 0.15:
+        logger.debug('Last edge is less than 15 cm %r' % updated_b)
+        updated_b = updated_b[:-2] + [updated_b[-1]]
+        logger.debug('The next to the last node has been removed %r' % updated_b)
+
+    return updated_b

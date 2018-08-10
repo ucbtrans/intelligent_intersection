@@ -286,6 +286,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
         turn_direction = 1
     else:
         if not is_left_turn_allowed(origin_lane):
+            logger.debug('Left turn not allowed. Origin id %d' % origin_lane['id'])
             return None
         turn_direction = -1
 
@@ -302,6 +303,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
                                   turn_direction=turn_direction
                                   )
     if left_border is None:
+        logger.debug('Left border failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
         return None
 
     right_border = get_turn_border(origin_lane,
@@ -311,6 +313,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
                                    turn_direction=turn_direction
                                    )
     if right_border is None:
+        logger.debug('Right border failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
         return None
 
     median = get_turn_border(origin_lane,
@@ -320,6 +323,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
                              turn_direction=turn_direction
                              )
     if median is None:
+        logger.debug('Median failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
         return None
 
     guideway['left_border'] = left_border

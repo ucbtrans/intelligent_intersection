@@ -57,7 +57,6 @@ def get_connected_links(origin_lane, all_lanes):
             and 'highway' in l['path'][0]['tags']
             and 'link' in l['path'][0]['tags']['highway']
             and l['nodes'][0] in origin_lane['nodes']
-            # and origin_lane['lane_id'][0] == l['lane_id'][0]
             ]
 
 

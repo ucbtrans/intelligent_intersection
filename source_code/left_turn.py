@@ -66,5 +66,5 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
             and destination_index == get_lane_index_from_left(l)
             and intersects(origin_lane, l, all_lanes)
             and get_turn_type(origin_lane, l) == 'left_turn'
-            and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
+            #and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
             ]

@@ -82,6 +82,14 @@ def add_borders_to_path(path_data, nodes_dict, width=3.048):
         path_data['right_border'] = shift_list_of_nodes(path_data['left_border'],
                                                         [width * num_of_trunk_lanes] * len(node_coordinates)
                                                         )
+
+    if 'name' not in path_data['tags'] and 'highway' in path_data['tags'] and 'link' in path_data['tags']['highway']:
+        path_data['tags']['name'] = path_data['tags']['highway']
+        for node_id in path_data['nodes']:
+            if 'street_name' not in nodes_dict[node_id]:
+                nodes_dict[node_id]['street_name'] = set()
+            nodes_dict[node_id]['street_name'].add(path_data['tags']['name'])
+
     return path_data
 
 
