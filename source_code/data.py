@@ -147,7 +147,7 @@ def check_network(network_type, path_data):
     if network_type in include and 'tags' in path_data:
         for keyword in include[network_type]:
             if keyword not in path_data['tags']:
-                logger.debug('Excluded path %d - keyword %s not in path tags' % (path_data['id'], keyword))
+                #logger.debug('Excluded path %d - keyword %s not in path tags' % (path_data['id'], keyword))
                 return False
 
     if network_type not in exclude or 'tags' not in path_data:
@@ -155,9 +155,6 @@ def check_network(network_type, path_data):
 
     for key in exclude[network_type]:
         if key in path_data['tags'] and path_data['tags'][key] in exclude[network_type][key]:
-            logger.debug('Excluded path %d - keyword %s is in the excluded list'
-                         % (path_data['id'], path_data['tags'][key])
-                         )
             return False
 
     return True
