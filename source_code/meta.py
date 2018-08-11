@@ -70,7 +70,7 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
         meta_data['id'] = None
 
     if len(get_connected_links(lane_data, all_lanes)) > 0:
-        meta_data['right_turn_dedicated_link '] = 'yes'
+        meta_data['right_turn_dedicated_link'] = 'yes'
     else:
         meta_data['right_turn_dedicated_link'] = 'no'
 

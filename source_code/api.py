@@ -16,6 +16,7 @@ from node import get_nodes_dict
 from data import get_data_from_file, get_city_from_osm
 from conflict import get_conflict_zones_per_guideway, plot_conflict_zones, plot_conflict_zone
 from blind import get_blind_zone_data, plot_sector, normalized_to_geo
+from correction import add_missing_highway_tag
 
 
 def get_city(city_name):
@@ -38,6 +39,9 @@ def get_city(city_name):
         'nodes': get_nodes_dict(city_paths_nodes),
         'relations': [p for p in city_paths_nodes[0]['elements'] if p['type'] == 'relation']
     }
+
+    add_missing_highway_tag(city_data['paths'], get_streets(city_data))
+
     return insert_street_names(city_data)
 
 
@@ -61,6 +65,9 @@ def get_selection(file_name):
         'nodes': get_nodes_dict(selection),
         'relations': [p for p in selection[0]['elements'] if p['type'] == 'relation']
     }
+
+    add_missing_highway_tag(selection_data['paths'], get_streets(selection_data))
+
     return insert_street_names(selection_data)
 
 

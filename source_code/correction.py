@@ -72,3 +72,16 @@ def correct_paths(paths):
     for i in range(2):
         for p in paths:
             extrapolate_number_of_lanes(p, paths)
+
+
+def add_missing_highway_tag(paths, valid_streets):
+    """
+    Adding highway tag if it is missing in the input osm data but needed to identify a valid street
+    :param paths: 
+    :param valid_streets: 
+    :return: 
+    """
+    for p in paths:
+        if 'tags' in p and 'highway' not in p['tags'] and 'type' in p['tags'] and p['tags']['type'] == 'way':
+            if 'name' in p['tags'] and p['tags']['name'] in valid_streets:
+                p['tags']['highway'] == 'missing_in_the_input_osm_data'
