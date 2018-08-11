@@ -12,12 +12,13 @@ import simplekml
 
 class KML:
     
-    def __init__(self):
+    def __init__(self, elevation=3):
         '''
         Constructor...
         '''
 
         self.kml = simplekml.Kml()
+        self.elevation = elevation
         
         return
 
@@ -56,10 +57,11 @@ class KML:
             coords = []
             sz = len(gw['median'])
             for i in range(sz):
-                coords.append((gw['median'][i][0], gw['median'][i][1], 0))
+                coords.append((gw['median'][i][0], gw['median'][i][1], self.elevation))
             ls.coords = coords
-            ls.extrude = 1
-            ls.altitudemode = simplekml.AltitudeMode.relativetoground
+            #ls.extrude = 1
+            #ls.altitudemode = simplekml.AltitudeMode.relativetoground
+            ls.altitudemode = simplekml.AltitudeMode.clamptoground
             k += 1
 
         return
@@ -98,12 +100,13 @@ class KML:
 
             coords = []
             for lnglat in gw['left_border']:
-                coords.append((lnglat[0], lnglat[1], 0))
+                coords.append((lnglat[0], lnglat[1], self.elevation))
             for lnglat in reversed(gw['right_border']):
-                coords.append((lnglat[0], lnglat[1], 0))
+                coords.append((lnglat[0], lnglat[1], self.elevation))
             pol.outerboundaryis = coords
             #pol.extrude = 10
             #pol.altitudemode = simplekml.AltitudeMode.relativetoground
+            pol.altitudemode = simplekml.AltitudeMode.clamptoground
             k += 1
 
         return
@@ -134,10 +137,11 @@ class KML:
             coords = []
             sz = len(cw['median'])
             for i in range(sz):
-                coords.append((cw['median'][i][0], cw['median'][i][1], 0))
+                coords.append((cw['median'][i][0], cw['median'][i][1], self.elevation))
             ls.coords = coords
-            ls.extrude = 1
-            ls.altitudemode = simplekml.AltitudeMode.relativetoground
+            #ls.extrude = 1
+            #ls.altitudemode = simplekml.AltitudeMode.relativetoground
+            ls.altitudemode = simplekml.AltitudeMode.clamptoground
             k += 1
 
         return
@@ -166,12 +170,13 @@ class KML:
 
             coords = []
             for lnglat in cw['left_border']:
-                coords.append((lnglat[0], lnglat[1], 0))
+                coords.append((lnglat[0], lnglat[1], self.elevation))
             for lnglat in reversed(cw['right_border']):
-                coords.append((lnglat[0], lnglat[1], 0))
+                coords.append((lnglat[0], lnglat[1], self.elevation))
             pol.outerboundaryis = coords
             #pol.extrude = 1
             #pol.altitudemode = simplekml.AltitudeMode.relativetoground
+            pol.altitudemode = simplekml.AltitudeMode.clamptoground
             k += 1
 
         return
@@ -203,11 +208,12 @@ class KML:
 
             coords = []
             for i in range(sz):
-                coords.append((poly[0][i], poly[1][i], 0))
+                coords.append((poly[0][i], poly[1][i], self.elevation))
 
             pol.outerboundaryis = coords
             #pol.extrude = 1
             #pol.altitudemode = simplekml.AltitudeMode.relativetoground
+            pol.altitudemode = simplekml.AltitudeMode.clamptoground
             k += 1
 
         return
@@ -240,17 +246,54 @@ class KML:
 
             coords = []
             for i in range(sz):
-                coords.append((poly[0][i], poly[1][i], 0))
+                coords.append((poly[0][i], poly[1][i], self.elevation))
 
             pol.outerboundaryis = coords
             #pol.extrude = 1
             #pol.altitudemode = simplekml.AltitudeMode.relativetoground
+            pol.altitudemode = simplekml.AltitudeMode.clamptoground
 
 
             pnt = mg.newpoint()
             pnt.name = "Point of View {} in Guideway {}".format(bz['point'], bz['guideway_id'])
-            pnt.coords = [(bz['geo_point'][0], bz['geo_point'][1], 0)]
+            pnt.coords = [(bz['geo_point'][0], bz['geo_point'][1], self.elevation)]
 
+            k += 1
+
+        return
+
+
+
+    def traces(self, tr_list, latlon=False, color="ff999999", width=2):
+        '''
+
+        :param tr_list:
+        :param latlon:
+        :param color:
+        :param width:
+        :return:
+        '''
+
+        k = 0
+        for tr in tr_list:
+            name = "Trace {}".format(k)
+
+            mg = self.kml.newmultigeometry()
+            mg.name = name
+            ls = mg.newlinestring()
+            ls.style.linestyle.width = width
+            ls.style.linestyle.color = color
+
+            coords = []
+            for gc in tr:
+                if latlon:
+                    coords.append((gc[1], gc[0], self.elevation))
+                else:
+                    coords.append((gc[0], gc[1], self.elevation))
+            ls.coords = coords
+            #ls.extrude = 1
+            #ls.altitudemode = simplekml.AltitudeMode.relativetoground
+            ls.altitudemode = simplekml.AltitudeMode.clamptoground
             k += 1
 
         return
