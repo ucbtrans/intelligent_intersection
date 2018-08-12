@@ -471,7 +471,7 @@ def plot_guideways(guideways, fig=None, ax=None, cropped_intersection=None,
         return None, None
 
     for guideway_data in guideways:
-        if guideway_data['destination_lane']['lane_type'] == 'cycleway':
+        if 'destination_lane' in guideway_data and guideway_data['destination_lane']['lane_type'] == 'cycleway':
             fcolor = '#00FF00'
             ecolor = '#00FF00'
         else:

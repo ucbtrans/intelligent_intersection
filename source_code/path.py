@@ -71,7 +71,7 @@ def add_borders_to_path(path_data, nodes_dict, width=3.048):
     num_of_left_lanes, num_of_right_lanes, num_of_trunk_lanes = count_lanes(path_data)
     node_coordinates = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path_data['nodes']]
 
-    if 'left_border' not in path_data or path_data['left_border'] is None:
+    if 'left_border' not in path_data or path_data['left_border'] is None or len(path_data['left_border']) < 2:
         path_data['right_border'] = shift_list_of_nodes(node_coordinates,
                                                         [width*num_of_trunk_lanes/2.0]*len(node_coordinates)
                                                         )

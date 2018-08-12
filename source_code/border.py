@@ -476,6 +476,7 @@ def border_within_box(x0, y0, border, size):
         line = line.intersection(polygon)
         result = list(line.coords)
     except:
+        logger.error('Cannot find a portion of type %s within a box: %r' % (type(line), border))
         return []
     return result
 
@@ -494,7 +495,9 @@ def polygon_within_box(x0, y0, shapely_polygon, size):
         boundary_polygon = geom.Polygon([(west, north), (east, north), (east, south), (west, south)])
         polygon_within_boundaries = shapely_polygon.intersection(boundary_polygon)
         result = list(geom.mapping(polygon_within_boundaries)['coordinates'][0])
-    except:
+    except Exception as e:
+        logger.error('Cannot find a portion of a polygon within a box')
+        logger.exception('%r' % e)
         return []
     return result
 

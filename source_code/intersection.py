@@ -114,6 +114,7 @@ def get_street_data(x_data, city_data):
     set_direction(oneway_paths, x_data, nodes_dict)
     correct_paths(oneway_paths)
     oneway_paths_with_borders = add_borders_to_paths(oneway_paths, nodes_dict)
+
     cropped_paths = remove_elements_beyond_radius(oneway_paths_with_borders,
                                                   nodes_dict,
                                                   x_data['center_x'],
@@ -350,6 +351,11 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                     e['right_border'] = border_within_box(x0, y0, e['right_border'], radius)
                 if 'median' in e:
                     e['median'] = border_within_box(x0, y0, e['median'], radius)
+
+                if len(e['left_border']) < 1 or len(e['right_border']) < 1:
+                    e['nodes'] = []
+                    logger.debug('Unable to obtain the portion of the path %d within radius. Skipping.' % e['id'])
+                    continue
 
                 if 'name' in e['tags']:
                     street_name = set([e['tags']['name']])
