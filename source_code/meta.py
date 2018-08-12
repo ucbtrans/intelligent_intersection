@@ -108,16 +108,30 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
     if 'lane_type' in lane_data:
         meta_data['lane_type'] = lane_data['lane_type']
 
-    meta_data['traffic_signals'] = None
+    traffic_signals = None
+    if 'traffic_signals' in lane_data:
+        meta_data['traffic_signals'] = lane_data['traffic_signals']
+    else:
+        if 'nodes_dict' in lane_data:
+            for n in lane_data['nodes_dict']:
+                if 'highway' in lane_data['nodes_dict'][n] \
+                        and "traffic_signals" in lane_data['nodes_dict'][n]['highway']:
+                    traffic_signals = 'yes'
+                    break
+
+    meta_data['traffic_signals'] = traffic_signals
+
     meta_data['number_of_crosswalks'] = None
     if 'footway' in lane_data and lane_data['footway'] == 'crossing':
         meta_data['number_of_crosswalks'] = 1
     if 'crossing' in lane_data:
         meta_data['number_of_crosswalks'] = 1
         if 'traffic_signal' in lane_data['crossing']:
-            meta_data['traffic_signals'] = 'yes'
+            meta_data['pedestrian_traffic_signals'] = 'yes'
         else:
-            meta_data['traffic_signals'] = 'no'
+            meta_data['pedestrian_traffic_signals'] = 'no'
+    else:
+        meta_data['pedestrian_traffic_signals'] = None
 
     meta_data['compass'] = lane_data['compass']
     meta_data['length'] = get_border_length(lane_data['median'])
