@@ -11,6 +11,7 @@ import xmltodict
 import osmnx as ox
 import json
 import time
+import copy
 from log import get_logger, dictionary_to_log
 
 
@@ -282,7 +283,7 @@ def get_box_data(x_data, selection, network_type='all', infrastructure='way["hig
     :return: osmnx data structure
     """
     if x_data['from_file'] == 'yes':
-        return get_data_subset(selection, network_type=network_type, infrastructure=infrastructure)
+        return copy.deepcopy(get_data_subset(selection, network_type=network_type, infrastructure=infrastructure))
     else:
         try:
             return ox.osm_net_download(north=x_data['north'],
