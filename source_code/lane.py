@@ -635,6 +635,15 @@ def get_lanes_from_path(path_data, nodes_dict, shape_points=16, shape_length=10.
     :return: list of dictionaries
     """
     if len(path_data['nodes']) < 1:
+        logger.warning("Path %d does not have enough nodes: %r" % (path_data['id'], path_data['nodes']))
+        return []
+
+    if path_data['left_border'] is None or len(path_data['left_border']) < 2:
+        logger.warning("Path %d has an invalid left border: %r" % (path_data['id'], path_data['left_border']))
+        return []
+
+    if path_data['right_border'] is None or len(path_data['right_border']) < 2:
+        logger.warning("Path %d has an invalid right border: %r" % (path_data['id'], path_data['right_border']))
         return []
 
     lanes = []
@@ -817,17 +826,12 @@ def merge_lanes(lanes, nodes_dict):
                         else:
                             similar_lane['prev'] = None
 
-                #reshape_lanes(lanes)
-
                 for start_lane in [l for l in similar_lanes if l['prev'] is None]:
                     merged_lane = add_lane(start_lane, merged_lane=None)
-                    #logger.debug('Merged lane ' + dictionary_to_log(merged_lane))
                     nxt = start_lane['next']
                     while nxt is not None:
                         next_lane = [l for l in similar_lanes if l['path_id'] == nxt][0]
-                        #logger.debug('Next lane ' + dictionary_to_log(next_lane))
                         merged_lane = add_lane(next_lane, merged_lane=merged_lane)
-
                         nxt = next_lane['next']
 
                     merged_lanes.append(merged_lane)
