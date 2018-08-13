@@ -70,12 +70,107 @@ def filter_guideways(guideways, ignored_directions):
 # API
 #==============================================================================
 
+def generate_intersection_list(args):
+    '''
+    Generate the list of intersections for a given city.
+
+    :param args:
+        Dictionary with function arguments:
+            args['city_name'] = Name of the city. E.g., 'San Francisco, California, USA'.
+            args['data_dir'] = Name of the data directory where the output should be placed.
+            args['crop_radius'] = Crop radius for intersection extraction. Default = 80.
+            args['debug'] = (Optional) Boolean parameter indicating whether DEBUG info must be logged.
+
+    :returns res:
+        Dictionary with resulting info:
+            res['intersections_signalized'] = List of signalized intersections.
+            res['intersections_other'] = List of all other intersections.
+            res['failed'] = List of intersections, for which data could not be extracted.
+
+    '''
+
+    if args == None:
+        return None
+
+    city_name = args['city_name']
+    data_dir = args['data_dir']
+    output_signalized = "{}/{}_signalized.csv".format(data_dir, city_name)
+    output_other = "{}/{}_other.csv".format(data_dir, city_name)
+    output_failed = "{}/{}_failed.csv".format(data_dir, city_name)
+
+    crop_radius = 80
+    if 'crop_radius' in args.keys():
+        crop_radius = args['crop_radius']
+
+    debug = False
+    if 'debug' in args.keys():
+        debug = args['debug']
+
+    city = api.get_data(city_name=city_name)
+    cross_streets = api.get_intersecting_streets(city)
+
+    fp_s = open(output_signalized, 'w')
+    fp_o = open(output_other, 'w')
+    fp_f = open(output_failed, 'w')
+
+    fp_s.write("Intersection,Longitude,Latitude\n")
+    fp_o.write("Intersection,Longitude,Latitude\n")
+    fp_f.write("Intersection\n")
+
+    res = {'intersections_signalized': [], 'intersections_other': [], 'failed': []}
+    idx = 1
+    cnt_s, cnt_o, cnt_f = 0, 0, 0
+    prct = 0
+    sz = len(cross_streets)
+
+    for cs in cross_streets:
+        try:
+            intersection = api.get_intersection(cs, city, crop_radius=crop_radius)
+            lon, lat = intersection['center_x'], intersection['center_y']
+            signalized = False
+            ml_list = intersection['merged_lanes']
+            for ml in ml_list:
+                meta = ml['meta_data']
+                if 'traffic_signals'in meta.keys():
+                    signalized = True
+                    break
+
+            if signalized:
+                res['intersections_signalized'].append(intersection)
+                fp_s.write("{},{},{}\n".format(cs, lon, lat))
+                cnt_s += 1
+            else:
+                res['intersections_other'].append(intersection)
+                fp_o.write("{},{},{}\n".format(cs, lon, lat))
+                cnt_o += 1
+        except:
+            res['failed'].append(cs)
+            fp_f.write("{}\n".format(cs))
+            cnt_f += 1
+
+        new_prct = 100 * idx / sz
+        print(cs, cnt_s, cnt_o, cnt_f, idx, sz, new_prct, prct)
+        if new_prct - prct >= 1:
+            prct = new_prct
+            if debug:
+                logging.debug("process_intersections.generate_intersection_list(): Generated {}% ({} signalized, {} other, {} failed out of {}).".format(int(prct), cnt_s, cnt_o, cnt_f, sz))
+        idx += 1
+
+    fp_s.close()
+    fp_o.close()
+    fp_f.close()
+
+    return res
+
+
+
 def extract_intersection(args):
     '''
     Process selected intersections listed in a given CSV file.
 
     :param args:
         Dictionary with function arguments:
+            args['city_name'] = Name of the city. E.g., 'San Francisco, California, USA'.
             args['osm_file'] = Name of the OSM file.
             args['cross_streets'] = List [<street_name_1>, <street_name_2>, ...] pointing to an intersection.
             args['crop_radius'] = Crop radius for intersection extraction. Default = 80.
@@ -90,6 +185,7 @@ def extract_intersection(args):
     if args == None:
         return None
 
+    city_name = args['city_name']
     osm_file = args['osm_file']
     cross_streets = args['cross_streets']
 
@@ -101,7 +197,8 @@ def extract_intersection(args):
     if 'debug' in args.keys():
         debug = args['debug']
 
-    city_area = api.get_data(file_name=osm_file)
+    #city_area = api.get_data(file_name=osm_file)
+    city_area = api.get_data(city_name=city_name)
     intersecting_streets = api.get_intersecting_streets(city_area)
     intersection_addr = None
 
@@ -146,6 +243,7 @@ def process_intersections(args):
     if args == None:
         return None
 
+    city_name = args['city_name']
     intersections_file = args['intersections_file']
     id_list = args['id_list']
     maps_dir = args['maps_dir']
@@ -177,7 +275,7 @@ def process_intersections(args):
             cross_streets = extract_street_names(data[i][0])
             metafiles = literal_eval(data[i][3])
             traces = literal_eval(data[i][4])
-            args2 = {'osm_file': osm_file, 'cross_streets': cross_streets, 'crop_radius': crop_radius, 'debug': debug}
+            args2 = {'city_name': city_name, 'osm_file': osm_file, 'cross_streets': cross_streets, 'crop_radius': crop_radius, 'debug': debug}
             res0 = extract_intersection(args2)
             intersection = res0['intersection']
             guideways = api.get_guideways(intersection)
@@ -199,6 +297,7 @@ def main(argv):
     print(__doc__)
 
     maps_dir = "maps"
+    city_name = "San Francisco, California, USA"
     data_dir = "intersections"
     input_file = "intersections.csv"
     ignored_directions = ['u_turn']
@@ -208,9 +307,9 @@ def main(argv):
     intersections_file = posixpath.join(maps_dir, input_file)
 
     id_list = [2, 4, 5, 7, 10, 11, 14]
-    id_list = [1]
+    id_list = [3]
 
-    args = {'maps_dir': maps_dir, 'intersections_file': intersections_file, 'id_list': id_list, 'ignored_directions': ignored_directions, 'crop_radius': crop_radius, 'debug': debug}
+    args = {'city_name': city_name, 'maps_dir': maps_dir, 'intersections_file': intersections_file, 'id_list': id_list, 'ignored_directions': ignored_directions, 'crop_radius': crop_radius, 'debug': debug}
     res = process_intersections(args)
 
     for k in res.keys():
@@ -222,6 +321,8 @@ def main(argv):
         args = {'kmlfile': kmltraces, 'traces': res[k]['traces'], 'latlon': True, 'color': "FF990099", 'debug': debug}
         geo.export_traces_kml(args)
 
+    #args = {'city_name': city_name, 'data_dir': data_dir, 'crop_radius': crop_radius, 'debug': debug}
+    #generate_intersection_list(args)
 
 
 
