@@ -229,6 +229,9 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     :return: dictionary
     """
 
+    if street_tuple is None:
+        return None
+
     intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
     if intersection_data is None:
         logger.error('Invalid intersection %r, %r' % (', '.join(street_tuple), city_data['name']))

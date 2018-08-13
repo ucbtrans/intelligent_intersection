@@ -96,8 +96,13 @@ def get_streets(city_data):
     :param city_data: dictionary
     :return: return a set of street names
     """
+    if city_data is None:
+        return set([])
 
-    return set([p['tags']['name'] for p in city_data['paths'] if 'name' in p['tags'] and 'highway' in p['tags']])
+    return set([p['tags']['name'] for p in city_data['paths']
+                if 'tags' in p and 'name' in p['tags'] and 'highway' in p['tags']
+                ]
+               )
 
 
 def get_intersecting_streets(city_data):
@@ -106,6 +111,9 @@ def get_intersecting_streets(city_data):
     :param city_data: dictionary
     :return: list of tuples
     """
+    if city_data is None:
+        return []
+
     intersecting_streets = set()
     all_streets = get_streets(city_data)
 
@@ -226,6 +234,8 @@ def get_crosswalks(intersection_data):
     :param intersection_data: dictionary
     :return: list of dictionaries
     """
+    if intersection_data is None:
+        return []
     return intersection_data['crosswalks']
 
 
