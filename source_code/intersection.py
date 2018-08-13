@@ -362,15 +362,24 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                 else:
                     street_name = set(['no_name'])
 
-                x = e['left_border'][-1][0]
-                y = e['left_border'][-1][1]
+                if 'tags' in e and 'split' in e['tags'] and e['tags']['split'] == 'no':
+                    x = (e['left_border'][-1][0] + e['right_border'][-1][0]) / 2.0
+                    y = (e['left_border'][-1][1] + e['right_border'][-1][1]) / 2.0
+                else:
+                    x = e['left_border'][-1][0]
+                    y = e['left_border'][-1][1]
                 yy = nodes_dict[cropped_node_list[-1]]['y']
                 xx = nodes_dict[cropped_node_list[-1]]['x']
                 if ox.great_circle_vec(yy, xx, y, x) > 5.0:
                     cropped_node_list.append(create_a_node_from_coordinates((x,y), nodes_dict, street_name)['osmid'])
 
-                x = e['left_border'][0][0]
-                y = e['left_border'][0][1]
+                if 'tags' in e and 'split' in e['tags'] and e['tags']['split'] == 'no':
+                    x = (e['left_border'][0][0] + e['right_border'][0][0]) / 2.0
+                    y = (e['left_border'][0][1] + e['right_border'][0][1]) / 2.0
+                else:
+                    x = e['left_border'][0][0]
+                    y = e['left_border'][0][1]
+
                 yy = nodes_dict[cropped_node_list[0]]['y']
                 xx = nodes_dict[cropped_node_list[0]]['x']
                 if ox.great_circle_vec(yy, xx, y, x) > 5.0:
