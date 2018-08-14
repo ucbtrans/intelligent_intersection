@@ -308,13 +308,22 @@ def get_path_bearing(path_data, nodes_dict):
     :param nodes_dict: dictionary
     :return: float (degrees)
     """
-    if 'nodes' not in path_data or len(path_data['nodes']) < 2:
+    if 'nodes' not in path_data or len(path_data['nodes']) < 1:
         return None
+    elif len(path_data['nodes']) < 1:
+        if 'left_border' in path_data:
+            x0 = path_data['left_border'][0][0]
+            y0 = path_data['left_border'][0][1]
+            x1 = path_data['left_border'][-1][0]
+            y1 = path_data['left_border'][-1][1]
+        else:
+            return None
+    else:
+        x0 = nodes_dict[path_data['nodes'][0]]['x']
+        y0 = nodes_dict[path_data['nodes'][0]]['y']
+        x1 = nodes_dict[path_data['nodes'][-1]]['x']
+        y1 = nodes_dict[path_data['nodes'][-1]]['y']
 
-    x0 = nodes_dict[path_data['nodes'][0]]['x']
-    y0 = nodes_dict[path_data['nodes'][0]]['y']
-    x1 = nodes_dict[path_data['nodes'][-1]]['x']
-    y1 = nodes_dict[path_data['nodes'][-1]]['y']
     return get_compass_bearing((y0, x0), (y1, x1))
 
 

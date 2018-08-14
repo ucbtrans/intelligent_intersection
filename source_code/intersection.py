@@ -17,7 +17,7 @@ from street import select_close_nodes, split_streets
 from railway import split_railways
 from footway import get_crosswalks
 from correction import manual_correction, correct_paths
-from border import border_within_box, get_box
+from border import border_within_box, get_box, get_border_length
 from data import get_box_from_xml, get_box_data
 from log import get_logger, dictionary_to_log
 
@@ -341,6 +341,14 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
     for e in elements:
         if e['type'] != 'node':
+
+            e['cropped'] = 'no'
+
+            if 'left_border' in e:
+                e['length'] = get_border_length(e['left_border'])
+            else:
+                e['length'] = 0
+
             cropped_node_list = []
             for n in e['nodes']:
                 dist = ox.great_circle_vec(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
@@ -348,8 +356,10 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                     cropped_node_list.append(n)
 
             if 0 < len(cropped_node_list) < len(e['nodes']):
+                e['cropped'] = 'yes'
                 if 'left_border' in e:
                     e['left_border'] = border_within_box(x0, y0, e['left_border'], radius)
+                    e['length'] = get_border_length(e['left_border'])
                 if 'right_border' in e:
                     e['right_border'] = border_within_box(x0, y0, e['right_border'], radius)
                 if 'median' in e:
@@ -391,7 +401,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
             e['nodes'] = cropped_node_list
 
-    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 0]
+    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 0 and e['length'] > 5.0]
 
 
 def set_font_size(ax, font_size=14):
