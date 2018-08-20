@@ -147,6 +147,24 @@ def get_intersection_meta_data(intersection_data):
                                         for l2 in intersection_data['merged_lanes']
                                         if 'from_intersection' in l2['direction'] and l1['name'] != l2['name']]))
 
+    if [n for n in intersection_data['nodes'] if 'subway' in intersection_data['nodes'][n]
+       and intersection_data['nodes']['subway'] == 'yes']:
+        subway_station_present = 'yes'
+    else:
+        subway_station_present = 'no'
+
+    rail_stations = [1 for n in intersection_data['nodes'] if 'light_rail' in intersection_data['nodes'][n]
+                     and intersection_data['nodes'][n]['light_rail'] == 'yes'] + \
+                    [1 for n in intersection_data['nodes'] if 'station' in intersection_data['nodes'][n]
+                     and intersection_data['nodes'][n]['station'] == 'light_rail'] + \
+                    [1 for n in intersection_data['nodes'] if 'railway' in intersection_data['nodes'][n]
+                     and intersection_data['nodes'][n]['railway'] == 'station']
+
+    bus_stops = [1 for n in intersection_data['nodes'] if 'highway' in intersection_data['nodes'][n]
+                 and intersection_data['nodes'][n]['highway'] == 'bus_stop'] + \
+                [1 for n in intersection_data['nodes'] if 'highway' in intersection_data['nodes'][n]
+                 and 'trolley' in intersection_data['nodes'][n]['highway']]
+
     meta_data = {
         'number_of_approaches': number_of_approaches,
         'number_of_exits': number_of_exits,
@@ -168,6 +186,9 @@ def get_intersection_meta_data(intersection_data):
         'min_curvature': min([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
         'distance_to_next_intersection': get_distance_to_next_intersection(intersection_data),
         'shortest_distance_to_railway_crossing': get_distance_to_railway_crossing(intersection_data),
+        'subway_station_present': subway_station_present,
+        'number_of_tram/train_stops': sum(rail_stations),
+        'number_of_bus/trolley_stops': sum(bus_stops),
     }
 
     meta_data['timestamp'] = str(datetime.datetime.now())
@@ -417,6 +438,8 @@ def get_distance_to_next_intersection(x_data):
     """
     other_intersection_nodes = set()
     for n in x_data['nodes']:
+        if 'street_name' not in x_data['nodes'][n]:
+            continue
         if len(x_data['nodes'][n]['street_name']) < 2:
             continue
         for s in x_data['nodes'][n]['street_name']:
