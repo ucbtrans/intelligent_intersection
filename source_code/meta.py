@@ -92,13 +92,32 @@ def get_intersection_meta_data(intersection_data):
         max_number_of_lanes_in_exit = 0
         min_number_of_lanes_in_exit = 0
 
-    if [l['meta_data']['traffic_signals'] for l in intersection_data['merged_lanes']
-       if l['meta_data']['traffic_signals'] == 'yes']:
-        signal_present = 'yes'
+    # Stop signs
+    if any([l['meta_data']['stop_sign'] == 'yes' for l in intersection_data['merged_lanes']
+       if 'stop_sign' in l['meta_data']]):
+        stop_sign = 'yes'
+    elif all([l['meta_data']['stop_sign'] == 'no' for l in intersection_data['merged_lanes']
+             if 'stop_sign' in l['meta_data']]):
+        stop_sign = 'no'
     else:
-        signal_present = None  # Traffic signal == 'no' is not an option
+        stop_sign = None
 
-    # pedestrian_traffic_signals
+    # Traffic signals
+    if any([l['meta_data']['traffic_signals'] == 'yes' for l in intersection_data['merged_lanes']
+       if 'traffic_signals' in l['meta_data']]):
+        signal_present = 'yes'
+    elif all([l['meta_data']['traffic_signals'] == 'no' for l in intersection_data['merged_lanes']
+             if 'traffic_signals' in l['meta_data']]):
+        signal_present = 'no'
+    else:
+        signal_present = None
+
+    if signal_present is None and stop_sign == 'yes':
+        signal_present = 'no'
+    elif stop_sign is None and signal_present == 'yes':
+        stop_sign = 'no'
+
+    # Pedestrian_traffic_signals
     if any([l['meta_data']['pedestrian_traffic_signals'] == 'yes' for l in intersection_data['merged_lanes']]):
         pedestrian_traffic_signals = 'yes'
     elif all([l['meta_data']['pedestrian_traffic_signals'] == 'no' for l in intersection_data['merged_lanes']]):
@@ -165,6 +184,9 @@ def get_intersection_meta_data(intersection_data):
                 [1 for n in intersection_data['nodes'] if 'highway' in intersection_data['nodes'][n]
                  and 'trolley' in intersection_data['nodes'][n]['highway']]
 
+    intersection_diameter = get_intersection_diameter(intersection_data)
+    distance_to_next_intersection = get_distance_to_next_intersection(intersection_data, intersection_diameter)
+
     meta_data = {
         'number_of_approaches': number_of_approaches,
         'number_of_exits': number_of_exits,
@@ -180,15 +202,16 @@ def get_intersection_meta_data(intersection_data):
         'number_of_right_side_bicycle_exits': number_of_right_side_bicycle_exits,
         'signal_present': signal_present,
         'pedestrian_signal_present': pedestrian_traffic_signals,
-        'diameter': get_intersection_diameter(intersection_data),
+        'diameter': intersection_diameter,
         'max_angle': max_angle,
         'max_curvature': max([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
         'min_curvature': min([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
-        'distance_to_next_intersection': get_distance_to_next_intersection(intersection_data),
+        'distance_to_next_intersection': distance_to_next_intersection,
         'shortest_distance_to_railway_crossing': get_distance_to_railway_crossing(intersection_data),
         'subway_station_present': subway_station_present,
         'number_of_tram/train_stops': sum(rail_stations),
         'number_of_bus/trolley_stops': sum(bus_stops),
+        'stop_sign': stop_sign,
     }
 
     meta_data['timestamp'] = str(datetime.datetime.now())
@@ -279,6 +302,13 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
     if 'lane_type' in lane_data:
         meta_data['lane_type'] = lane_data['lane_type']
 
+    stop_sign = None
+    if 'nodes_dict' in lane_data:
+        for n in lane_data['nodes_dict']:
+            if 'highway' in lane_data['nodes_dict'][n] and lane_data['nodes_dict'][n]['highway'] == 'stop':
+                stop_sign = 'yes'
+                break
+
     traffic_signals = None
     if 'traffic_signals' in lane_data:
         meta_data['traffic_signals'] = lane_data['traffic_signals']
@@ -290,7 +320,13 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
                     traffic_signals = 'yes'
                     break
 
+    if traffic_signals is None and stop_sign == 'yes':
+        traffic_signals = 'no'
+    elif stop_sign is None and traffic_signals == 'yes':
+        stop_sign = 'no'
+
     meta_data['traffic_signals'] = traffic_signals
+    meta_data['stop_sign'] = stop_sign
 
     meta_data['number_of_crosswalks'] = None
     if 'footway' in lane_data and lane_data['footway'] == 'crossing':
@@ -430,17 +466,25 @@ def get_distance_to_railway_crossing(x_data):
     return min([ox.great_circle_vec(y0, x0, p[1], p[0]) for p in edge_points])
 
 
-def get_distance_to_next_intersection(x_data):
+def get_distance_to_next_intersection(x_data, intersection_diameter):
     """
-    Get minimum distance to another intersection
+    Get minimum distance to another intersection.  
+    It should be at least 20 m (or the intersection diameter) away to be considered as a separate intersection.
     :param x_data: intersection dictionary
+    :param intersection_diameter: float
     :return: float distance in meters
     """
     other_intersection_nodes = set()
+    distance_threshold = max(20.0, intersection_diameter)
+    x0 = x_data['center_x']
+    y0 = x_data['center_y']
+
     for n in x_data['nodes']:
         if 'street_name' not in x_data['nodes'][n]:
             continue
         if len(x_data['nodes'][n]['street_name']) < 2:
+            continue
+        if ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) < distance_threshold:
             continue
         for s in x_data['nodes'][n]['street_name']:
             if s not in x_data['streets']:
@@ -449,8 +493,6 @@ def get_distance_to_next_intersection(x_data):
     if len(other_intersection_nodes) == 0:
         return -1
     else:
-        x0 = x_data['center_x']
-        y0 = x_data['center_y']
         return min([ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x'])
                     for n in other_intersection_nodes]
                    )
