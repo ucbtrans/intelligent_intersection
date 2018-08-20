@@ -12,7 +12,12 @@ import shapely.geometry as geom
 from lane import get_lane_index_from_left
 from turn import shorten_border_for_crosswalk
 from border import get_angle_between_bearings, shift_by_bearing_and_distance, cut_border_by_distance,\
-    get_distance_between_points, get_compass, extend_vector, to_rad, extend_origin_border, extend_destination_border
+    get_distance_between_points, get_compass, extend_vector, to_rad, extend_origin_border, extend_destination_border,\
+    cut_line_by_relative_distance
+from log import get_logger
+
+
+logger = get_logger()
 
 
 def is_u_turn_allowed(origin_lane, x_data):
@@ -145,15 +150,23 @@ def construct_u_turn_arc(origin_border, destination_border, number_of_points=12)
 
     bearing1 = get_compass(origin_border[-2], origin_border[-1])
     bearing2 = get_compass(destination_border[0], destination_border[1])
-    angle = (((bearing2 - bearing1) + 360) % 360)
-    angle = min(abs(angle), 180.0)
+    angle = abs(get_angle_between_bearings(bearing1, bearing2))
 
     radius, landing_border = get_u_turn_radius_and_landing_border(origin_border, destination_border)
+    if radius > 50:
+        logger.debug('U-turn bearings %r, %r, angle %r' % (bearing1, bearing2, angle))
+        logger.warning('Radius is too large %r, landing border %r' % (radius, landing_border))
+        ob = cut_line_by_relative_distance(destination_border, 0.95)
+        radius, landing_border = get_u_turn_radius_and_landing_border(ob, destination_border)
+        logger.debug('Retry bearings %r, %r, angle %r' % (bearing1, bearing2, angle))
+        logger.debug('Adjusted radius %r, landing border %r' % (radius, landing_border))
+    else:
+        ob = origin_border
     shift = [2.0 * radius * (math.sin(to_rad(angle / 2.0 * i / float(number_of_points)))) ** 2
              for i in range(0, number_of_points + 1)
              ]
 
-    vec = [origin_border[-1], extend_vector(origin_border[-2:], length=30.0, backward=False, relative=True)[-1]]
+    vec = [ob[-1], extend_vector(ob[-2:], length=30.0, backward=False, relative=True)[-1]]
     vector = [extend_vector(vec,
                             length=radius * (math.sin(to_rad(angle * i / float(number_of_points)))),
                             backward=False
@@ -161,7 +174,7 @@ def construct_u_turn_arc(origin_border, destination_border, number_of_points=12)
               for i in range(0, number_of_points + 1)
               ]
 
-    arc = [shift_by_bearing_and_distance(vector[i], shift[i], origin_border[-2:], bearing_delta=-90.0)
+    arc = [shift_by_bearing_and_distance(vector[i], shift[i], ob[-2:], bearing_delta=-90.0)
            for i in range(0, number_of_points + 1)
            ]
 
