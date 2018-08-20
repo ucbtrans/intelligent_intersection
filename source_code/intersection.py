@@ -89,6 +89,22 @@ def create_intersection(street_tuple, data, size=500.0, crop_radius=150.0):
     return x_data
 
 
+def get_max_intersecting_node_distance(x_data):
+    """
+    Get max distance from the intersection center to intersecting nodes
+    :param x_data: intersection dictionary
+    :return: float distance
+    """
+    nodes = [n for n in x_data['nodes'] if len(x_data['nodes'][n]['street_name'] & x_data['streets']) > 1]
+    if len(nodes) > 1:
+        x0 = x_data['center_x']
+        y0 = x_data['center_y']
+        dist = [ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) for n in nodes]
+        return sum(dist)/len(dist)
+    else:
+        return 0.0
+
+
 def get_street_data(x_data, city_data):
     """
     Get a list of paths related to the intersection and a list of data matching the osmnx format.

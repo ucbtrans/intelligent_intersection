@@ -625,3 +625,21 @@ def drop_small_edges(b):
         logger.debug('The next to the last node has been removed %r' % updated_b)
 
     return updated_b
+
+
+def get_border_curvature(border):
+    """
+    Calculate lane curvate as total bearing change per length [degree/m]
+    :param border: list of coordinates
+    :return: float curvature in degree/meter
+    """
+    if len(border) < 3:
+        return 0.0
+
+    curvature = 0.0
+    for i in range(1, len(border) - 1):
+        bearing1 = get_compass(border[i - 1], border[i])
+        bearing2 = get_compass(border[i], border[i+1])
+        curvature += abs(get_angle_between_bearings(bearing1, bearing2))
+
+    return curvature / get_border_length(border)

@@ -74,7 +74,7 @@ def get_adjacent_streets(node_data, nodes_dict):
 
 def get_intersections_for_a_street(street_data, intersecting_streets):
     """
-    Takes twop parameters: a list of intersecting streets and a street name.
+    Takes two parameters: a list of intersecting streets and a street name.
     Returns a subset of intersecting streets where the given street is a part of.
     :param street_data: string
     :param intersecting_streets: list of tuples
