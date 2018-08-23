@@ -131,6 +131,7 @@ def get_intersection_meta_data(intersection_data):
     number_of_center_bicycle_approaches = len(set([l['meta_data']['identification'] + '_' + l['meta_data']['compass']
                                                    for l in intersection_data['merged_lanes']
                                                    if 'to_intersection' in l['meta_data']['identification']
+                                                   and l['meta_data']['bicycle_lane_on_the_left'] is not None
                                                    and 'yes' in l['meta_data']['bicycle_lane_on_the_left']
                                                    ]
                                                   )
@@ -138,6 +139,7 @@ def get_intersection_meta_data(intersection_data):
     number_of_right_side_bicycle_approaches = len(set([l['meta_data']['identification'] + '_' + l['meta_data']['compass']
                                                        for l in intersection_data['merged_lanes']
                                                        if 'to_intersection' in l['meta_data']['identification']
+                                                       and l['meta_data']['bicycle_lane_on_the_right'] is not None
                                                        and l['meta_data']['bicycle_lane_on_the_right'] != 'no'
                                                        ]
                                                       )
@@ -145,6 +147,7 @@ def get_intersection_meta_data(intersection_data):
     number_of_center_bicycle_exits = len(set([l['meta_data']['identification'] + '_' + l['meta_data']['compass']
                                               for l in intersection_data['merged_lanes']
                                               if 'from_intersection' in l['meta_data']['identification']
+                                              and l['meta_data']['bicycle_lane_on_the_left'] is not None
                                               and 'yes' in l['meta_data']['bicycle_lane_on_the_left']
                                               ]
                                              )
@@ -152,6 +155,7 @@ def get_intersection_meta_data(intersection_data):
     number_of_right_side_bicycle_exits = len(set([l['meta_data']['identification'] + '_' + l['meta_data']['compass']
                                                   for l in intersection_data['merged_lanes']
                                                   if 'from_intersection' in l['meta_data']['identification']
+                                                  and l['meta_data']['bicycle_lane_on_the_right'] is not None
                                                   and l['meta_data']['bicycle_lane_on_the_right'] != 'no'
                                                   ]
                                                  )
@@ -376,7 +380,7 @@ def where_is_bicycle_lane(p):
     right = 'no'
     left = 'no'
     if location['bicycle_forward_location'] is None and location['bicycle_backward_location'] is None:
-        return None, None
+        return 'no', 'no'
     if location['bicycle_forward_location'] == 'right' or location['bicycle_backward_location'] == 'right':
         right = 'yes'
     if location['bicycle_forward_location'] == 'left' or location['bicycle_backward_location'] == 'left':
