@@ -11,6 +11,7 @@ import geodata_export as geo
 from kml_routines import KML
 from ast import literal_eval
 import posixpath
+import random
 import json
 import pickle
 
@@ -97,6 +98,7 @@ def generate_intersection_list(args):
     output_signalized = "{}/{}_signalized.csv".format(data_dir, city_name)
     output_other = "{}/{}_other.csv".format(data_dir, city_name)
     output_failed = "{}/{}_failed.csv".format(data_dir, city_name)
+    pickle_res = "{}/{}.pickle".format(data_dir, city_name)
 
     crop_radius = 80
     if 'crop_radius' in args.keys():
@@ -108,14 +110,16 @@ def generate_intersection_list(args):
 
     city = api.get_data(city_name=city_name)
     cross_streets = api.get_intersecting_streets(city)
+    cross_streets = random.sample(cross_streets, 100)
 
     fp_s = open(output_signalized, 'w')
     fp_o = open(output_other, 'w')
     fp_f = open(output_failed, 'w')
 
-    fp_s.write("Intersection,Longitude,Latitude\n")
-    fp_o.write("Intersection,Longitude,Latitude\n")
-    fp_f.write("Intersection\n")
+    first_s, first_o, first_f = True, True, True
+    header = "Intersection,Longitude,Latitude"
+    meta_keys = []
+    key_count = 0
 
     res = {'intersections_signalized': [], 'intersections_other': [], 'failed': []}
     idx = 1
@@ -127,25 +131,44 @@ def generate_intersection_list(args):
         try:
             intersection = api.get_intersection(cs, city, crop_radius=crop_radius)
             lon, lat = intersection['center_x'], intersection['center_y']
+            meta = intersection['meta_data']
             signalized = False
-            ml_list = intersection['merged_lanes']
-            for ml in ml_list:
-                meta = ml['meta_data']
-                if 'traffic_signals'in meta.keys():
-                    signalized = True
-                    break
+            if meta['signal_present'] == "yes" or meta['signal_present'] == None:
+                signalized = True
+
+            if len(meta_keys) == 0:
+                for k in meta.keys():
+                    if k != "timestamp":
+                        header += ",{}".format(k)
+                        meta_keys.append(k)
+                        key_count += 1
+                header += "\n"
+
+            buf = "\"{}\",{},{}".format(cs, lon, lat)
+            for k in range(key_count):
+                buf += ",{}".format(meta[meta_keys[k]])
+            buf += "\n"
 
             if signalized:
                 res['intersections_signalized'].append(intersection)
-                fp_s.write("{},{},{}\n".format(cs, lon, lat))
+                if first_s:
+                    fp_s.write(header)
+                    first_s = False
+                fp_s.write(buf)
                 cnt_s += 1
             else:
                 res['intersections_other'].append(intersection)
-                fp_o.write("{},{},{}\n".format(cs, lon, lat))
+                if first_o:
+                    fp_o.write(header)
+                    first_o = False
+                fp_o.write(buf)
                 cnt_o += 1
         except:
             res['failed'].append(cs)
-            fp_f.write("{}\n".format(cs))
+            if first_f:
+                fp_f.write("Intersection\n")
+                first_f = False
+            fp_f.write("\"{}\"\n".format(cs))
             cnt_f += 1
 
         new_prct = 100 * idx / sz
@@ -159,6 +182,11 @@ def generate_intersection_list(args):
     fp_s.close()
     fp_o.close()
     fp_f.close()
+
+    if False:
+        f = open(pickle_res, 'wb')
+        pickle.dump(res, f)
+        f.close()
 
     return res
 
@@ -304,10 +332,16 @@ def main(argv):
     crop_radius = 80
     debug = True
 
+    args = {'city_name': city_name, 'data_dir': data_dir, 'crop_radius': crop_radius, 'debug': debug}
+    generate_intersection_list(args)
+
+    if True:
+        return
+
     intersections_file = posixpath.join(maps_dir, input_file)
 
     id_list = [2, 4, 5, 7, 10, 11, 14]
-    id_list = [3]
+    id_list = [1]
 
     args = {'city_name': city_name, 'maps_dir': maps_dir, 'intersections_file': intersections_file, 'id_list': id_list, 'ignored_directions': ignored_directions, 'crop_radius': crop_radius, 'debug': debug}
     res = process_intersections(args)
@@ -320,9 +354,6 @@ def main(argv):
         kmltraces = "{}/traces_{}.kml".format(data_dir, k)
         args = {'kmlfile': kmltraces, 'traces': res[k]['traces'], 'latlon': True, 'color': "FF990099", 'debug': debug}
         geo.export_traces_kml(args)
-
-    #args = {'city_name': city_name, 'data_dir': data_dir, 'crop_radius': crop_radius, 'debug': debug}
-    #generate_intersection_list(args)
 
 
 
