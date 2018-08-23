@@ -13,9 +13,9 @@ from matplotlib.patches import Polygon
 from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
-from street import select_close_nodes, split_streets
+from street import select_close_nodes, split_streets, get_list_of_street_data
 from railway import split_railways
-from footway import get_crosswalks
+from footway import get_crosswalks, get_simulated_crosswalks
 from correction import manual_correction, correct_paths
 from border import border_within_box, get_box, get_border_length
 from data import get_box_from_xml, get_box_data
@@ -276,7 +276,14 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths, city_data['nodes'])
     intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
     intersection_data['footway'] = get_footway_data(intersection_data, city_data)
-    intersection_data['crosswalks'] = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
+
+    intersection_data['street_data'] = get_list_of_street_data(intersection_data['merged_lanes'])
+    crosswalks = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
+    intersection_data['crosswalks'] = crosswalks + get_simulated_crosswalks(intersection_data['street_data'],
+                                                                            lanes,
+                                                                            crosswalks,
+                                                                            width=1.8
+                                                                            )
     intersection_data['public_transit_nodes'] = get_public_transit_data(intersection_data, city_data)
 
     intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['cycleway_lanes'],

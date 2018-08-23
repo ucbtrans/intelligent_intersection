@@ -9,6 +9,7 @@
 
 from border import get_distance_between_nodes
 from railway import split_track_by_node_index
+from lane import get_most_right_lane, get_most_left_lane
 
 
 def insert_street_names(city_data):
@@ -72,18 +73,18 @@ def get_adjacent_streets(node_data, nodes_dict):
     return sorted(list(set(streets)))
 
 
-def get_intersections_for_a_street(street_data, intersecting_streets):
+def get_intersections_for_a_street(street_name, intersecting_streets):
     """
     Takes two parameters: a list of intersecting streets and a street name.
     Returns a subset of intersecting streets where the given street is a part of.
-    :param street_data: string
+    :param street_name: string
     :param intersecting_streets: list of tuples
     :return: set of dictionaries
     """
     result = set()
     for x in intersecting_streets:
         for s in x:
-            if street_data in s:
+            if street_name in s:
                 result.add(x)
                 break
     return result
@@ -132,3 +133,82 @@ def repeat_street_split(paths, nodes_dict, n=2):
     for i in range(n):
         split_paths = split_streets(split_paths, nodes_dict)
     return split_paths
+
+
+def get_street_data_by_name_and_bearing(lanes, name, bearing):
+    most_right_lane_to_intersection = get_most_right_lane(lanes, name, 'to_intersection', bearing)
+    opposite_bearing = (bearing + 180.0) % 360.0
+    most_right_lane_from_intersection = get_most_right_lane(lanes, name, 'from_intersection', opposite_bearing)
+
+    if most_right_lane_to_intersection is None and most_right_lane_from_intersection is None:
+        return None
+    elif most_right_lane_to_intersection is not None and most_right_lane_from_intersection is None:
+        most_left_lane_to_intersection = get_most_left_lane(lanes, name, 'to_intersection', bearing)
+        if most_left_lane_to_intersection is None:
+            return None
+        right_border = most_right_lane_to_intersection['right_border']
+        left_border = most_left_lane_to_intersection['left_border']
+        direction = 'to_intersection'
+        to_id = most_right_lane_to_intersection['id']
+        from_id = 0
+    elif most_right_lane_to_intersection is None and most_right_lane_from_intersection is not None:
+        most_left_lane_to_intersection = get_most_left_lane(lanes, name, 'from_intersection', opposite_bearing)
+        if most_left_lane_to_intersection is None:
+            return None
+        right_border = most_right_lane_from_intersection['right_border'][::-1]
+        left_border = most_left_lane_to_intersection['left_border'][::-1]
+        direction = 'from_intersection'
+        to_id = 0
+        from_id = most_right_lane_from_intersection['id']
+    else:
+        right_border = most_right_lane_to_intersection['right_border']
+        left_border = most_right_lane_from_intersection['right_border'][::-1]
+        direction = 'both'
+        from_id = most_right_lane_from_intersection['id']
+        to_id = most_right_lane_to_intersection['id']
+
+    street_data = {
+        'name': name,
+        'bearing': bearing,
+        'direction': direction,
+        'id': to_id*100 + from_id,
+        'lane_id_to_intersection': to_id,
+        'lane_id_from_intersection': from_id,
+        'right_border': right_border,
+        'left_border': left_border
+    }
+
+    return street_data
+
+
+def get_street_names_from_lanes(lanes):
+    return set([l['name'] for l in lanes])
+
+
+def get_street_bearing(lanes, name, direction='to_intersection'):
+    return [l['bearing'] for l in lanes if l['name'] == name and l['direction'] == direction]
+
+
+def get_list_of_street_data(lanes):
+
+    list_of_street_data = []
+    for name in get_street_names_from_lanes(lanes):
+        list_of_bearings = get_street_bearing(lanes, name, 'to_intersection')
+        if list_of_bearings:
+            bearing = list_of_bearings[0]
+        else:
+            list_of_bearings = get_street_bearing(lanes, name, 'from_intersection')
+            if list_of_bearings:
+                bearing = (list_of_bearings[0] + 180.0) % 360.0
+            else:
+                continue
+
+        street_data = get_street_data_by_name_and_bearing(lanes, name, bearing)
+
+        if street_data is not None:
+            list_of_street_data.append(street_data)
+        street_data = get_street_data_by_name_and_bearing(lanes, name, (bearing + 180.0) % 360.0)
+        if street_data is not None:
+            list_of_street_data.append(street_data)
+
+    return list_of_street_data

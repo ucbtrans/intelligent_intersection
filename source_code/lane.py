@@ -152,6 +152,34 @@ def get_lane_index_from_right(lane_data):
         return num_of_right_lanes + int(lane_data['lane_id'][0]) - 1
 
 
+def get_most_right_lane(lanes, name, direction, bearing):
+    """
+    Get the most right lane for a street for the specified direction
+    :param lanes: list of lane dictionaries
+    :param identification: string, like 'Church Street to_intersection'
+    :return: lane dictionary
+    """
+    for l in lanes:
+        if l['name'] == name and l['direction'] == direction and get_lane_index_from_right(l) == 0:
+            if abs(get_angle_between_bearings(bearing, l['bearing'])) < 15:
+                return l
+    return None
+
+
+def get_most_left_lane(lanes, name, direction, bearing):
+    """
+    Get the most left lane for a street for the specified direction
+    :param lanes: list of lane dictionaries
+    :param identification: string, like 'Church Street to_intersection'
+    :return: lane dictionary
+    """
+    for l in lanes:
+        if l['name'] == name and l['direction'] == direction and get_lane_index_from_left(l) == 0:
+            if abs(get_angle_between_bearings(bearing, l['bearing'])) < 15:
+                return l
+    return None
+
+
 def add_incremental_points(border, n=10, l=6.0):
     """
     Insert intermediates coordinates in the beginning of a coordinate list

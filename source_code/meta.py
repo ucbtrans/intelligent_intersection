@@ -363,8 +363,13 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
         curvature = get_border_curvature(lane_data['left_border'])
 
     meta_data['curvature'] = curvature
-    meta_data['max_number_of_lanes'] = max([get_num_of_lanes(p) for p in lane_data['path']])
-    meta_data['min_number_of_lanes'] = min([get_num_of_lanes(p) for p in lane_data['path']])
+    num_of_lanes_list = [get_num_of_lanes(p) for p in lane_data['path']]
+    if num_of_lanes_list:
+        meta_data['max_number_of_lanes'] = max(num_of_lanes_list)
+        meta_data['min_number_of_lanes'] = min(num_of_lanes_list)
+    else:
+        meta_data['max_number_of_lanes'] = 0
+        meta_data['min_number_of_lanes'] = 0
     meta_data['timestamp'] = str(datetime.datetime.now())
 
     return meta_data
@@ -435,15 +440,16 @@ def get_intersection_diameter(x_data):
     edge_points.extend([l['left_border'][0] for l in all_lanes if 'from_intersection' in l['direction']])
 
     if x_data['crosswalks']:
-        all_lanes.extend([l['left_border'][0] for l in x_data['crosswalks']])
-        all_lanes.extend([l['right_border'][0] for l in x_data['crosswalks']])
-        all_lanes.extend([l['left_border'][-1] for l in x_data['crosswalks']])
-        all_lanes.extend([l['right_border'][-1] for l in x_data['crosswalks']])
+        edge_points.extend([l['left_border'][0] for l in x_data['crosswalks']])
+        edge_points.extend([l['right_border'][0] for l in x_data['crosswalks']])
+        edge_points.extend([l['left_border'][-1] for l in x_data['crosswalks']])
+        edge_points.extend([l['right_border'][-1] for l in x_data['crosswalks']])
         crosswalk_width = 0.0
     else:
         crosswalk_width = 2.538  # 1.8*sqrt(2)
 
     dist = [ox.great_circle_vec(y0, x0, p[1], p[0]) for p in edge_points]
+
     if len(dist) > 0:
         return (max(dist) + crosswalk_width)*2.0
     else:

@@ -8,7 +8,9 @@
 
 
 from lane import add_node_tags_to_lane, insert_referenced_nodes
-from border import shift_list_of_nodes
+from border import shift_list_of_nodes, shift_vector, get_compass_rhumb
+from turn import shorten_border_for_crosswalk
+import shapely.geometry as geom
 
 
 def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
@@ -27,6 +29,7 @@ def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
 
     crosswalk = {
         'lane_id': '1C',
+        'simulated': 'no',
         'path_id': path_data['id'],
         'bearing': path_data['bearing'],
         'compass': path_data['compass'],
@@ -77,3 +80,56 @@ def get_crosswalks(paths, nodes_dict, width=1.8):
         if crosswalk is not None:
             crosswalks.append(crosswalk)
     return crosswalks
+
+
+def crosswalk_intersects_street(crosswalk, street_data):
+    vector = [street_data['right_border'][-1], street_data['left_border'][-1]]
+    polygon = geom.Polygon(vector + shift_vector(vector, -100)[::-1])
+    line = geom.LineString(crosswalk['median'])
+    return line.intersects(polygon)
+
+
+def get_simulated_crosswalk(street_data, lanes, width=1.8):
+
+    right_border = shorten_border_for_crosswalk(street_data['right_border'],
+                                                street_data['name'],
+                                                lanes,
+                                                crosswalk_width=1,
+                                                destination='to_intersection'
+                                                )
+    left_border = shorten_border_for_crosswalk(street_data['left_border'],
+                                               street_data['name'],
+                                               lanes,
+                                               crosswalk_width=1,
+                                               destination='to_intersection'
+                                               )
+    crosswalk = {
+        'lane_id': '1C',
+        'name': street_data['name'],
+        'simulated': 'yes',
+        'right_border': [right_border[-1], left_border[-1]],
+        'left_border':  shift_vector([right_border[-1], left_border[-1]], -width),
+        'median': shift_vector([right_border[-1], left_border[-1]], -width/2.0),
+        'path_id': 0,
+        'bearing': (street_data['bearing'] - 90.0) % 360.0,
+        'compass': get_compass_rhumb((street_data['bearing'] - 90.0) % 360.0),
+        'path': [],
+        'lane_type': 'crosswalk',
+        'direction': 'undefined',
+        'nodes': [],
+        'nodes_coordinates': [],
+        'width': width,
+        'type': 'footway'
+    }
+
+    return crosswalk
+
+
+def get_simulated_crosswalks(streets, lanes, crosswalks, width=1.8):
+    simulated_crosswalks = []
+    for street_data in streets:
+        if crosswalks and any([crosswalk_intersects_street(c, street_data) for c in crosswalks]):
+            continue
+        simulated_crosswalks.append(get_simulated_crosswalk(street_data, lanes, width=width))
+
+    return simulated_crosswalks

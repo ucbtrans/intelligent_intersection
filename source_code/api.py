@@ -8,7 +8,7 @@
 
 
 from intersection import get_intersection_data, plot_lanes
-from street import insert_street_names
+from street import insert_street_names, get_list_of_street_data
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
     get_through_guideways, get_bicycle_left_turn_guideways, get_u_turn_guideways, relative_cut
 from city import get_city_name_from_address
@@ -226,6 +226,28 @@ def get_intersection_tuples_by_address(city_data, address):
             if flag:
                 result.add(x)
     return result
+
+
+def get_street_data_list(intersection_data):
+    """
+    Get a list of street data for the intersection. 
+    The street data includes street name, id and street borders from left to right.
+    :param intersection_data: intersection dictionary
+    :return: list of street data dictionaries
+    """
+
+    return get_list_of_street_data(intersection_data['merged_lanes'])
+
+
+def get_street_image(street_data_list, intersection_data, fc='#FFCCCC', alpha=1.0):
+    """
+    Get an image of streets for the intersection
+    :param street_data_list: list of street data dictionaries
+    :param intersection_data: intersection dictionary
+    :param alpha: transparency between 0 and 1
+    :return: image
+    """
+    return get_guideway_image(street_data_list, intersection_data, fc=fc, alpha=alpha)
 
 
 def get_crosswalks(intersection_data):
@@ -535,7 +557,7 @@ def get_meta_data(data):
             return None
 
 
-def get_guideway_image(guideways, intersection_data, alpha=1.0):
+def get_guideway_image(guideways, intersection_data, fc='#FFFF66', ec='b', alpha=1.0):
     """
     Get an image of guideways in PNG format
     :param guideways: list of dictionaries
@@ -570,7 +592,7 @@ def get_guideway_image(guideways, intersection_data, alpha=1.0):
                          linestyle='solid'
                          )
 
-    guideway_fig, guideway_ax = plot_guideways(guideways, fig=fig, ax=ax, alpha=alpha, fc='#FFFF66', ec='b')
+    guideway_fig, guideway_ax = plot_guideways(guideways, fig=fig, ax=ax, alpha=alpha, fc=fc, ec=ec)
     return guideway_fig
 
 
