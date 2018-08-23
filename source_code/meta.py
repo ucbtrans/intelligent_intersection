@@ -63,10 +63,10 @@ def get_intersection_meta_data(intersection_data):
                                   )
 
     if number_of_approaches > 0:
-        max_number_of_lanes_in_approach = max([l['meta_data']['max_number_of_lanes']
-                                               for l in intersection_data['merged_lanes']
-                                               if 'to_intersection' in l['meta_data']['identification']
-                                               ]
+        max_number_of_lanes_in_approach = max([0] + [l['meta_data']['max_number_of_lanes']
+                                                     for l in intersection_data['merged_lanes']
+                                                     if 'to_intersection' in l['meta_data']['identification']
+                                                     ]
                                               )
         min_number_of_lanes_in_approach = min([l['meta_data']['min_number_of_lanes']
                                                for l in intersection_data['merged_lanes']
@@ -78,10 +78,10 @@ def get_intersection_meta_data(intersection_data):
         min_number_of_lanes_in_approach = 0
 
     if number_of_exits > 0:
-        max_number_of_lanes_in_exit = max([l['meta_data']['max_number_of_lanes']
-                                           for l in intersection_data['merged_lanes']
-                                           if 'from_intersection' in l['meta_data']['identification']
-                                           ]
+        max_number_of_lanes_in_exit = max([0] + [l['meta_data']['max_number_of_lanes']
+                                                 for l in intersection_data['merged_lanes']
+                                                 if 'from_intersection' in l['meta_data']['identification']
+                                                 ]
                                           )
         min_number_of_lanes_in_exit = min([l['meta_data']['min_number_of_lanes']
                                            for l in intersection_data['merged_lanes']
@@ -166,9 +166,9 @@ def get_intersection_meta_data(intersection_data):
         if 'from_intersection' in l1['direction']:
             continue
         b1 = l1['bearing']
-        max_angle = max(max_angle, max([abs(get_angle_between_bearings(l2['bearing'], b1))
-                                        for l2 in intersection_data['merged_lanes']
-                                        if 'from_intersection' in l2['direction'] and l1['name'] != l2['name']]))
+        max_angle = max(max_angle, max([0] + [abs(get_angle_between_bearings(l2['bearing'], b1))
+                                              for l2 in intersection_data['merged_lanes']
+                                              if 'from_intersection' in l2['direction'] and l1['name'] != l2['name']]))
 
     if [n for n in intersection_data['nodes'] if 'subway' in intersection_data['nodes'][n]
        and intersection_data['nodes']['subway'] == 'yes']:
@@ -208,7 +208,7 @@ def get_intersection_meta_data(intersection_data):
         'pedestrian_signal_present': pedestrian_traffic_signals,
         'diameter': intersection_diameter,
         'max_angle': max_angle,
-        'max_curvature': max([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
+        'max_curvature': max([0] + [l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
         'min_curvature': min([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
         'distance_to_next_intersection': distance_to_next_intersection,
         'shortest_distance_to_railway_crossing': get_distance_to_railway_crossing(intersection_data),
@@ -445,7 +445,7 @@ def get_intersection_diameter(x_data):
 
     dist = [ox.great_circle_vec(y0, x0, p[1], p[0]) for p in edge_points]
     if len(dist) > 0:
-        return (sum(dist) / len(dist) + crosswalk_width)*2.0
+        return (max(dist) + crosswalk_width)*2.0
     else:
         return None
 
