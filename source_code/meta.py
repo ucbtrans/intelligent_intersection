@@ -491,6 +491,8 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
         if ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) < distance_threshold:
             continue
         for s in x_data['nodes'][n]['street_name']:
+            if '_link' in s:
+                continue
             if s not in x_data['streets']:
                 other_intersection_nodes.add(n)
 
