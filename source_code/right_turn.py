@@ -8,8 +8,12 @@
 
 
 import shapely.geometry as geom
-from border import cut_border_by_distance, extend_vector
+from border import cut_border_by_distance, extend_vector, extend_both_sides_of_a_border
 from lane import get_lane_index_from_right, get_turn_type, intersects
+from log import get_logger
+
+
+logger = get_logger()
 
 
 def is_right_turn_allowed(lane_data, all_lanes):
@@ -107,22 +111,26 @@ def get_right_turn_border(origin_border, link_border, destination_border):
     last_segment = [origin_border[-2], origin_border[-1]]
     extended = extend_vector(last_segment, length=1000.0, backward=False)
     origin_line = geom.LineString(origin_border[:-1] + extended[1:])
-    link_line = geom.LineString(link_border)
+    extended_link = extend_both_sides_of_a_border(link_border)
+    link_line = geom.LineString(extended_link)
     if not origin_line.intersects(link_line):
-        # Something went terribly wrong
+        logger.error('Link border does not intersect the origin border')
         return None
+
     intersection_point1 = origin_line.intersection(link_line)
     origin_line1 = cut_border_by_distance(origin_line, origin_line.project(intersection_point1))[0]
     ct1 = cut_border_by_distance(link_line, link_line.project(intersection_point1))
     if len(ct1) < 2:
+        logger.error('Link is too short')
         return None
 
     link_line1 = ct1[1]
 
     destination_line = geom.LineString(destination_border)
     if not destination_line.intersects(link_line1):
-        # Something went terribly wrong
+        logger.error('Link border does not intersect the destination border')
         return None
+
     intersection_point2 = destination_line.intersection(link_line1)
     line2 = cut_border_by_distance(destination_line, destination_line.project(intersection_point2))[1]
 

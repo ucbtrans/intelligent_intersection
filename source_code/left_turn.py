@@ -17,6 +17,8 @@ def is_left_turn_allowed(lane_data):
     """
     if lane_data['direction'] != 'to_intersection':
         return False
+    if 'link' in lane_data['name']:
+        return False
     if lane_data['lane_type'] == 'cycleway':
         return True
     if 'left' in lane_data['lane_type']:
@@ -55,6 +57,7 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
                 and intersects(origin_lane, l, all_lanes)
                 and get_turn_type(origin_lane, l) == 'left_turn'
                 and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
+                and 'link' not in l['name']
                 ]
 
     destination_index = get_lane_index_from_left(origin_lane)
@@ -66,5 +69,6 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
             and destination_index == get_lane_index_from_left(l)
             and intersects(origin_lane, l, all_lanes)
             and get_turn_type(origin_lane, l) == 'left_turn'
+            and 'link' not in l['name']
             #and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
             ]

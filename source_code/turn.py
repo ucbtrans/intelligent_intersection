@@ -26,7 +26,8 @@ def shorten_border_for_crosswalk(input_border,
                                  street_name,
                                  lanes,
                                  crosswalk_width=10,
-                                 destination='from_intersection'):
+                                 destination='from_intersection',
+                                 exclude_links=True):
     """
     Remove the portion of the input border overlapping with any crosswalk crossing the input border.
     Scan all lanes with street names other than the street the input border belongs to,
@@ -47,7 +48,8 @@ def shorten_border_for_crosswalk(input_border,
     for l in lanes:
         if l['name'] == 'no_name' or l['name'] == street_name:
             continue
-
+        if exclude_links and 'link' in l['name']:
+            continue
         lb, rb = add_space_for_crosswalk(l, crosswalk_width=crosswalk_width)
         coord = lb + rb[::-1]
         polygon = geom.Polygon(coord)

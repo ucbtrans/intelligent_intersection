@@ -10,6 +10,10 @@
 from border import get_distance_between_nodes
 from railway import split_track_by_node_index
 from lane import get_most_right_lane, get_most_left_lane
+from log import get_logger
+
+
+logger = get_logger()
 
 
 def insert_street_names(city_data):
@@ -136,15 +140,19 @@ def repeat_street_split(paths, nodes_dict, n=2):
 
 
 def get_street_data_by_name_and_bearing(lanes, name, bearing):
-    most_right_lane_to_intersection = get_most_right_lane(lanes, name, 'to_intersection', bearing)
     opposite_bearing = (bearing + 180.0) % 360.0
+    logger.debug('Finding street boundaries for %s, bearings: %r %r' % (name, bearing, opposite_bearing))
+    most_right_lane_to_intersection = get_most_right_lane(lanes, name, 'to_intersection', bearing)
     most_right_lane_from_intersection = get_most_right_lane(lanes, name, 'from_intersection', opposite_bearing)
 
     if most_right_lane_to_intersection is None and most_right_lane_from_intersection is None:
+        logger.debug('No lanes found in either direction')
         return None
     elif most_right_lane_to_intersection is not None and most_right_lane_from_intersection is None:
+        logger.debug('To intersection lane is OK. Most right lane from intersection not found')
         most_left_lane_to_intersection = get_most_left_lane(lanes, name, 'to_intersection', bearing)
         if most_left_lane_to_intersection is None:
+            logger.debug('Most left lane to intersection not found')
             return None
         right_border = most_right_lane_to_intersection['right_border']
         left_border = most_left_lane_to_intersection['left_border']
@@ -152,8 +160,10 @@ def get_street_data_by_name_and_bearing(lanes, name, bearing):
         to_id = most_right_lane_to_intersection['id']
         from_id = 0
     elif most_right_lane_to_intersection is None and most_right_lane_from_intersection is not None:
+        logger.debug('From intersection lane is OK. Most right lane to intersection not found')
         most_left_lane_to_intersection = get_most_left_lane(lanes, name, 'from_intersection', opposite_bearing)
         if most_left_lane_to_intersection is None:
+            logger.debug('Most left lane to intersection not found. Doublecheck this logic')
             return None
         right_border = most_right_lane_from_intersection['right_border'][::-1]
         left_border = most_left_lane_to_intersection['left_border'][::-1]
@@ -161,6 +171,7 @@ def get_street_data_by_name_and_bearing(lanes, name, bearing):
         to_id = 0
         from_id = most_right_lane_from_intersection['id']
     else:
+        logger.debug('Both directions found')
         right_border = most_right_lane_to_intersection['right_border']
         left_border = most_right_lane_from_intersection['right_border'][::-1]
         direction = 'both'

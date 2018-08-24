@@ -144,6 +144,7 @@ def create_right_turn_guideway(origin_lane, all_lanes):
 
     destination_lane = get_link_destination_lane(link_lane, all_lanes)
     if destination_lane is None:
+        logger.debug('Link destination not found. Origin id %d' % origin_lane['id'])
         return None
 
     if origin_lane['left_shaped_border'] is None:
@@ -168,7 +169,11 @@ def create_right_turn_guideway(origin_lane, all_lanes):
                                                      link_lane['right_border'],
                                                      destination_lane['right_border']
                                                      )
-    if guideway['left_border'] is None or guideway['right_border'] is None:
+    if guideway['left_border'] is None:
+        logger.debug('Left border for the linked right turn is None. Origin id %d' % origin_lane['id'])
+        return None
+    if guideway['right_border'] is None:
+        logger.debug('Right border for the linked right turn is None. Origin id %d' % origin_lane['id'])
         return None
 
     return guideway
@@ -282,6 +287,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
 
     if turn_type == 'right':
         if not is_right_turn_allowed(origin_lane, all_lanes):
+            logger.debug('Right turn not allowed. Origin id %d' % origin_lane['id'])
             return None
         turn_direction = 1
     else:
