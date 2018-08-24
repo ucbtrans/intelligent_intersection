@@ -75,8 +75,8 @@ def main(argv):
     fig = api.get_conflict_zone_image(conflict_zones, x_section)
     fig.savefig("conflict_zones.jpg")
 
-    fig = api.get_blind_zone_image(blind_zone, main_gw[0], x_section, blocks=blocking_guideways)
-    fig.savefig("blind_zone.jpg")
+    #fig = api.get_blind_zone_image(blind_zone, main_gw[0], x_section, blocks=blocking_guideways)
+    #fig.savefig("blind_zone.jpg")
 
     kml_file = 'GG.kml'
     my_kml = KML()
