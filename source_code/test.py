@@ -42,9 +42,30 @@ def main(argv):
     #print(x_section_addr)
     #print(guideways)
     #print(crosswalks)
+
+    my_gw, my_rw, my_bw = [], [], []
+
+    for g in guideways:
+        if g['type'] == 'drive':
+            my_gw.append(g)
+        if g['type'] == 'railway':
+            my_rw.append(g)
+        if g['type'] == 'bicycle':
+            my_bw.append(g)
+
+
+    kml_file = 'GG0.kml'
+    my_kml = KML()
+    my_kml.crosswalk_medians(crosswalks, width=3)
+    my_kml.guideway_medians(my_rw, color="ff00BBBB", width=3)
+    my_kml.guideway_medians(my_bw, color="ff00DD00", width=2)
+    my_kml.guideway_medians(my_gw, width=3)
+    my_kml.save(kml_file)
+
+
     main_gw = [guideways[0]]
     c_idx = [1, 3]
-    g_idx = [1, 6, 9, 11]
+    g_idx = [1, 6, 10, 12]
     r_idx = [18, 19]
     b_idx = [25, 28]
 
@@ -80,9 +101,6 @@ def main(argv):
 
     kml_file = 'GG.kml'
     my_kml = KML()
-    #my_kml.crosswalk_medians(my_cw, width=15)
-    #my_kml.guideway_medians(my_gw, width=20)
-    #my_kml.guideway_medians(main_gw, color="ffffff00", width=20)
     my_kml.crosswalks(my_cw)
     my_kml.guideways(my_rw, color="ff00BBBB")
     my_kml.guideways(my_bw, color="ff00DD00")
