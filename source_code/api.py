@@ -17,6 +17,10 @@ from data import get_data_from_file, get_city_from_osm
 from conflict import get_conflict_zones_per_guideway, plot_conflict_zones, plot_conflict_zone
 from blind import get_blind_zone_data, plot_sector, normalized_to_geo
 from correction import add_missing_highway_tag
+from log import get_logger
+
+
+logger = get_logger()
 
 
 def get_city(city_name):
@@ -149,8 +153,15 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
     :param crop_radius: the data will be cropped to the specified radius in meters
     :return: dictionary
     """
-
-    return get_intersection_data(street_tuple, city_data, size=size, crop_radius=crop_radius)
+    if city_data is None:
+        logger.error('City data is None')
+        return None
+    try:
+        intersection_data = get_intersection_data(street_tuple, city_data, size=size, crop_radius=crop_radius)
+    except Exception as e:
+        logger.exception('Exception %r, %s, %r' % (street_tuple, city_data['name'], e))
+        return None
+    return intersection_data
 
 
 def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
@@ -181,7 +192,11 @@ def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
             cities[city_name] = get_city(city_name)
 
         for x_tuple in get_intersection_tuples_by_address(cities[city_name], address):
-            result.append(get_intersection(x_tuple, cities[city_name], size=size, crop_radius=crop_radius))
+            if x_tuple is None:
+                continue
+            intersection_data = get_intersection(x_tuple, cities[city_name], size=size, crop_radius=crop_radius)
+            if intersection_data is not None:
+                result.append(intersection_data)
 
     return result
 
