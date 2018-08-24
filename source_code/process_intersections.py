@@ -97,6 +97,7 @@ def generate_intersection_list(args):
     data_dir = args['data_dir']
     output_signalized = "{}/{}_signalized.csv".format(data_dir, city_name)
     output_other = "{}/{}_other.csv".format(data_dir, city_name)
+    output_nosignal = "{}/{}_nosignal.csv".format(data_dir, city_name)
     output_failed = "{}/{}_failed.csv".format(data_dir, city_name)
     pickle_res = "{}/{}.pickle".format(data_dir, city_name)
 
@@ -110,9 +111,10 @@ def generate_intersection_list(args):
 
     city = api.get_data(city_name=city_name)
     cross_streets = api.get_intersecting_streets(city)
-    cross_streets = random.sample(cross_streets, 100)
+    #cross_streets = random.sample(cross_streets, 100)
 
     fp_s = open(output_signalized, 'w')
+    fp_n = open(output_nosignal, 'w')
     fp_o = open(output_other, 'w')
     fp_f = open(output_failed, 'w')
 
@@ -121,9 +123,9 @@ def generate_intersection_list(args):
     meta_keys = []
     key_count = 0
 
-    res = {'intersections_signalized': [], 'intersections_other': [], 'failed': []}
+    res = {'intersections_signalized': [], 'intersections_nosignal': [], 'intersections_other': [], 'failed': []}
     idx = 1
-    cnt_s, cnt_o, cnt_f = 0, 0, 0
+    cnt_s, cnt_n, cnt_o, cnt_f = 0, 0, 0, 0
     prct = 0
     sz = len(cross_streets)
 
@@ -132,9 +134,11 @@ def generate_intersection_list(args):
             intersection = api.get_intersection(cs, city, crop_radius=crop_radius)
             lon, lat = intersection['center_x'], intersection['center_y']
             meta = intersection['meta_data']
-            signalized = False
-            if meta['signal_present'] == "yes" or meta['signal_present'] == None:
+            signalized, other = False, False
+            if meta['signal_present'] == "yes":
                 signalized = True
+            if meta['signal_present'] == None:
+                other = True
 
             if len(meta_keys) == 0:
                 for k in meta.keys():
@@ -156,13 +160,20 @@ def generate_intersection_list(args):
                     first_s = False
                 fp_s.write(buf)
                 cnt_s += 1
-            else:
+            elif other:
                 res['intersections_other'].append(intersection)
                 if first_o:
                     fp_o.write(header)
                     first_o = False
                 fp_o.write(buf)
                 cnt_o += 1
+            else:
+                res['intersections_nosignal'].append(intersection)
+                if first_n:
+                    fp_n.write(header)
+                    first_n = False
+                fp_n.write(buf)
+                cnt_n += 1
         except:
             res['failed'].append(cs)
             if first_f:
@@ -172,14 +183,15 @@ def generate_intersection_list(args):
             cnt_f += 1
 
         new_prct = 100 * idx / sz
-        print(cs, cnt_s, cnt_o, cnt_f, idx, sz, new_prct, prct)
+        print(cs, cnt_s, cnt_n, cnt_o, cnt_f, idx, sz, new_prct, prct)
         if new_prct - prct >= 1:
             prct = new_prct
             if debug:
-                logging.debug("process_intersections.generate_intersection_list(): Generated {}% ({} signalized, {} other, {} failed out of {}).".format(int(prct), cnt_s, cnt_o, cnt_f, sz))
+                logging.debug("process_intersections.generate_intersection_list(): Generated {}% ({} signalized, {} without signal, {} other, {} failed out of {}).".format(int(prct), cnt_s, cnt_n, cnt_o, cnt_f, sz))
         idx += 1
 
     fp_s.close()
+    fp_n.close()
     fp_o.close()
     fp_f.close()
 
@@ -328,6 +340,7 @@ def main(argv):
     city_name = "San Francisco, California, USA"
     data_dir = "intersections"
     input_file = "intersections.csv"
+    input_file = "intersections0.csv"
     ignored_directions = ['u_turn']
     crop_radius = 80
     debug = True
