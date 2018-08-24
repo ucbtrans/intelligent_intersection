@@ -16,6 +16,10 @@ from public_transit import get_public_transit_stop
 from border import get_border_length
 from path import get_num_of_lanes
 from border import get_angle_between_bearings, get_border_curvature
+from log import get_logger
+
+
+logger = get_logger()
 
 
 def set_meta_data(lanes, intersection_data, max_distance=20.0):
@@ -29,9 +33,18 @@ def set_meta_data(lanes, intersection_data, max_distance=20.0):
 
     set_ids(lanes)
     for lane_data in lanes:
-        lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, intersection_data, max_distance=max_distance)
+        try:
+            lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, intersection_data, max_distance=max_distance)
+        except Exception as e:
+            lane_data['meta_data'] = 'Exception in the log'
+            logger.exception('Lane meta data exception: %r' %  e)
+            continue
 
-    intersection_data['meta_data'] = get_intersection_meta_data(intersection_data)
+    try:
+        intersection_data['meta_data'] = get_intersection_meta_data(intersection_data)
+    except Exception as e:
+        intersection_data['meta_data'] = 'Exception in the log'
+        logger.exception('Intersection meta data exception: %r' % e)
 
 
 def get_intersection_meta_data(intersection_data):
@@ -171,7 +184,7 @@ def get_intersection_meta_data(intersection_data):
                                               if 'from_intersection' in l2['direction'] and l1['name'] != l2['name']]))
 
     if [n for n in intersection_data['nodes'] if 'subway' in intersection_data['nodes'][n]
-       and intersection_data['nodes']['subway'] == 'yes']:
+       and intersection_data['nodes'][n]['subway'] == 'yes']:
         subway_station_present = 'yes'
     else:
         subway_station_present = 'no'
