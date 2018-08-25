@@ -11,6 +11,10 @@ from lane import add_node_tags_to_lane, insert_referenced_nodes
 from border import shift_list_of_nodes, shift_vector, get_compass_rhumb
 from turn import shorten_border_for_crosswalk
 import shapely.geometry as geom
+from log import get_logger, dictionary_to_log
+
+
+logger = get_logger()
 
 
 def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
@@ -128,8 +132,11 @@ def get_simulated_crosswalk(street_data, lanes, width=1.8):
 def get_simulated_crosswalks(streets, lanes, crosswalks, width=1.8):
     simulated_crosswalks = []
     for street_data in streets:
-        if crosswalks and any([crosswalk_intersects_street(c, street_data) for c in crosswalks]):
+        try:
+            if crosswalks and any([crosswalk_intersects_street(c, street_data) for c in crosswalks]):
+                continue
+            simulated_crosswalks.append(get_simulated_crosswalk(street_data, lanes, width=width))
+        except Exception as e:
+            logger.exception('Street %s causing crosswalk exception %r' % (street_data['name'], e))
             continue
-        simulated_crosswalks.append(get_simulated_crosswalk(street_data, lanes, width=width))
-
     return simulated_crosswalks
