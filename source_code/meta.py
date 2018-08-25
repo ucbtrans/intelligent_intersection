@@ -7,7 +7,6 @@
 #######################################################################
 
 
-import osmnx as ox
 import datetime
 from right_turn import get_connected_links
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
@@ -15,7 +14,7 @@ from lane import set_ids, get_link_from_and_to
 from public_transit import get_public_transit_stop
 from border import get_border_length
 from path import get_num_of_lanes
-from border import get_angle_between_bearings, get_border_curvature
+from border import get_angle_between_bearings, get_border_curvature, great_circle_vec_check_for_nan
 from log import get_logger
 
 
@@ -446,7 +445,7 @@ def get_intersection_diameter(x_data):
     """
     x0 = x_data['center_x']
     y0 = x_data['center_y']
-    all_lanes = x_data['merged_lanes'] + x_data['merged_tracks'] + x_data['merged_cycleways']
+    all_lanes = x_data['merged_lanes']
     edge_points = [l['left_border'][-1] for l in all_lanes if 'to_intersection' in l['direction']]
     edge_points.extend([l['right_border'][-1] for l in all_lanes if 'to_intersection' in l['direction']])
     edge_points.extend([l['right_border'][0] for l in all_lanes if 'from_intersection' in l['direction']])
@@ -461,7 +460,7 @@ def get_intersection_diameter(x_data):
     else:
         crosswalk_width = 2.538  # 1.8*sqrt(2)
 
-    dist = [ox.great_circle_vec(y0, x0, p[1], p[0]) for p in edge_points]
+    dist = [great_circle_vec_check_for_nan(y0, x0, p[1], p[0]) for p in edge_points]
 
     if len(dist) > 0:
         return (max(dist) + crosswalk_width)*2.0
@@ -481,12 +480,12 @@ def get_distance_to_railway_crossing(x_data):
     if len(x_data['merged_tracks']) == 0:
         return -1
 
-    edge_points = [l['left_border'][-1] for l in x_data['merged_lanes'] if 'to_intersection' in l['direction']]
-    edge_points.extend([l['right_border'][-1] for l in x_data['merged_lanes'] if 'to_intersection' in l['direction']])
-    edge_points.extend([l['right_border'][0] for l in x_data['merged_lanes'] if 'from_intersection' in l['direction']])
-    edge_points.extend([l['left_border'][0] for l in x_data['merged_lanes'] if 'from_intersection' in l['direction']])
+    edge_points = [l['left_border'][-1] for l in x_data['merged_tracks'] if 'to_intersection' in l['direction']]
+    edge_points.extend([l['right_border'][-1] for l in x_data['merged_tracks'] if 'to_intersection' in l['direction']])
+    edge_points.extend([l['right_border'][0] for l in x_data['merged_tracks'] if 'from_intersection' in l['direction']])
+    edge_points.extend([l['left_border'][0] for l in x_data['merged_tracks'] if 'from_intersection' in l['direction']])
 
-    return min([ox.great_circle_vec(y0, x0, p[1], p[0]) for p in edge_points])
+    return min([great_circle_vec_check_for_nan(y0, x0, p[1], p[0]) for p in edge_points])
 
 
 def get_distance_to_next_intersection(x_data, intersection_diameter):
@@ -507,7 +506,7 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
             continue
         if len(x_data['nodes'][n]['street_name']) < 2:
             continue
-        if ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) < distance_threshold:
+        if great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) < distance_threshold:
             continue
         for s in x_data['nodes'][n]['street_name']:
             if '_link' in s:
@@ -518,6 +517,6 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
     if len(other_intersection_nodes) == 0:
         return -1
     else:
-        return min([ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x'])
+        return min([great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x'])
                     for n in other_intersection_nodes]
                    )

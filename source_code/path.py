@@ -6,9 +6,9 @@
 #
 #######################################################################
 
-from border import shift_list_of_nodes, shift_border, get_compass_bearing, get_compass_rhumb
+from border import shift_list_of_nodes, shift_border, get_compass_bearing, get_compass_rhumb, \
+    great_circle_vec_check_for_nan
 import copy
-import osmnx as ox
 
 
 def get_num_of_lanes(path_data):
@@ -288,9 +288,9 @@ def set_direction(paths, x_data, nodes_dict):
             p['tags']['direction'] = 'from_intersection'
             continue
 
-        distance_to_center0 = ox.great_circle_vec(y, x, nodes_dict[p['nodes'][0]]['y'],
+        distance_to_center0 = great_circle_vec_check_for_nan(y, x, nodes_dict[p['nodes'][0]]['y'],
                                                   nodes_dict[p['nodes'][0]]['x'])
-        distance_to_center1 = ox.great_circle_vec(y, x,
+        distance_to_center1 = great_circle_vec_check_for_nan(y, x,
                                                   nodes_dict[p['nodes'][-1]]['y'],
                                                   nodes_dict[p['nodes'][-1]]['x']
                                                   )

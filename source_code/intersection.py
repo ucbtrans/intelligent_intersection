@@ -17,7 +17,7 @@ from street import select_close_nodes, split_streets, get_list_of_street_data
 from railway import split_railways
 from footway import get_crosswalks, get_simulated_crosswalks
 from correction import manual_correction, correct_paths
-from border import border_within_box, get_box, get_border_length
+from border import border_within_box, get_box, get_border_length, great_circle_vec_check_for_nan
 from data import get_box_from_xml, get_box_data
 from log import get_logger, dictionary_to_log
 
@@ -99,7 +99,7 @@ def get_max_intersecting_node_distance(x_data):
     if len(nodes) > 1:
         x0 = x_data['center_x']
         y0 = x_data['center_y']
-        dist = [ox.great_circle_vec(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) for n in nodes]
+        dist = [great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) for n in nodes]
         return sum(dist)/len(dist)
     else:
         return 0.0
@@ -339,7 +339,7 @@ def smart_crop(elements, nodes_dict, x0, y0, radius):
         if e['type'] != 'node':
             cropped_node_list = []
             for n in e['nodes']:
-                dist = ox.great_circle_vec(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
+                dist = great_circle_vec_check_for_nan(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
                 if dist <= radius:
                     cropped_node_list.append(n)
             if 0 < len(cropped_node_list) < len(e['nodes']):
@@ -374,7 +374,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
             cropped_node_list = []
             for n in e['nodes']:
-                dist = ox.great_circle_vec(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
+                dist = great_circle_vec_check_for_nan(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
                 if dist <= radius:
                     cropped_node_list.append(n)
 
@@ -406,7 +406,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                     y = e['left_border'][-1][1]
                 yy = nodes_dict[cropped_node_list[-1]]['y']
                 xx = nodes_dict[cropped_node_list[-1]]['x']
-                if ox.great_circle_vec(yy, xx, y, x) > 5.0:
+                if great_circle_vec_check_for_nan(yy, xx, y, x) > 5.0:
                     cropped_node_list.append(create_a_node_from_coordinates((x,y), nodes_dict, street_name)['osmid'])
 
                 if 'tags' in e and 'split' in e['tags'] and e['tags']['split'] == 'no':
@@ -418,7 +418,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
                 yy = nodes_dict[cropped_node_list[0]]['y']
                 xx = nodes_dict[cropped_node_list[0]]['x']
-                if ox.great_circle_vec(yy, xx, y, x) > 5.0:
+                if great_circle_vec_check_for_nan(yy, xx, y, x) > 5.0:
                     new_node = create_a_node_from_coordinates((x, y), nodes_dict, street_name)
                     cropped_node_list = [new_node['osmid']] + cropped_node_list
 

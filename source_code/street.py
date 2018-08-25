@@ -58,6 +58,8 @@ def select_close_nodes(nodes_d, nodes, too_far=50.0):
     """
     if len(nodes) < 1:
         return None
+    elif len(nodes) == 1:
+        return nodes
 
     first_node = list(nodes)[0]
     return set([n for n in nodes if get_distance_between_nodes(nodes_d, first_node, n) <= too_far])

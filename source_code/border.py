@@ -20,6 +20,13 @@ rhumbs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 nv_frame = nv.FrameE(a=6371e3, f=0)
 
 
+def great_circle_vec_check_for_nan(y0, x0, y1, x1):
+    dist = ox.great_circle_vec(y0, x0, y1, x1)
+    if math.isnan(dist):
+        dist = 0.0
+    return dist
+
+
 def get_distance_between_nodes(nodes_d, id1, id2):
     """
     Get distance between two nodes
@@ -28,7 +35,8 @@ def get_distance_between_nodes(nodes_d, id1, id2):
     :param id2: node id
     :return: float in meters
     """
-    return ox.great_circle_vec(nodes_d[id1]['y'], nodes_d[id1]['x'], nodes_d[id2]['y'], nodes_d[id2]['x'])
+
+    return great_circle_vec_check_for_nan(nodes_d[id1]['y'], nodes_d[id1]['x'], nodes_d[id2]['y'], nodes_d[id2]['x'])
 
 
 def get_distance_between_points(point1, point2):
@@ -38,7 +46,7 @@ def get_distance_between_points(point1, point2):
     :param point2: coordinates
     :return: float in meters
     """
-    return ox.great_circle_vec(point1[1], point1[0], point2[1], point2[0])
+    return great_circle_vec_check_for_nan(point1[1], point1[0], point2[1], point2[0])
 
 
 def get_border_length(border):
@@ -116,7 +124,7 @@ def extend_vector(coord, length=300.0, backward=True, relative=False):
     y0 = coord[0][1]
     x1 = coord[1][0]
     y1 = coord[1][1]
-    current_distance = ox.great_circle_vec(y0, x0, y1, x1)
+    current_distance = great_circle_vec_check_for_nan(y0, x0, y1, x1)
 
     if current_distance < 0.01:
         return coord
@@ -414,7 +422,7 @@ def vector_len(coord):
     y0 = coord[0][1]
     x1 = coord[1][0]
     y1 = coord[1][1]
-    return ox.great_circle_vec(y0, x0, y1, x1)
+    return great_circle_vec_check_for_nan(y0, x0, y1, x1)
 
 
 def get_incremental_points(p0, p1, n, l):
@@ -436,7 +444,7 @@ def get_incremental_points(p0, p1, n, l):
     if n < 1:
         return None
 
-    vector_length = ox.great_circle_vec(y0, x0, y1, x1)
+    vector_length = great_circle_vec_check_for_nan(y0, x0, y1, x1)
     if vector_length < 0.01:
         return None
 
@@ -446,13 +454,13 @@ def get_incremental_points(p0, p1, n, l):
 
 def get_box(x, y, size=500.0):
     north_south = 0.0018
-    dist = ox.great_circle_vec(y, x, y + north_south, x)
+    dist = great_circle_vec_check_for_nan(y, x, y + north_south, x)
     scale = size / dist
     north = y + north_south * scale
     south = y - north_south * scale
 
     east_west = 0.00227
-    dist = ox.great_circle_vec(y, x, y, x + east_west)
+    dist = great_circle_vec_check_for_nan(y, x, y, x + east_west)
     scale = size / dist
     west = x - east_west * scale
     east = x + east_west * scale
@@ -589,12 +597,12 @@ def get_intersection_with_circle(vector, center, radius, margin=0.01):
     bearing1 = get_compass(vector[1], vector[0])
     bearing2 = get_compass(vector[1], center)
     angle = (abs(bearing2 - bearing1) + 360) % 360
-    length = ox.great_circle_vec(center[1], center[0], vector[1][1], vector[1][0])
+    length = great_circle_vec_check_for_nan(center[1], center[0], vector[1][1], vector[1][0])
     outside_of_circle = length*math.cos(to_rad(angle)) - math.sqrt(radius**2 - (length*math.sin(to_rad(angle)))**2)
     line = geom.LineString(vector[::-1])
     relative_distance = outside_of_circle/vector_len(vector) * (1.0 + margin)
     coord = line.interpolate(relative_distance, normalized=True).coords[0]
-    new_dist = ox.great_circle_vec(center[1], center[0], coord[1], coord[0])
+    new_dist = great_circle_vec_check_for_nan(center[1], center[0], coord[1], coord[0])
     return line.interpolate(relative_distance, normalized=True).coords[0]
 
 

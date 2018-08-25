@@ -10,10 +10,9 @@ import copy
 import math
 import shapely.geometry as geom
 import nvector as nv
-import osmnx as ox
 from lane import add_space_for_crosswalk
 from border import cut_border_by_polygon, get_turn_angle, to_rad, extend_vector, get_compass, \
-    shift_by_bearing_and_distance, drop_small_edges
+    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan
 from log import get_logger
 
 
@@ -72,9 +71,9 @@ def construct_turn_arc_with_initial_angle(origin_border,
     if intersection_point is None:
         return None
 
-    from_origin_to_intersection = ox.great_circle_vec(intersection_point[1], intersection_point[0],
+    from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
                                                       vector1[1][1], vector1[1][0])
-    from_destination_to_intersection = ox.great_circle_vec(intersection_point[1], intersection_point[0],
+    from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
                                                            vector2[1][1], vector2[1][0])
 
     bearing1 = get_compass(vector1[1], vector1[0])
@@ -124,9 +123,9 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
         logger.debug('Cannot find intersection point')
         return None
 
-    from_origin_to_intersection = ox.great_circle_vec(intersection_point[1], intersection_point[0],
+    from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
                                                       vector1[1][1], vector1[1][0])
-    from_destination_to_intersection = ox.great_circle_vec(intersection_point[1], intersection_point[0],
+    from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
                                                            vector2[1][1], vector2[1][0])
 
     bearing1 = get_compass(vector1[1], vector1[0])
