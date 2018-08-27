@@ -19,6 +19,31 @@ from log import get_logger
 
 
 logger = get_logger()
+meta_keys = ['diameter',
+ 'stop_sign',
+ 'number_of_railway_exits',
+ 'min_number_of_lanes_in_approach',
+ 'number_of_center_bicycle_approaches',
+ 'number_of_right_side_bicycle_exits',
+ 'max_number_of_lanes_in_approach',
+ 'signal_present',
+ 'number_of_approaches',
+ 'max_curvature',
+ 'min_curvature',
+ 'subway_station_present',
+ 'number_of_right_side_bicycle_approaches',
+ 'number_of_tram/train_stops',
+ 'max_number_of_lanes_in_exit',
+ 'timestamp',
+ 'number_of_exits',
+ 'distance_to_next_intersection',
+ 'max_angle',
+ 'number_of_railway_approaches',
+ 'number_of_bus/trolley_stops',
+ 'pedestrian_signal_present',
+ 'shortest_distance_to_railway_crossing',
+ 'min_number_of_lanes_in_exit',
+ 'number_of_center_bicycle_exits']
 
 
 def set_meta_data(lanes, intersection_data, max_distance=20.0):
@@ -42,7 +67,11 @@ def set_meta_data(lanes, intersection_data, max_distance=20.0):
     try:
         intersection_data['meta_data'] = get_intersection_meta_data(intersection_data)
     except Exception as e:
-        intersection_data['meta_data'] = 'Exception in the log'
+        meta_data = {'exception': 'Exception: %r' % e}
+        intersection_data['meta_data'] = meta_data
+        for k in meta_keys:
+            meta_data[k] = None
+        meta_data['timestamp'] = str(datetime.datetime.now())
         logger.exception('Intersection meta data exception: %r' % e)
 
 
@@ -484,8 +513,10 @@ def get_distance_to_railway_crossing(x_data):
     edge_points.extend([l['right_border'][-1] for l in x_data['merged_tracks'] if 'to_intersection' in l['direction']])
     edge_points.extend([l['right_border'][0] for l in x_data['merged_tracks'] if 'from_intersection' in l['direction']])
     edge_points.extend([l['left_border'][0] for l in x_data['merged_tracks'] if 'from_intersection' in l['direction']])
-
-    return min([great_circle_vec_check_for_nan(y0, x0, p[1], p[0]) for p in edge_points])
+    dist_list = [great_circle_vec_check_for_nan(y0, x0, p[1], p[0]) for p in edge_points]
+    if dist_list:
+        return min([great_circle_vec_check_for_nan(y0, x0, p[1], p[0]) for p in edge_points])
+    return -1
 
 
 def get_distance_to_next_intersection(x_data, intersection_diameter):
