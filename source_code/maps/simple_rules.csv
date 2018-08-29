@@ -1,0 +1,3 @@
+number_of_railway_approaches,int,2,"['no', 'present']",[0.5]
+number_of_railway_exits,int,2,"['no', 'present']",[0.5]
+number_of_approaches,int,-1,,
