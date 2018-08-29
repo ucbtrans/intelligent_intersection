@@ -59,3 +59,30 @@ def split_track_by_node_index(track_data, i):
     track1['tags']['split'] = 'yes'
     track2['tags']['split'] = 'yes'
     return track1, track2
+
+
+def remove_subways(tracks):
+    """
+    Remove subway or underground tracks
+    :param tracks: list of track dictionaries
+    :return: list of track dictionaries without subway or underground tracks
+    """
+    tracks_without_subway = []
+    for t in tracks:
+        if 'tags' in t:
+            if 'railway' in t['tags'] and t['tags']['railway'] == 'subway':
+                continue
+            if 'tunnel' in t['tags'] and t['tags']['tunnel'] == 'yes':
+                continue
+            if 'subway' in t['tags'] and t['tags']['subway'] == 'yes':
+                continue
+            if 'layer' in t['tags']:
+                try:
+                    l = int(t['tags']['layer'])
+                except:
+                    l = 0
+                if l < 0:
+                    continue
+        tracks_without_subway.append(t)
+
+    return tracks_without_subway

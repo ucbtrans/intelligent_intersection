@@ -14,7 +14,7 @@ from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, r
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
 from street import select_close_nodes, split_streets, get_list_of_street_data
-from railway import split_railways
+from railway import split_railways, remove_subways
 from footway import get_crosswalks, get_simulated_crosswalks
 from correction import manual_correction, correct_paths
 from border import border_within_box, get_box, get_border_length, great_circle_vec_check_for_nan
@@ -163,7 +163,7 @@ def get_railway_data(x_data, city_data):
     railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
     referenced_nodes = {}
     referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
-    split_railway_paths = split_railways(railway_paths, referenced_nodes)
+    split_railway_paths = split_railways(remove_subways(railway_paths), referenced_nodes)
     add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'],
                             nodes_dict,
                             paths=railway_paths
