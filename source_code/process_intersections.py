@@ -118,7 +118,7 @@ def generate_intersection_list(args):
     fp_o = open(output_other, 'w')
     fp_f = open(output_failed, 'w')
 
-    first_s, first_o, first_f = True, True, True
+    first_s, first_n, first_o, first_f = True, True, True, True
     header = "Intersection,Longitude,Latitude"
     meta_keys = []
     key_count = 0
@@ -218,8 +218,7 @@ def extract_intersection(args):
 
     :returns res:
         Dictionary with resulting info:
-            res['dims'] = Tuple with data matrix dimensions (<Number of Rows>, <Number of Columns>).
-
+            res['intersection'] = Dictionary with intersection data.
     '''
 
     if args == None:
@@ -276,8 +275,9 @@ def process_intersections(args):
 
     :returns res:
         Dictionary with resulting info:
-            res['dims'] = Tuple with data matrix dimensions (<Number of Rows>, <Number of Columns>).
-
+            res['intersection'] = Dictionary with intersection data.
+            res['guideways'] = List of guideways. Each guideway is a dictionary.
+            res['crosswalk'] = List of crosswalks. Each crosswalk is a dictionary.
     '''
 
     if args == None:

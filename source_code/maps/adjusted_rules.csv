@@ -1,0 +1,13 @@
+number_of_railway_approaches,int,2,"['no', 'present']",[0.5]
+number_of_railway_exits,int,2,"['no', 'present']",[0.5]
+number_of_approaches,int,3,"['less than 3','3-4','more than 4']","[2.5,4.5]"
+number_of_exits,int,3,"['less than 3','3-4','more than 4']","[2.5,4.5]"
+number_of_center_bicycle_approaches,int,2,"['no', 'present']",[0.5]
+number_of_center_bicycle_exits,int,2,"['no', 'present']",[0.5]
+number_of_right_side_bicycle_approaches,int,2,"['no', 'present']",[0.5]
+max_number_of_lanes_in_approach,int,2,"['single-lane', '2', 'multi-lane']","[1.5,2.5]"
+diameter,float,3,"['small', 'medium', 'large']",
+max_angle,float,3,"['smooth', 'typical', 'sharp']",
+max_curvature,float,3,"['minimal', 'medium', 'high']",
+number_of_bus/trolley_stops,int,2,"['no', 'present']",[0.5]
+number_of_tram/train_stops,int,2,"['no', 'present']",[0.5]

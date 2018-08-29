@@ -1,0 +1,18 @@
+number_of_railway_approaches,int,-1,
+number_of_railway_exits,int,-1,
+number_of_approaches,int,-1,
+number_of_exits,int,-1,
+number_of_center_bicycle_approaches,int,-1,
+number_of_right_side_bicycle_approaches,int,-1,
+number_of_center_bicycle_exits,int,-1,
+number_of_right_side_bicycle_exits,int,-1,
+max_number_of_lanes_in_approach,int,-1,
+min_number_of_lanes_in_approach,int,-1,
+max_number_of_lanes_in_exit,int,-1,
+min_number_of_lanes_in_exit,int,-1,
+diameter,float,3,"['small', 'medium', 'large']"
+max_angle,float,3,"['smooth', 'typical', 'sharp']"
+max_curvature,float,3,"['minimal', 'medium', 'high']"
+number_of_bus/trolley_stops,int,-1,
+number_of_tram/train_stops,int,-1,
+subway_station_present,string,-1,
