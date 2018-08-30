@@ -192,14 +192,19 @@ def get_shadow_polygon_list(point, block):
     sector_polygon = combine_sector_polygons(point, block)
     if sector_polygon is None:
         return []
-
+    if not sector_polygon.is_valid:
+        sector_polygon = sector_polygon.buffer(0)
     if sector_polygon.intersects(block_polygon):
         try:
-            polygons = list(sector_polygon.difference(block_polygon))
+            diff = sector_polygon.difference(block_polygon)
+            if isinstance(diff, geom.polygon.Polygon):
+                logger.warning("Block Id: %d. The block does not split the sector into pieces" % block['id'])
+                return []
+            polygons = list(diff)
         except Exception as e:
             logger.exception("Block Id: %d. Can not intersect with the sector" % block['id'])
             logger.exception(e)
-            return sector_polygon
+            return []
 
         for i, x in enumerate(polygons):
             if(isinstance(x, geom.polygon.Polygon) or isinstance(x, geom.multipolygon.MultiPolygon)) and not x.is_valid:
@@ -291,10 +296,10 @@ def normalized_to_geo(point_of_view, guideway_data, conflict_zone=None):
     elif point_of_view[0] > 1.0:
         return guideway_data['median'][-1]
 
-    if point_of_view[0] < 0.0001:
-        x = 0.0001
-    elif point_of_view[0] > 0.9999:
-        x = 0.9999
+    if point_of_view[0] < 0.0:
+        x = 0.0
+    elif point_of_view[0] > 1.0:
+        x = 1.0
     else:
         x = point_of_view[0]
 

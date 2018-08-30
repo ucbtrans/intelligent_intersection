@@ -520,6 +520,9 @@ def cut_border_by_polygon(border, polygon, multi_string_index=0):
     """
     b = geom.LineString(border)
 
+    if not polygon.is_valid:
+        polygon = polygon.buffer(0)
+
     if not b.intersects(polygon):
         return border
 

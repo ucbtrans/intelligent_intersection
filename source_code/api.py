@@ -757,11 +757,27 @@ def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guid
     :param all_guideways: list of all guideway dictionaries in the intersection
     :return: blind zone dictionary
     """
+    if point_of_view is None or current_guideway is None or conflict_zone is None \
+            or blocking_guideways is None or all_guideways is None:
+        return None
 
-    for guideway_data in all_guideways:
-        if 'reduced_left_border' not in guideway_data:
-            get_conflict_zones_per_guideway(guideway_data, all_guideways, {})
-    return get_blind_zone_data(point_of_view, current_guideway, conflict_zone, blocking_guideways, all_guideways)
+    try:
+        for guideway_data in all_guideways:
+            if 'reduced_left_border' not in guideway_data:
+                get_conflict_zones_per_guideway(guideway_data, all_guideways, {})
+        blind_zone_data = get_blind_zone_data(point_of_view,
+                                              current_guideway,
+                                              conflict_zone,
+                                              blocking_guideways,
+                                              all_guideways
+                                              )
+    except Exception as e:
+        logger.error('Blind zone exception: point %r, guideway %d, conflict zone %r'
+                         % (point_of_view, current_guideway['id'], conflict_zone['id']))
+        logger.exception('Exception: %r' % e)
+        return None
+
+    return blind_zone_data
 
 
 def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0, fc='r', ec='r'):
@@ -802,6 +818,9 @@ def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks
                          alpha=alpha,
                          linestyle='solid'
                          )
+
+    if blind_zone is None:
+        return fig
 
     blind_zone_fig, blind_zone_ax = plot_sector(current_guideway=current_guideway,
                                                 x_data=intersection_data,

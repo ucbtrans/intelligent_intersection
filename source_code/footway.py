@@ -98,21 +98,35 @@ def get_simulated_crosswalk(street_data, lanes, width=1.8):
     right_border = shorten_border_for_crosswalk(street_data['right_border'],
                                                 street_data['name'],
                                                 lanes,
-                                                crosswalk_width=1,
+                                                crosswalk_width=2,
                                                 destination='to_intersection'
                                                 )
     left_border = shorten_border_for_crosswalk(street_data['left_border'],
                                                street_data['name'],
                                                lanes,
-                                               crosswalk_width=1,
+                                               crosswalk_width=2,
                                                destination='to_intersection'
                                                )
+
+    right_border2 = shorten_border_for_crosswalk(street_data['right_border'],
+                                                 street_data['name'],
+                                                 lanes,
+                                                 crosswalk_width=2 + width,
+                                                 destination='to_intersection'
+                                                 )
+    left_border2 = shorten_border_for_crosswalk(street_data['left_border'],
+                                                street_data['name'],
+                                                lanes,
+                                                crosswalk_width=2 + width,
+                                                destination='to_intersection'
+                                                )
     crosswalk = {
         'lane_id': '1C',
         'name': street_data['name'],
         'simulated': 'yes',
         'right_border': [right_border[-1], left_border[-1]],
-        'left_border':  shift_vector([right_border[-1], left_border[-1]], -width),
+        'left_border': [right_border2[-1], left_border2[-1]],
+        'old_left_border':  shift_vector([right_border[-1], left_border[-1]], -width),
         'median': shift_vector([right_border[-1], left_border[-1]], -width/2.0),
         'path_id': 0,
         'bearing': (street_data['bearing'] - 90.0) % 360.0,
