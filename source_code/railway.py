@@ -48,8 +48,8 @@ def split_track_by_node_index(track_data, i):
     track2 = copy.deepcopy(track_data)
     track1['nodes'] = track_data['nodes'][:i+1]
     track2['nodes'] = track_data['nodes'][i:]
-    track1['id'] = ((track1['id']) % 1000)*10 + 1
-    track2['id'] = ((track1['id']) % 1000)*10 + 2
+    track1['id'] = ((track1['id']) % 10000)*100 + 1
+    track2['id'] = ((track1['id']) % 10000)*100 + 2
     if 'original_id' in track_data:
         track1['tags']['original_id'] = track_data['original_id']
         track2['tags']['original_id'] = track_data['original_id']

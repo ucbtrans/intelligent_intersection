@@ -280,7 +280,6 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     intersection_data['street_data'] = get_list_of_street_data(intersection_data['merged_lanes'])
     crosswalks = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
     intersection_data['crosswalks'] = crosswalks + get_simulated_crosswalks(intersection_data['street_data'],
-                                                                            merged_lanes,
                                                                             crosswalks,
                                                                             width=1.8
                                                                             )

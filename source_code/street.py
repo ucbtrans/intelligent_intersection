@@ -7,7 +7,7 @@
 #######################################################################
 
 
-from border import get_distance_between_nodes
+from border import get_distance_between_nodes, get_compass_rhumb
 from railway import split_track_by_node_index
 from lane import get_most_right_lane, get_most_left_lane
 from log import get_logger
@@ -183,6 +183,7 @@ def get_street_data_by_name_and_bearing(lanes, name, bearing):
     street_data = {
         'name': name,
         'bearing': bearing,
+        'compass': get_compass_rhumb(bearing),
         'direction': direction,
         'id': to_id*100 + from_id,
         'lane_id_to_intersection': to_id,

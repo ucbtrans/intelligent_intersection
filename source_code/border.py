@@ -532,6 +532,7 @@ def cut_border_by_polygon(border, polygon, multi_string_index=0):
     try:
         list_of_coordinates = list(shortened_border.coords)
     except Exception as e:
+        logger.exception('Unable to get a list of coordinates from the border-polygon intersection: %r' % e)
         return None
     return list_of_coordinates
 

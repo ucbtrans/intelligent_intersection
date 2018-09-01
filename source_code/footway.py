@@ -7,8 +7,9 @@
 #######################################################################
 
 
+import copy
 from lane import add_node_tags_to_lane, insert_referenced_nodes
-from border import shift_list_of_nodes, shift_vector, get_compass_rhumb
+from border import shift_list_of_nodes, shift_vector, get_compass, get_compass_rhumb, extend_origin_border
 from turn import shorten_border_for_crosswalk
 import shapely.geometry as geom
 from log import get_logger, dictionary_to_log
@@ -93,33 +94,34 @@ def crosswalk_intersects_street(crosswalk, street_data):
     return line.intersects(polygon)
 
 
-def get_simulated_crosswalk(street_data, lanes, width=1.8):
-
+def get_simulated_crosswalk(street_data, streets, width=1.8):
+    streets_without_intersection = remove_intersecting_portion_from_streets(street_data, streets)
     right_border = shorten_border_for_crosswalk(street_data['right_border'],
                                                 street_data['name'],
-                                                lanes,
+                                                streets_without_intersection,
                                                 crosswalk_width=2,
                                                 destination='to_intersection'
                                                 )
     left_border = shorten_border_for_crosswalk(street_data['left_border'],
                                                street_data['name'],
-                                               lanes,
+                                               streets_without_intersection,
                                                crosswalk_width=2,
                                                destination='to_intersection'
                                                )
 
     right_border2 = shorten_border_for_crosswalk(street_data['right_border'],
                                                  street_data['name'],
-                                                 lanes,
+                                                 streets_without_intersection,
                                                  crosswalk_width=2 + width,
                                                  destination='to_intersection'
                                                  )
     left_border2 = shorten_border_for_crosswalk(street_data['left_border'],
                                                 street_data['name'],
-                                                lanes,
+                                                streets_without_intersection,
                                                 crosswalk_width=2 + width,
                                                 destination='to_intersection'
                                                 )
+    bearing = get_compass(right_border[0], right_border[-1])
     crosswalk = {
         'lane_id': '1C',
         'name': street_data['name'],
@@ -129,8 +131,8 @@ def get_simulated_crosswalk(street_data, lanes, width=1.8):
         'old_left_border':  shift_vector([right_border[-1], left_border[-1]], -width),
         'median': shift_vector([right_border[-1], left_border[-1]], -width/2.0),
         'path_id': 0,
-        'bearing': (street_data['bearing'] - 90.0) % 360.0,
-        'compass': get_compass_rhumb((street_data['bearing'] - 90.0) % 360.0),
+        'bearing': bearing,
+        'compass': get_compass_rhumb(bearing),
         'path': [],
         'lane_type': 'crosswalk',
         'direction': 'undefined',
@@ -143,14 +145,39 @@ def get_simulated_crosswalk(street_data, lanes, width=1.8):
     return crosswalk
 
 
-def get_simulated_crosswalks(streets, lanes, crosswalks, width=1.8):
+def get_simulated_crosswalks(streets, crosswalks, width=1.8):
     simulated_crosswalks = []
     for street_data in streets:
         try:
             if crosswalks and any([crosswalk_intersects_street(c, street_data) for c in crosswalks]):
                 continue
-            simulated_crosswalks.append(get_simulated_crosswalk(street_data, lanes, width=width))
+            simulated_crosswalks.append(get_simulated_crosswalk(street_data, streets, width=width))
         except Exception as e:
             logger.exception('Street %s causing crosswalk exception %r' % (street_data['name'], e))
             continue
     return simulated_crosswalks
+
+
+def remove_intersecting_portion_from_streets(street_data, streets):
+    streets_without_intersection = []
+    for st in streets:
+        if street_data['name'] == st['name'] or 'link' in st['name']:
+            continue
+        shorten_street = copy.deepcopy(st)
+        right_border = shorten_border_for_crosswalk(st['right_border'],
+                                                    st['name'],
+                                                    streets,
+                                                    crosswalk_width=10,
+                                                    destination='to_intersection'
+                                                    )
+        left_border = shorten_border_for_crosswalk(st['left_border'],
+                                                   st['name'],
+                                                   streets,
+                                                   crosswalk_width=10,
+                                                   destination='to_intersection'
+                                                   )
+        shorten_street['right_border'] = extend_origin_border(right_border, relative=True)
+        shorten_street['left_border'] = extend_origin_border(left_border, relative=True)
+        streets_without_intersection.append(shorten_street)
+
+    return streets_without_intersection
