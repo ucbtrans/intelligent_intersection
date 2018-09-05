@@ -232,6 +232,9 @@ def get_intersection_meta_data(intersection_data):
     intersection_diameter = get_intersection_diameter(intersection_data)
     distance_to_next_intersection = get_distance_to_next_intersection(intersection_data, intersection_diameter)
 
+    approach_street_types = get_list_of_highway_types(intersection_data, "to_intersection")
+    exit_street_types = get_list_of_highway_types(intersection_data, "from_intersection")
+
     meta_data = {
         'number_of_approaches': number_of_approaches,
         'number_of_exits': number_of_exits,
@@ -257,6 +260,8 @@ def get_intersection_meta_data(intersection_data):
         'number_of_tram/train_stops': sum(rail_stations),
         'number_of_bus/trolley_stops': sum(bus_stops),
         'stop_sign': stop_sign,
+        'approach_street_types': approach_street_types,
+        'exit_street_types': exit_street_types,
     }
 
     meta_data['timestamp'] = str(datetime.datetime.now())
@@ -411,6 +416,11 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
     else:
         meta_data['max_number_of_lanes'] = 0
         meta_data['min_number_of_lanes'] = 0
+
+    street_type = "undefined"
+    if 'highway' in lane_data:
+        street_type = lane_data['highway']
+    meta_data['street_type'] = street_type
     meta_data['timestamp'] = str(datetime.datetime.now())
 
     return meta_data
@@ -479,7 +489,6 @@ def get_intersection_diameter(x_data):
     edge_points.extend([l['right_border'][-1] for l in all_lanes if 'to_intersection' in l['direction']])
     edge_points.extend([l['right_border'][0] for l in all_lanes if 'from_intersection' in l['direction']])
     edge_points.extend([l['left_border'][0] for l in all_lanes if 'from_intersection' in l['direction']])
-
     if x_data['crosswalks']:
         edge_points.extend([l['left_border'][0] for l in x_data['crosswalks']])
         edge_points.extend([l['right_border'][0] for l in x_data['crosswalks']])
@@ -490,7 +499,6 @@ def get_intersection_diameter(x_data):
         crosswalk_width = 2.538  # 1.8*sqrt(2)
 
     dist = [great_circle_vec_check_for_nan(y0, x0, p[1], p[0]) for p in edge_points]
-
     if len(dist) > 0:
         return (max(dist) + crosswalk_width)*2.0
     else:
@@ -551,3 +559,34 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
         return min([great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x'])
                     for n in other_intersection_nodes]
                    )
+
+
+def get_list_of_highway_types(intersection_data, direction):
+    """
+    Get a dictionary of street types for all approaches or all exits.  
+    Each key is a type, each value is a number of occurrences per direction.
+    Multiple lanes of the same street are counted as one occurrence.
+    :param intersection_data: intersection dictionary
+    :param direction: string either "to_intersection" or "from_intersection"
+    :return: dictionary of street types.
+    """
+    types = {}
+    street_names = set([l['name'] for l in intersection_data['merged_lanes']])
+    for st in street_names:
+        street_types = set([l['highway'] for l in intersection_data['merged_lanes'] if st in l['meta_data']['identification']
+                            and direction in l['meta_data']['identification']
+                            ]
+                           )
+        for street_type in street_types:
+            if street_type in types:
+                types[street_type] += 1
+            else:
+                types[street_type] = 1
+
+    number_of_cycleways = len([l['id'] for l in intersection_data['merged_cycleways'] if direction in l['direction']])
+    if number_of_cycleways:
+        types['cycleway'] = number_of_cycleways
+    number_of_tracks = len([l['id'] for l in intersection_data['merged_tracks'] if direction in l['direction']])
+    if number_of_tracks:
+        types['track'] = number_of_tracks
+    return types
