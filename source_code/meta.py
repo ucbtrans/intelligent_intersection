@@ -235,6 +235,32 @@ def get_intersection_meta_data(intersection_data):
     approach_street_types = get_list_of_highway_types(intersection_data, "to_intersection")
     exit_street_types = get_list_of_highway_types(intersection_data, "from_intersection")
 
+    try:
+        approach_list = [int(l['meta_data']['maxspeed'].split(' ')[0]) for l in intersection_data['merged_lanes']
+                         if 'to_intersection' in l['meta_data']['identification']
+                         ]
+        if approach_list:
+            approach_max_speed = str(max(approach_list)) + ' ' + 'mph'
+            approach_min_speed = str(min(approach_list)) + ' ' + 'mph'
+        else:
+            approach_max_speed = '25 mph'
+            approach_min_speed = '25 mph'
+
+        exit_list = [int(l['meta_data']['maxspeed'].split(' ')[0]) for l in intersection_data['merged_lanes']
+                     if 'to_intersection' in l['meta_data']['identification']
+                     ]
+        if exit_list:
+            exit_max_speed = str(max(exit_list)) + ' ' + 'mph'
+            exit_min_speed = str(min(exit_list)) + ' ' + 'mph'
+        else:
+            exit_max_speed = '25 mph'
+            exit_min_speed = '25 mph'
+    except:
+        approach_max_speed = '25 mph'
+        approach_min_speed = '25 mph'
+        exit_max_speed = '25 mph'
+        exit_min_speed = '25 mph'
+
     meta_data = {
         'number_of_approaches': number_of_approaches,
         'number_of_exits': number_of_exits,
@@ -262,6 +288,10 @@ def get_intersection_meta_data(intersection_data):
         'stop_sign': stop_sign,
         'approach_street_types': approach_street_types,
         'exit_street_types': exit_street_types,
+        'approach_max_speed_limit' : approach_max_speed,
+        'approach_min_speed_limit': approach_min_speed,
+        'exit_max_speed_limit': exit_max_speed,
+        'exit_min_speed_limit': exit_min_speed,
     }
 
     meta_data['timestamp'] = str(datetime.datetime.now())
@@ -421,6 +451,12 @@ def get_lane_meta_data(lane_data, all_lanes, intersection_data, max_distance=20.
     if 'highway' in lane_data:
         street_type = lane_data['highway']
     meta_data['street_type'] = street_type
+
+    maxspeed = '25 mph'
+    if 'maxspeed' in lane_data:
+        maxspeed = lane_data['maxspeed']
+    meta_data['maxspeed'] = maxspeed
+
     meta_data['timestamp'] = str(datetime.datetime.now())
 
     return meta_data
