@@ -29,9 +29,9 @@ def split_railways(rail_tracks, referenced_nodes):
                 split_tracks.append(track2)
                 split = 'yes'
                 break
-        track_data['tags']['split'] = split
+        track_data['tags']['cut'] = split
 
-    split_tracks.extend([t for t in rail_tracks if t['tags']['split'] == 'no'])
+    split_tracks.extend([t for t in rail_tracks if t['tags']['cut'] == 'no'])
     return split_tracks
 
 
@@ -56,8 +56,8 @@ def split_track_by_node_index(track_data, i):
     else:
         track1['tags']['original_id'] = track_data['id']
         track2['tags']['original_id'] = track_data['id']
-    track1['tags']['split'] = 'yes'
-    track2['tags']['split'] = 'yes'
+    track1['tags']['cut'] = 'yes'
+    track2['tags']['cut'] = 'yes'
     return track1, track2
 
 

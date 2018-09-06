@@ -993,3 +993,26 @@ def get_link_from_and_to(lane_data, lanes):
             break
 
     return from_name, to_name
+
+
+def is_opposite_lane_exist(lane_data, lanes):
+    """
+    Check if an opposite traffic exists for the same street
+    :param lane_data: lane dictionary
+    :param lanes: list of lane dictionaries
+    :return: True or False
+    """
+    if lane_data['direction'] == 'to_intersection':
+        opposite_direction = 'from_intersection'
+    else:
+        opposite_direction = 'to_intersection'
+
+    opposite_bearing = (lane_data['bearing'] + 180.0) % 360.0
+    opposite_lanes = [l for l in lanes if l['name'] == lane_data['name']
+                      and opposite_direction in l['direction']
+                      and abs(get_angle_between_bearings(opposite_bearing, l['bearing'])) < 30
+                      ]
+    if opposite_lanes:
+        return True
+    else:
+        return False

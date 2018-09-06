@@ -115,14 +115,14 @@ def split_streets(paths, nodes_dict, streets):
                 if len([s for s in nodes_dict[n]['street_name'] if s in streets]) > 1:
                     path1, path2 = split_track_by_node_index(path_data, i)
                     split = 'yes'
-                    path1['tags']['split'] = 'yes'
-                    path2['tags']['split'] = 'yes'
+                    path1['tags']['cut'] = 'yes'
+                    path2['tags']['cut'] = 'yes'
                     split_paths.append(path1)
                     split_paths.append(path2)
                     break
-        path_data['tags']['split'] = split
+        path_data['tags']['cut'] = split
 
-    split_paths.extend([t for t in paths if 'split' not in  t['tags'] or t['tags']['split'] == 'no'])
+    split_paths.extend([t for t in paths if 'split' not in  t['tags'] or t['tags']['cut'] == 'no'])
     return split_paths
 
 

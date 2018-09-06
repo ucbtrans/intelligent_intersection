@@ -10,7 +10,7 @@
 import datetime
 from right_turn import get_connected_links
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
-from lane import set_ids, get_link_from_and_to
+from lane import set_ids, get_link_from_and_to, is_opposite_lane_exist
 from public_transit import get_public_transit_stop
 from border import get_border_length
 from path import get_num_of_lanes
@@ -20,30 +20,39 @@ from log import get_logger
 
 logger = get_logger()
 meta_keys = ['diameter',
- 'stop_sign',
- 'number_of_railway_exits',
- 'min_number_of_lanes_in_approach',
- 'number_of_center_bicycle_approaches',
- 'number_of_right_side_bicycle_exits',
- 'max_number_of_lanes_in_approach',
- 'signal_present',
- 'number_of_approaches',
- 'max_curvature',
- 'min_curvature',
- 'subway_station_present',
- 'number_of_right_side_bicycle_approaches',
- 'number_of_tram/train_stops',
- 'max_number_of_lanes_in_exit',
- 'timestamp',
- 'number_of_exits',
- 'distance_to_next_intersection',
- 'max_angle',
- 'number_of_railway_approaches',
- 'number_of_bus/trolley_stops',
- 'pedestrian_signal_present',
- 'shortest_distance_to_railway_crossing',
- 'min_number_of_lanes_in_exit',
- 'number_of_center_bicycle_exits']
+             'stop_sign',
+             'number_of_railway_exits',
+             'min_number_of_lanes_in_approach',
+             'number_of_center_bicycle_approaches',
+             'number_of_right_side_bicycle_exits',
+             'max_number_of_lanes_in_approach',
+             'signal_present',
+             'number_of_approaches',
+             'max_curvature',
+             'min_curvature',
+             'subway_station_present',
+             'number_of_right_side_bicycle_approaches',
+             'number_of_tram/train_stops',
+             'max_number_of_lanes_in_exit',
+             'timestamp',
+             'number_of_exits',
+             'distance_to_next_intersection',
+             'max_angle',
+             'number_of_railway_approaches',
+             'number_of_bus/trolley_stops',
+             'pedestrian_signal_present',
+             'shortest_distance_to_railway_crossing',
+             'min_number_of_lanes_in_exit',
+             'number_of_center_bicycle_exits',
+             'approach_street_types',
+             'exit_street_types',
+             'approach_max_speed_limit',
+             'approach_min_speed_limit',
+             'exit_max_speed_limit',
+             'exit_min_speed_limit',
+             'approach_counts',
+             'exit_counts'
+             ]
 
 
 def set_meta_data(lanes, intersection_data, max_distance=20.0):
@@ -247,7 +256,7 @@ def get_intersection_meta_data(intersection_data):
             approach_min_speed = '25 mph'
 
         exit_list = [int(l['meta_data']['maxspeed'].split(' ')[0]) for l in intersection_data['merged_lanes']
-                     if 'to_intersection' in l['meta_data']['identification']
+                     if 'from_intersection' in l['meta_data']['identification']
                      ]
         if exit_list:
             exit_max_speed = str(max(exit_list)) + ' ' + 'mph'
@@ -262,37 +271,39 @@ def get_intersection_meta_data(intersection_data):
         exit_min_speed = '25 mph'
 
     meta_data = {
-        'number_of_approaches': number_of_approaches,
-        'number_of_exits': number_of_exits,
-        'max_number_of_lanes_in_approach': max_number_of_lanes_in_approach,
-        'min_number_of_lanes_in_approach': min_number_of_lanes_in_approach,
-        'number_of_railway_approaches': number_of_railway_approaches,
-        'number_of_railway_exits': number_of_railway_exits,
-        'max_number_of_lanes_in_exit': max_number_of_lanes_in_exit,
-        'min_number_of_lanes_in_exit': min_number_of_lanes_in_exit,
-        'number_of_center_bicycle_approaches': number_of_center_bicycle_approaches,
-        'number_of_right_side_bicycle_approaches': number_of_right_side_bicycle_approaches,
-        'number_of_center_bicycle_exits': number_of_center_bicycle_exits,
-        'number_of_right_side_bicycle_exits': number_of_right_side_bicycle_exits,
-        'signal_present': signal_present,
-        'pedestrian_signal_present': pedestrian_traffic_signals,
-        'diameter': intersection_diameter,
-        'max_angle': max_angle,
-        'max_curvature': max([0] + [l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
-        'min_curvature': min([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
-        'distance_to_next_intersection': distance_to_next_intersection,
-        'shortest_distance_to_railway_crossing': get_distance_to_railway_crossing(intersection_data),
-        'subway_station_present': subway_station_present,
-        'number_of_tram/train_stops': sum(rail_stations),
-        'number_of_bus/trolley_stops': sum(bus_stops),
-        'stop_sign': stop_sign,
-        'approach_street_types': approach_street_types,
-        'exit_street_types': exit_street_types,
-        'approach_max_speed_limit' : approach_max_speed,
-        'approach_min_speed_limit': approach_min_speed,
-        'exit_max_speed_limit': exit_max_speed,
-        'exit_min_speed_limit': exit_min_speed,
-    }
+                'number_of_approaches': number_of_approaches,
+                'number_of_exits': number_of_exits,
+                'max_number_of_lanes_in_approach': max_number_of_lanes_in_approach,
+                'min_number_of_lanes_in_approach': min_number_of_lanes_in_approach,
+                'number_of_railway_approaches': number_of_railway_approaches,
+                'number_of_railway_exits': number_of_railway_exits,
+                'max_number_of_lanes_in_exit': max_number_of_lanes_in_exit,
+                'min_number_of_lanes_in_exit': min_number_of_lanes_in_exit,
+                'number_of_center_bicycle_approaches': number_of_center_bicycle_approaches,
+                'number_of_right_side_bicycle_approaches': number_of_right_side_bicycle_approaches,
+                'number_of_center_bicycle_exits': number_of_center_bicycle_exits,
+                'number_of_right_side_bicycle_exits': number_of_right_side_bicycle_exits,
+                'signal_present': signal_present,
+                'pedestrian_signal_present': pedestrian_traffic_signals,
+                'diameter': intersection_diameter,
+                'max_angle': max_angle,
+                'max_curvature': max([0] + [l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
+                'min_curvature': min([l['meta_data']['curvature'] for l in intersection_data['merged_lanes']]),
+                'distance_to_next_intersection': distance_to_next_intersection,
+                'shortest_distance_to_railway_crossing': get_distance_to_railway_crossing(intersection_data),
+                'subway_station_present': subway_station_present,
+                'number_of_tram/train_stops': sum(rail_stations),
+                'number_of_bus/trolley_stops': sum(bus_stops),
+                'stop_sign': stop_sign,
+                'approach_street_types': approach_street_types,
+                'exit_street_types': exit_street_types,
+                'approach_max_speed_limit' : approach_max_speed,
+                'approach_min_speed_limit': approach_min_speed,
+                'exit_max_speed_limit': exit_max_speed,
+                'exit_min_speed_limit': exit_min_speed,
+                'approach_counts': count_oneways(intersection_data, 'to_intersection'),
+                'exit_counts': count_oneways(intersection_data, 'from_intersection'),
+                }
 
     meta_data['timestamp'] = str(datetime.datetime.now())
     return meta_data
@@ -626,3 +637,55 @@ def get_list_of_highway_types(intersection_data, direction):
     if number_of_tracks:
         types['track'] = number_of_tracks
     return types
+
+
+def count_oneways(intersection_data, direction):
+    """
+    Count numbers of oneway, twoway or singleway for approaches or exits
+    oneway is an approach or exit if the opposite traffic exists over a distance or divider
+    singleway is an approach or exit if no opposite traffic
+    twoway is an approach or exit adjacent to the opposite traffic without divider
+    :param intersection_data: intersection dictionary
+    :param direction: string
+    :return: dictionary of counts
+    """
+    counts = {'oneway': 0, 'twoway': 0, 'singleway': 0}
+    street_names = set([l['name'] for l in intersection_data['merged_lanes']])
+    for st in street_names:
+        two_way_count = len(set(
+            [l['compass'] for l in intersection_data['merged_lanes'] if st in l['meta_data']['identification']
+             and direction in l['meta_data']['identification']
+             and 'split' in l
+             and l['split']
+             and l['split'][-1] == 'yes'
+             ]
+            )
+        )
+
+        one_way_count = len(set(
+            [l['compass'] for l in intersection_data['merged_lanes'] if st in l['meta_data']['identification']
+             and direction in l['meta_data']['identification']
+             and 'split' in l
+             and l['split']
+             and l['split'][-1] == 'no'
+             and is_opposite_lane_exist(l, intersection_data['merged_lanes'])
+             ]
+            )
+        )
+
+        single_way_count = len(set(
+            [l['compass'] for l in intersection_data['merged_lanes'] if st in l['meta_data']['identification']
+             and direction in l['meta_data']['identification']
+             and 'split' in l
+             and l['split']
+             and l['split'][-1] == 'no'
+             and not is_opposite_lane_exist(l, intersection_data['merged_lanes'])
+             ]
+            )
+        )
+
+        counts['oneway'] += one_way_count
+        counts['twoway'] += two_way_count
+        counts['singleway'] += single_way_count
+
+    return counts
