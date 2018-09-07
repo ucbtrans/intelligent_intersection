@@ -13,7 +13,7 @@ from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 from lane import set_ids, get_link_from_and_to, is_opposite_lane_exist
 from public_transit import get_public_transit_stop
 from border import get_border_length
-from path import get_num_of_lanes
+from path_way import get_num_of_lanes
 from border import get_angle_between_bearings, get_border_curvature, great_circle_vec_check_for_nan
 from log import get_logger
 

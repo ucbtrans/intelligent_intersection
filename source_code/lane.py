@@ -14,7 +14,7 @@ import math
 import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
     cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border, get_lane_bearing
-from path import get_num_of_lanes, count_lanes, reverse_direction
+from path_way import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 from log import get_logger, dictionary_to_log
 

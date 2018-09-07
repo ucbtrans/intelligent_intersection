@@ -8,7 +8,7 @@
 
 
 from border import get_angle_between_bearings
-from path import count_lanes
+from path_way import count_lanes
 
 
 def manual_correction(paths):

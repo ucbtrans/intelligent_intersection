@@ -10,7 +10,7 @@ import osmnx as ox
 from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes
 from meta import set_meta_data
 from matplotlib.patches import Polygon
-from path import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
+from path_way import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
 from street import select_close_nodes, split_streets, get_list_of_street_data

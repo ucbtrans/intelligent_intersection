@@ -71,7 +71,7 @@ def get_data_from_file(file_name):
                           }
                          ]
         return selection
-    except IOError, xmltodict.ExpatError:
+    except (IOError, xmltodict.ExpatError):
         return None
 
 
