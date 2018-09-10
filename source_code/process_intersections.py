@@ -111,7 +111,7 @@ def generate_intersection_list(args):
 
     city = api.get_data(city_name=city_name)
     cross_streets = api.get_intersecting_streets(city)
-    #cross_streets = random.sample(cross_streets, 100)
+    #cross_streets = random.sample(cross_streets, 50)
 
     fp_s = open(output_signalized, 'w')
     fp_n = open(output_nosignal, 'w')
@@ -143,14 +143,27 @@ def generate_intersection_list(args):
             if len(meta_keys) == 0:
                 for k in meta.keys():
                     if k != "timestamp":
-                        header += ",{}".format(k)
+                        if k == 'approach_counts':
+                            header += ",oneway_approach_count,twoway_approach_count,singleway_approach_count"
+                        elif k == 'exit_counts':
+                            header += ",oneway_exit_count,twoway_exit_count,singleway_exit_count"
+                        else:
+                            header += ",{}".format(k)
                         meta_keys.append(k)
                         key_count += 1
                 header += "\n"
 
             buf = "\"{}\",{},{}".format(cs, lon, lat)
             for k in range(key_count):
-                buf += ",{}".format(meta[meta_keys[k]])
+                if meta_keys[k] == 'approach_counts' or meta_keys[k] == 'exit_counts':
+                    buf += ",{},{},{}".format(meta[meta_keys[k]]['oneway'], meta[meta_keys[k]]['twoway'], meta[meta_keys[k]]['singleway'])
+                elif meta_keys[k] == 'approach_street_types' or meta_keys[k] == 'exit_street_types':
+                    buf += ",\"{}\"".format(meta[meta_keys[k]])
+                elif meta_keys[k] == 'approach_max_speed_limit' or meta_keys[k] == 'approach_min_speed_limit' or meta_keys[k] == 'exit_max_speed_limit' or meta_keys[k] == 'exit_min_speed_limit':
+                    val_str = meta[meta_keys[k]].split()
+                    buf += ",{}".format(val_str[0])
+                else:
+                    buf += ",{}".format(meta[meta_keys[k]])
             buf += "\n"
 
             if signalized:
@@ -340,21 +353,21 @@ def main(argv):
     city_name = "San Francisco, California, USA"
     data_dir = "intersections"
     input_file = "intersections.csv"
-    input_file = "intersections0.csv"
+    #input_file = "intersections0.csv"
     ignored_directions = ['u_turn']
     crop_radius = 80
     debug = True
 
     args = {'city_name': city_name, 'data_dir': data_dir, 'crop_radius': crop_radius, 'debug': debug}
-    generate_intersection_list(args)
+    #generate_intersection_list(args)
 
-    if True:
+    if False:
         return
 
     intersections_file = posixpath.join(maps_dir, input_file)
 
     id_list = [2, 4, 5, 7, 10, 11, 14]
-    id_list = [1]
+    id_list = [4, 5, 6]
 
     args = {'city_name': city_name, 'maps_dir': maps_dir, 'intersections_file': intersections_file, 'id_list': id_list, 'ignored_directions': ignored_directions, 'crop_radius': crop_radius, 'debug': debug}
     res = process_intersections(args)
