@@ -426,7 +426,10 @@ def main(argv):
     maps_dir = "maps"
     rule_files = ["classification_rules.csv", "simple_rules.csv", "adjusted_rules.csv", "adjusted_simplified_rules.csv"]
     classifier_spec = rule_files[3]
-    intersections_file = "San Francisco, California, USA_signalized.csv"
+    intersections_files = ["San Francisco, California, USA_signalized.csv",
+                           "San Francisco, California, USA_nosignal.csv",
+                           "San Francisco, California, USA_other.csv"]
+    intersections_file = intersections_files[0]
     graphviz_name = "Classification Tree for '{}' using spec '{}'".format(intersections_file, classifier_spec)
     graphviz_file = intersections_file.rsplit(".", 1)[0] + "({}).gv".format(classifier_spec)
     data_dir = "intersections"
