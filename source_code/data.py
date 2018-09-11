@@ -58,7 +58,7 @@ def get_data_from_file(file_name):
     :return: dictionary with data
     """
     try:
-        with open(file_name) as f:
+        with open(file_name, 'rb') as f:
             raw_dict = xmltodict.parse(f.read())
             ways = [w for w in clean_list(raw_dict['osm']['way'], element_type='way') if filter_out(w)]
             nodes = clean_list(raw_dict['osm']['node'], element_type='node')
@@ -71,7 +71,7 @@ def get_data_from_file(file_name):
                           }
                          ]
         return selection
-    except (IOError, xmltodict.ExpatError):
+    except: # (IOError, xmltodict.ExpatError):
         return None
 
 
