@@ -19,7 +19,7 @@ def main(argv):
     print(__doc__)
 
     city_name = "Berkeley, California, USA"
-    osm_file = "../osm/ComponentDr_NorthFirstSt_SJ.osm"
+    osm_file = "maps/ComponentDr_NorthFirstSt_SJ.osm"
 
     city = api.get_data(city_name=city_name)
     city = api.get_data(file_name=osm_file)
@@ -63,35 +63,52 @@ def main(argv):
     my_kml.save(kml_file)
 
 
-    main_gw = [guideways[0]]
-    c_idx = [1, 3]
-    g_idx = [1, 6, 10, 12]
-    r_idx = [18, 19]
-    b_idx = [25, 28]
+    main_idx = ['[416208098]-[554701, 470102]']
+    c_idx = ['503335189', '503335191']
+    g_idx = ['[416208100]-[554701, 470102]', '[416208100]-[810501, 50102]', '[416208100]-[416210123, 25927195001]']
+    r_idx = ['[729401]-[940102]', '[756701]-[670102]']
+    b_idx = ['[25927195000]-[810501, 50102]', '[416208100]-[554701, 470102]']
 
-    my_cw, my_gw, my_rw, my_bw = [], [], [], []
+    main_gw, my_cw, my_gw, my_rw, my_bw = [], [], [], [], []
+    bz_gw_id = 0
 
     # crosswalks
-    for idx in c_idx:
-        my_cw.append(crosswalks[idx])
+    for cw in crosswalks:
+        my_id = "{}".format(cw['path_id'])
+        if my_id in c_idx:
+            my_cw.append(cw)
 
-    # vehicle guideways
-    for idx in g_idx:
-        my_gw.append(guideways[idx])
+    for gw in guideways:
+        my_id = "{}-{}".format(gw['origin_lane']['path_id'], gw['destination_lane']['path_id'])
 
-    # railroads
-    for idx in r_idx:
-        my_rw.append(guideways[idx])
+        if my_id in main_idx:
+            main_gw.append(gw)
+            continue
 
-    # bicycle routes
-    for idx in b_idx:
-        my_bw.append(guideways[idx])
+        if gw['type'] == 'drive' and my_id in g_idx:
+            my_gw.append(gw)
+            if my_id == g_idx[0]:
+                bz_gw_id = gw['id']
+            continue
+
+        if gw['type'] == 'railway' and my_id in r_idx:
+            my_rw.append(gw)
+            continue
+
+        if gw['type'] == 'bicycle' and my_id in b_idx:
+            my_bw.append(gw)
+            continue
 
     conflict_zones = api.get_conflict_zones(main_gw[0], my_gw+my_rw+my_bw+my_cw)
+    my_cz = conflict_zones[6]
+    for cz in conflict_zones:
+        if cz['guideway2_id'] == bz_gw_id:
+            my_cz = cz
+            break
 
     blocking_guideways = my_gw
     point_of_view = (0.1, 0.5)
-    blind_zone = api.get_blind_zone(point_of_view, main_gw[0], conflict_zones[4], blocking_guideways, guideways)
+    blind_zone = api.get_blind_zone(point_of_view, main_gw[0], my_cz, blocking_guideways, guideways)
 
     fig = api.get_conflict_zone_image(conflict_zones, x_section)
     fig.savefig("conflict_zones.jpg")

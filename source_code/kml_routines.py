@@ -38,7 +38,8 @@ class KML:
             name = "({}) {} {} - {} {} ({})".format(k, gw['origin_lane']['name'], gw['origin_lane']['compass'],
                                                     gw['destination_lane']['name'], gw['destination_lane']['compass'],
                                                     gw['direction'])
-            description = "ID: {}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['id'],
+            description = "ID: {}-{}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['origin_lane']['path_id'],
+                                                                                                             gw['destination_lane']['path_id'],
                                                                                                              gw['origin_lane']['name'],
                                                                                                              gw['origin_lane']['compass'],
                                                                                                              gw['origin_lane']['lane_id'],
@@ -81,7 +82,8 @@ class KML:
             name = "({}) {} {} - {} {} ({})".format(k, gw['origin_lane']['name'], gw['origin_lane']['compass'],
                                                     gw['destination_lane']['name'], gw['destination_lane']['compass'],
                                                     gw['direction'])
-            description = "ID: {}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['id'],
+            description = "ID: {}-{}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['origin_lane']['path_id'],
+                                                                                                             gw['destination_lane']['path_id'],
                                                                                                              gw['origin_lane']['name'],
                                                                                                              gw['origin_lane']['compass'],
                                                                                                              gw['origin_lane']['lane_id'],
@@ -126,7 +128,7 @@ class KML:
         k = 0
         for cw in cw_list:
             name = "({}) {}: {} {} ({} m)".format(k, cw['lane_type'], cw['name'], cw['compass'], cw['width'])
-            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['id'], cw['name'], cw['compass'], cw['width'], cw['type'])
+            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['path_id'], cw['name'], cw['compass'], cw['width'], cw['type'])
             mg = self.kml.newmultigeometry()
             mg.name = name
             mg.description = description
@@ -159,7 +161,7 @@ class KML:
         k = 0
         for cw in cw_list:
             name = "({}) {}: {} {} ({} m)".format(k, cw['lane_type'], cw['name'], cw['compass'], cw['width'])
-            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['id'], cw['name'], cw['compass'], cw['width'], cw['type'])
+            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['path_id'], cw['name'], cw['compass'], cw['width'], cw['type'])
             mg = self.kml.newmultigeometry()
             mg.name = name
             mg.description = description
