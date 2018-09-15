@@ -7,9 +7,12 @@
 #######################################################################
 
 
-from border import get_distance_between_nodes, get_compass_rhumb
+import copy
+from border import get_distance_between_nodes, get_compass_rhumb, get_border_length, get_lane_bearing
+from turn import shorten_border_for_crosswalk
 from railway import split_track_by_node_index
-from lane import get_most_right_lane, get_most_left_lane
+from lane import get_most_right_lane, get_most_left_lane, get_sorted_lane_subset, get_lane_index_from_right, \
+    get_lane_index_from_left
 from log import get_logger
 
 
@@ -102,126 +105,175 @@ def split_streets(paths, nodes_dict, streets):
     Intersecting means a node belonging to two or more streets which form the intersection.
     :param paths: list of dictionaries
     :param nodes_dict: dictionary of all nodes
+    :param streets: list of street dictionaries
     :return: list of dictionaries
     """
 
     split_paths = []
+    split_occurred = False
+    for path_data in paths:
+        cut_flag = 'no'
+        if 'name' in path_data['tags'] and path_data['tags']['name'] in streets:
+            for i, n in enumerate(path_data['nodes']):
+                if 0 < i < len(path_data['nodes']) - 1 and 'street_name' in nodes_dict[n] \
+                        and len(nodes_dict[n]['street_name']) > 1:
+                    if len([s for s in nodes_dict[n]['street_name']]) > 1:
+                        path1, path2 = split_track_by_node_index(path_data, i)
+                        cut_flag = 'yes'
+                        split_paths.append(path1)
+                        split_paths.append(path2)
+                        split_occurred = True
+                        break
 
-    for path_data in [p for p in paths if 'name' in p['tags'] and p['tags']['name'] in streets]:
-        split = 'no'
-        for i, n in enumerate(path_data['nodes']):
-            if 0 < i < len(path_data['nodes']) - 1 and 'street_name' in nodes_dict[n] \
-                    and len(nodes_dict[n]['street_name']) > 1:
-                if len([s for s in nodes_dict[n]['street_name'] if s in streets]) > 1:
-                    path1, path2 = split_track_by_node_index(path_data, i)
-                    split = 'yes'
-                    path1['tags']['cut'] = 'yes'
-                    path2['tags']['cut'] = 'yes'
-                    split_paths.append(path1)
-                    split_paths.append(path2)
-                    break
-        path_data['tags']['cut'] = split
+        if cut_flag == 'no':
+            split_paths.append(path_data)
 
-    split_paths.extend([t for t in paths if 'split' not in  t['tags'] or t['tags']['cut'] == 'no'])
-    return split_paths
+    return split_paths, split_occurred
 
 
-def repeat_street_split(paths, nodes_dict, n=2):
+def repeat_street_split(paths, nodes_dict, streets, n=20):
     """
     Repeat path splitting
     :param paths: list of paths dictionaries
     :param nodes_dict: dictionary of all nodes
+    :param streets: list of street dictionaries
     :param n: number of iterations
     :return: list of paths dictionaries
     """
 
-    split_paths = paths
+    split_paths = copy.deepcopy(paths)
     for i in range(n):
-        split_paths = split_streets(split_paths, nodes_dict)
+        split_paths, split_occurred = split_streets(split_paths, nodes_dict, streets)
+        if not split_occurred:
+            break
     return split_paths
 
 
-def get_street_data_by_name_and_bearing(lanes, name, bearing):
-    opposite_bearing = (bearing + 180.0) % 360.0
-    logger.debug('Finding street boundaries for %s, bearings: %r %r' % (name, bearing, opposite_bearing))
-    most_right_lane_to_intersection = get_most_right_lane(lanes, name, 'to_intersection', bearing)
-    most_right_lane_from_intersection = get_most_right_lane(lanes, name, 'from_intersection', opposite_bearing)
+def get_lanes_close_to_the_intersection(lanes, crosswalk_width=1.82):
+    """
+    Get a subset of lanes that are adjacent to the intersection center for construction of crosswalks.
+    Lanes that ends at a distance to the center are excluded.
+    :param lanes: 
+    :param crosswalk_width: 
+    :return: list of lane dictionaries
+    """
+    close_lanes = []
+    for lane_data in lanes:
+        median = shorten_border_for_crosswalk(lane_data['median'],
+                                              lane_data['name'],
+                                              lanes,
+                                              crosswalk_width=5*crosswalk_width,
+                                              destination=lane_data['direction']
+                                              )
+        if get_border_length(median) < lane_data['length']:
+            close_lanes.append(lane_data)
+    return close_lanes
 
-    if most_right_lane_to_intersection is None and most_right_lane_from_intersection is None:
-        logger.debug('No lanes found in either direction')
+
+def get_street_by_name_and_bearing(lanes, name, bearing):
+    """
+    Create a street dictionary based name and compass bearing.
+    The bearing does not need to be accurate
+    :param lanes: list of lane dictionaries
+    :param name: string
+    :param bearing: float in degrees
+    :return: street dictionary
+    """
+    if bearing is None:
+        logger.warning('Undefined bearing %s %r' % (name, bearing))
         return None
-    elif most_right_lane_to_intersection is not None and most_right_lane_from_intersection is None:
-        logger.debug('To intersection lane is OK. Most right lane from intersection not found')
-        most_left_lane_to_intersection = get_most_left_lane(lanes, name, 'to_intersection', bearing)
-        if most_left_lane_to_intersection is None:
-            logger.debug('Most left lane to intersection not found')
-            return None
-        right_border = most_right_lane_to_intersection['right_border']
-        left_border = most_left_lane_to_intersection['left_border']
-        direction = 'to_intersection'
-        to_id = most_right_lane_to_intersection['id']
-        from_id = 0
-    elif most_right_lane_to_intersection is None and most_right_lane_from_intersection is not None:
-        logger.debug('From intersection lane is OK. Most right lane to intersection not found')
-        most_left_lane_to_intersection = get_most_left_lane(lanes, name, 'from_intersection', opposite_bearing)
-        if most_left_lane_to_intersection is None:
-            logger.debug('Most left lane to intersection not found. Doublecheck this logic')
-            return None
-        right_border = most_right_lane_from_intersection['right_border'][::-1]
-        left_border = most_left_lane_to_intersection['left_border'][::-1]
-        direction = 'from_intersection'
-        to_id = 0
-        from_id = most_right_lane_from_intersection['id']
+
+    opposite = (bearing + 180.0) % 360.0
+    if 'link' in name:
+        from_subset = []
     else:
-        logger.debug('Both directions found')
-        right_border = most_right_lane_to_intersection['right_border']
-        left_border = most_right_lane_from_intersection['right_border'][::-1]
-        direction = 'both'
-        from_id = most_right_lane_from_intersection['id']
-        to_id = most_right_lane_to_intersection['id']
+        from_subset = get_sorted_lane_subset(lanes, name, opposite, 'from_intersection', get_lane_index_from_right)
+
+    to_subset = get_sorted_lane_subset(lanes, name, bearing, 'to_intersection', get_lane_index_from_left)
+    border_list = []
+
+    for lane_data in from_subset:
+        border_list.append(lane_data['right_border'][::-1])
+        border_list.append(lane_data['left_border'][::-1])
+    for lane_data in to_subset:
+        border_list.append(lane_data['left_border'])
+        border_list.append(lane_data['right_border'])
+
+    if len(border_list) == 0:
+        logger.warning('Failed to create street %s %r' % (name, bearing))
+        return None
+
+    right_border = border_list[-1]
+    left_border = border_list[0]
+    lane_ids = [l['id'] for l in from_subset + to_subset]
+
+    if from_subset and to_subset:
+        street_direction = 'both'
+    elif to_subset:
+        street_direction = 'to_intersection'
+    else:
+        street_direction = 'from_intersection'
 
     street_data = {
         'name': name,
-        'bearing': bearing,
-        'compass': get_compass_rhumb(bearing),
-        'direction': direction,
-        'id': to_id*100 + from_id,
-        'lane_id_to_intersection': to_id,
-        'lane_id_from_intersection': from_id,
+        'direction': street_direction,
         'right_border': right_border,
-        'left_border': left_border
+        'left_border': left_border,
+        'lane_ids': lane_ids
     }
 
+    street_data['bearing'] = get_lane_bearing(street_data)
+    street_data['compass'] = get_compass_rhumb(street_data['bearing'])
+    logger.debug('Created %s %s' % (name, street_data['compass']))
     return street_data
 
 
 def get_street_names_from_lanes(lanes):
+    """
+    Get a set of street names from all lanes
+    :param lanes: list of lane dictionaries
+    :return: set of strings
+    """
     return set([l['name'] for l in lanes])
 
 
-def get_street_bearing(lanes, name, direction='to_intersection'):
-    return [l['bearing'] for l in lanes if l['name'] == name and l['direction'] == direction]
+def get_to_intersection_bearing(lanes, name):
+    """
+    Identify compass bearing towards the intersection for a street name 
+    regardless of whether any lanes exists in the direction
+    :param lanes: list of lane dictionaries
+    :param name: string
+    :return: float in degrees
+    """
+    bearings = [l['bearing'] for l in lanes if l['name'] == name and l['direction'] == 'to_intersection']
+    if bearings:
+        return bearings[0]
+    bearings = [l['bearing'] for l in lanes if l['name'] == name and l['direction'] == 'from_intersection']
+    if bearings:
+        return (bearings[0] + 180.0) % 360.0
+    return None
 
 
-def get_list_of_street_data(lanes):
-
+def get_list_of_streets(lanes):
+    """
+    Get list of street dictionaries.  
+    Definition of a street: combined area of lanes with same street name, 
+    possibly in both directions, at one side of the intersection
+    :param lanes: list of lane dictionaries
+    :return: list of street dictionaries
+    """
+    close_lanes = get_lanes_close_to_the_intersection(lanes)
     list_of_street_data = []
-    for name in get_street_names_from_lanes(lanes):
-        list_of_bearings = get_street_bearing(lanes, name, 'to_intersection')
-        if list_of_bearings:
-            bearing = list_of_bearings[0]
-        else:
-            list_of_bearings = get_street_bearing(lanes, name, 'from_intersection')
-            if list_of_bearings:
-                bearing = (list_of_bearings[0] + 180.0) % 360.0
-            else:
-                continue
+    for name in get_street_names_from_lanes(close_lanes):
+        bearing = get_to_intersection_bearing(close_lanes, name)
+        if bearing is None:
+            continue
 
-        street_data = get_street_data_by_name_and_bearing(lanes, name, bearing)
-
+        street_data = get_street_by_name_and_bearing(close_lanes, name, bearing)
         if street_data is not None:
             list_of_street_data.append(street_data)
-        street_data = get_street_data_by_name_and_bearing(lanes, name, (bearing + 180.0) % 360.0)
+
+        street_data = get_street_by_name_and_bearing(close_lanes, name, (bearing + 180.0) % 360.0)
         if street_data is not None:
             list_of_street_data.append(street_data)
 

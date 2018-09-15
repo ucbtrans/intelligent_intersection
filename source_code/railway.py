@@ -31,7 +31,7 @@ def split_railways(rail_tracks, referenced_nodes):
                 break
         track_data['tags']['cut'] = split
 
-    split_tracks.extend([t for t in rail_tracks if t['tags']['cut'] == 'no'])
+    split_tracks.extend([t for t in rail_tracks if 'cut' in t['tags'] and t['tags']['cut'] == 'no'])
     return split_tracks
 
 
@@ -48,14 +48,11 @@ def split_track_by_node_index(track_data, i):
     track2 = copy.deepcopy(track_data)
     track1['nodes'] = track_data['nodes'][:i+1]
     track2['nodes'] = track_data['nodes'][i:]
-    track1['id'] = ((track1['id']) % 10000)*100 + 1
-    track2['id'] = ((track1['id']) % 10000)*100 + 2
-    if 'original_id' in track_data:
-        track1['tags']['original_id'] = track_data['original_id']
-        track2['tags']['original_id'] = track_data['original_id']
-    else:
-        track1['tags']['original_id'] = track_data['id']
-        track2['tags']['original_id'] = track_data['id']
+    track1['id'] = ((track_data['id']) % 10000)*100 + 1
+    track2['id'] = ((track_data['id']) % 10000)*100 + 2
+    if 'original_id' not in track_data:
+        track1['original_id'] = track_data['id']
+        track2['original_id'] = track_data['id']
     track1['tags']['cut'] = 'yes'
     track2['tags']['cut'] = 'yes'
     return track1, track2

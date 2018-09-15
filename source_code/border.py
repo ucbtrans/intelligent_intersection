@@ -144,7 +144,7 @@ def extend_vector(coord, length=300.0, backward=True, relative=False):
         return [(x0, y0), (xx1, yy1)]
 
 
-def extend_both_sides_of_a_border(border, length=20.0, relative=True):
+def extend_both_sides_of_a_border(border, length=120.0, relative=True):
     """
     Extend both ends of a border to a large size in order to clear crosswalk areas
     :param border: list of coordinates
@@ -153,6 +153,7 @@ def extend_both_sides_of_a_border(border, length=20.0, relative=True):
                      False if the resulting vector length should be equal length
     :return: list of coordinates representing new extended border
     """
+
     temp = extend_origin_border(border, length=length, relative=relative)
     return extend_destination_border(temp, length=length, relative=relative)
 
@@ -265,9 +266,11 @@ def cut_line_by_relative_distance(coordinates, relative_distance):
     return list(reduced_line.coords)
 
 
-def cut_border_by_point(border, point_coordinate):
+def cut_border_by_point(border, point_coordinate, ind=0):
+    if len(border) < 2:
+        return []
     line = geom.LineString(border)
-    reduced_line = cut_border_by_distance(line, line.project(geom.Point(point_coordinate)))[0]
+    reduced_line = cut_border_by_distance(line, line.project(geom.Point(point_coordinate)))[ind]
     return list(reduced_line.coords)
 
 
@@ -526,12 +529,19 @@ def cut_border_by_polygon(border, polygon, multi_string_index=0):
     if not b.intersects(polygon):
         return border
 
-    shortened_border = b.difference(polygon)
-    if type(shortened_border) is geom.multilinestring.MultiLineString:
-        shortened_border = list(shortened_border)[multi_string_index]
     try:
+        shortened_border = b.difference(polygon)
+        if type(shortened_border) is geom.multilinestring.MultiLineString \
+                or type(shortened_border) is geom.collection.GeometryCollection:
+            lst = list(shortened_border)
+            if lst:
+                shortened_border = lst[multi_string_index]
+            else:
+                logger.error("Empty list, index %d, border type %s" % (multi_string_index, type(shortened_border)))
+                return None
         list_of_coordinates = list(shortened_border.coords)
     except Exception as e:
+        logger.error("Shorten border type %s" % type(shortened_border))
         logger.exception('Unable to get a list of coordinates from the border-polygon intersection: %r' % e)
         return None
     return list_of_coordinates
@@ -655,3 +665,18 @@ def get_border_curvature(border):
         curvature += abs(get_angle_between_bearings(bearing1, bearing2))
 
     return curvature / get_border_length(border)
+
+
+def get_line_intersection(line1, line2):
+    """
+    Get point intersection between two lines
+    :param line1: list of coordinates
+    :param line2: list of coordinates
+    :return: tuple of coordinates
+    """
+    l1 = geom.LineString(line1)
+    l2 = geom.LineString(line2)
+    if l1.intersects(l2):
+        return list(l1.intersection(l2).coords)[0]
+    else:
+        return None

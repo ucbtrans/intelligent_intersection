@@ -13,7 +13,7 @@ from matplotlib.patches import Polygon
 from path_way import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
-from street import select_close_nodes, split_streets, get_list_of_street_data
+from street import select_close_nodes, repeat_street_split, get_list_of_streets
 from railway import split_railways, remove_subways
 from footway import get_crosswalks, get_simulated_crosswalks
 from correction import manual_correction, correct_paths
@@ -124,8 +124,9 @@ def get_street_data(x_data, city_data):
                             nodes_dict,
                             paths=intersection_paths
                             )
+
     manual_correction(intersection_paths)
-    split_x_streets = split_streets(intersection_paths, nodes_dict, x_data['streets'])
+    split_x_streets = repeat_street_split(intersection_paths, nodes_dict, x_data['streets'])
     oneway_paths = split_bidirectional_paths(split_x_streets, nodes_dict)
     set_direction(oneway_paths, x_data, nodes_dict)
     correct_paths(oneway_paths)
@@ -259,6 +260,7 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     merged_lanes = merge_lanes(lanes, city_data['nodes'])
 
     intersection_data['raw_data'] = raw_data
+    intersection_data['paths'] = cleaned_intersection_paths
     intersection_data['lanes'] = lanes
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
@@ -277,7 +279,7 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
     intersection_data['footway'] = get_footway_data(intersection_data, city_data)
 
-    intersection_data['street_data'] = get_list_of_street_data(intersection_data['merged_lanes'])
+    intersection_data['street_data'] = get_list_of_streets(intersection_data['merged_lanes'])
     crosswalks = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
     intersection_data['crosswalks'] = crosswalks + get_simulated_crosswalks(intersection_data['street_data'],
                                                                             crosswalks,

@@ -13,7 +13,8 @@ import copy
 import math
 import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
-    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border, get_lane_bearing
+    cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border, \
+    get_border_length
 from path_way import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 from log import get_logger, dictionary_to_log
@@ -156,7 +157,9 @@ def get_most_right_lane(lanes, name, direction, bearing):
     """
     Get the most right lane for a street for the specified direction
     :param lanes: list of lane dictionaries
-    :param identification: string, like 'Church Street to_intersection'
+    :param name: string
+    :param direction: string
+    :param bearing: float
     :return: lane dictionary
     """
     for l in lanes:
@@ -170,7 +173,9 @@ def get_most_left_lane(lanes, name, direction, bearing):
     """
     Get the most left lane for a street for the specified direction
     :param lanes: list of lane dictionaries
-    :param identification: string, like 'Church Street to_intersection'
+    :param name: string
+    :param direction: string
+    :param bearing: float
     :return: lane dictionary
     """
     for l in lanes:
@@ -178,6 +183,29 @@ def get_most_left_lane(lanes, name, direction, bearing):
             if abs(get_angle_between_bearings(bearing, l['bearing'])) < 15:
                 return l
     return None
+
+
+def get_sorted_lane_subset(lanes, name, bearing, direction, func):
+    """
+    Get subset of lanes for the specified name, bearing ang direction.
+    Sort the results fy the specified function.
+    :param lanes: list of lanes
+    :param name: string
+    :param bearing: float in degrees
+    :param direction: string
+    :param func: function name to provide sorting value
+    :return: list of lanes
+    """
+
+    subset = [l for l in lanes if l['name'] == name
+              and l['direction'] == direction
+              and abs(get_angle_between_bearings(bearing, l['bearing'])) < 30
+              ]
+
+    if subset:
+        return sorted(subset, key=func)
+    else:
+        return []
 
 
 def add_incremental_points(border, n=10, l=6.0):
@@ -304,13 +332,18 @@ def create_lane(p,
         lane_data['left_shaped_border'] = None
 
     lane_data['median'] = shift_list_of_nodes(lane_data['left_border'], [width/2.0]*len(lane_data['left_border']))
-
+    lane_data['length'] = get_border_length(lane_data['median'])
     insert_referenced_nodes(lane_data, nodes_dict)
     return lane_data
 
 
 def add_lane(lane_data, merged_lane=None):
-
+    """
+    Add lane to a merged lane
+    :param lane_data: lane dictionary
+    :param merged_lane: lane dictionary
+    :return: merged lane dictionary
+    """
     if 'split' in lane_data:
         split = lane_data['path']['tags']['split']
     else:
@@ -320,7 +353,7 @@ def add_lane(lane_data, merged_lane=None):
         merged_lane = {
             'width': [lane_data['width']],
             'path_id': [lane_data['path_id']],
-            'path': [lane_data['path']],
+            'path': [copy.deepcopy(lane_data['path'])],
             'nodes': copy.deepcopy(lane_data['nodes']),
             'left_border': copy.deepcopy(lane_data['left_border']),
             'median': copy.deepcopy(lane_data['median']),
@@ -371,6 +404,9 @@ def add_lane(lane_data, merged_lane=None):
                      'shape_points',
                      'split']:
             merged_lane[k] = lane_data[k]
+
+        merged_lane['length'] = get_border_length(merged_lane['median'])
+
     return merged_lane
 
 

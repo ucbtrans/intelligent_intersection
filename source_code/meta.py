@@ -16,7 +16,7 @@ from border import get_border_length
 from path_way import get_num_of_lanes
 from border import get_angle_between_bearings, get_border_curvature, great_circle_vec_check_for_nan
 from log import get_logger
-
+from guideway import get_crosswalk_to_crosswalk_distance_along_guideway, get_through_guideways
 
 logger = get_logger()
 meta_keys = ['diameter',
@@ -70,7 +70,7 @@ def set_meta_data(lanes, intersection_data, max_distance=20.0):
             lane_data['meta_data'] = get_lane_meta_data(lane_data, lanes, intersection_data, max_distance=max_distance)
         except Exception as e:
             lane_data['meta_data'] = 'Exception in the log'
-            logger.exception('Lane meta data exception: %r' %  e)
+            logger.exception('Lane meta data exception: %r' % e)
             continue
 
     try:
@@ -529,6 +529,22 @@ def get_intersection_diameter(x_data):
     :param x_data: intersection dictionary
     :return: float distance in meters
     """
+
+    guideways = get_through_guideways(x_data['merged_lanes'])
+    if guideways:
+        diameter = max([get_crosswalk_to_crosswalk_distance_along_guideway(g, x_data['crosswalks']) for g in guideways])
+    else:
+        logger.warning('No through guideways found %r' % '(' + ', '.join(list(x_data['streets']))+')')
+        diameter = -2
+
+    if diameter > 0:
+        logger.debug('Intersection %s c2c diameter: %r' % ('(' + ', '.join(list(x_data['streets']))+')', diameter))
+        return diameter
+    else:
+        logger.warning('Unable to find crosswalk to crosswalk distance for intersection %s'
+                       % '(' + ', '.join(list(x_data['streets']))+')'
+                       )
+
     x0 = x_data['center_x']
     y0 = x_data['center_y']
     all_lanes = x_data['merged_lanes']
@@ -583,7 +599,7 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
     :return: float distance in meters
     """
     other_intersection_nodes = set()
-    distance_threshold = max(20.0, intersection_diameter)
+    dist_threshold = max(20.0, intersection_diameter)
     x0 = x_data['center_x']
     y0 = x_data['center_y']
 
@@ -592,7 +608,7 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
             continue
         if len(x_data['nodes'][n]['street_name']) < 2:
             continue
-        if great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) < distance_threshold:
+        if great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) < dist_threshold:
             continue
         for s in x_data['nodes'][n]['street_name']:
             if '_link' in s:
@@ -608,19 +624,19 @@ def get_distance_to_next_intersection(x_data, intersection_diameter):
                    )
 
 
-def get_list_of_highway_types(intersection_data, direction):
+def get_list_of_highway_types(x_data, direction):
     """
     Get a dictionary of street types for all approaches or all exits.  
     Each key is a type, each value is a number of occurrences per direction.
     Multiple lanes of the same street are counted as one occurrence.
-    :param intersection_data: intersection dictionary
+    :param x_data: intersection dictionary
     :param direction: string either "to_intersection" or "from_intersection"
     :return: dictionary of street types.
     """
     types = {}
-    street_names = set([l['name'] for l in intersection_data['merged_lanes']])
+    street_names = set([l['name'] for l in x_data['merged_lanes']])
     for st in street_names:
-        street_types = set([l['highway'] for l in intersection_data['merged_lanes'] if st in l['meta_data']['identification']
+        street_types = set([l['highway'] for l in x_data['merged_lanes'] if st in l['meta_data']['identification']
                             and direction in l['meta_data']['identification']
                             ]
                            )
@@ -630,10 +646,10 @@ def get_list_of_highway_types(intersection_data, direction):
             else:
                 types[street_type] = 1
 
-    number_of_cycleways = len([l['id'] for l in intersection_data['merged_cycleways'] if direction in l['direction']])
+    number_of_cycleways = len([l['id'] for l in x_data['merged_cycleways'] if direction in l['direction']])
     if number_of_cycleways:
         types['cycleway'] = number_of_cycleways
-    number_of_tracks = len([l['id'] for l in intersection_data['merged_tracks'] if direction in l['direction']])
+    number_of_tracks = len([l['id'] for l in x_data['merged_tracks'] if direction in l['direction']])
     if number_of_tracks:
         types['track'] = number_of_tracks
     return types

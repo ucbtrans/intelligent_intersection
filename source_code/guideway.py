@@ -18,6 +18,7 @@ from through import is_through_allowed, get_destination_lane
 from u_turn import is_u_turn_allowed, get_destination_lanes_for_u_turn, get_u_turn_border
 from turn import get_turn_border
 from log import get_logger, dictionary_to_log
+from footway import crosswalk_intersects_median, get_crosswalk_to_crosswalk_distance
 
 
 logger = get_logger()
@@ -273,6 +274,38 @@ def get_through_guideways(all_lanes):
 
     logger.info('Created %d guideways' % len(guideways))
     return guideways
+
+
+def get_crosswalk_to_crosswalk_distance_along_guideway(guideway_data, crosswalks):
+    """
+    Calculate max distance between crosswalks along a guideway
+    :param guideway_data: guideway dictionary
+    :param crosswalks: list of crosswalks dictionaries
+    :return: float in meters
+    """
+    origin_crosswalks = [c for c in crosswalks if c['name'] == guideway_data['origin_lane']['name']
+                         and crosswalk_intersects_median(c, guideway_data['origin_lane']['median'])
+                         ]
+    destination_crosswalks = [c for c in crosswalks if c['name'] == guideway_data['destination_lane']['name']
+                              and crosswalk_intersects_median(c, guideway_data['destination_lane']['median'])
+                              ]
+
+    if len(origin_crosswalks) == 0:
+        logger.warning('Unable to find origin crosswalks for %s guideway %d %s'
+                       % (guideway_data['direction'], guideway_data['id'], guideway_data['origin_lane']['name'])
+                       )
+        return -3
+    if len(destination_crosswalks) == 0:
+        logger.warning('Unable to find destination crosswalks for %s guideway %d %s'
+                       % (guideway_data['direction'], guideway_data['id'], guideway_data['destination_lane']['name'])
+                       )
+        return -4
+
+    return max([get_crosswalk_to_crosswalk_distance(c1, c2, guideway_data['median'])
+                for c1 in origin_crosswalks
+                for c2 in destination_crosswalks
+                ]
+               )
 
 
 def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='right'):

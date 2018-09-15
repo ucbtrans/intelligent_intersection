@@ -250,8 +250,9 @@ def get_street_data_list(intersection_data):
     :param intersection_data: intersection dictionary
     :return: list of street data dictionaries
     """
-
-    return get_list_of_street_data(intersection_data['merged_lanes'])
+    if intersection_data is None:
+        return []
+    return intersection_data['street_data']
 
 
 def get_street_image(street_data_list, intersection_data, fc='#FFCCCC', alpha=1.0):

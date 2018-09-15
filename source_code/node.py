@@ -87,7 +87,7 @@ def get_nodes_ids_for_street(paths, name):
     :return: list of node ids
     """
     node_ids = []
-    for path_data in [p for p in paths if 'name' in p['tags'] and name in p['tags']['name']]:
+    for path_data in [p for p in paths if 'name' in p['tags'] and p['tags']['name'] == name]:
         node_ids.extend(path_data['nodes'])
     return set(node_ids)
 
