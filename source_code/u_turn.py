@@ -34,7 +34,7 @@ def is_u_turn_allowed(origin_lane, x_data):
         return False
     if 'through' in origin_lane['lane_type'] and 'left' not in origin_lane['lane_type']:
         return False
-    if get_distance_between_points(origin_lane['left_border'][-1], (x_data['center_x'], x_data['center_y'])) > 25.0:
+    if get_distance_between_points(origin_lane['left_border'][-1], (x_data['center_x'], x_data['center_y'])) > 35.0:
         return False
     return True
 
@@ -104,6 +104,7 @@ def get_u_turn_border(origin_lane, destination_lane, all_lanes, border_type='lef
         origin_border = origin_lane[border_type + '_border']
 
     cut_size = origin_lane['crosswalk_width']*5.0
+
     shorten_origin_border = shorten_border_for_crosswalk(origin_border,
                                                          origin_lane['name'],
                                                          all_lanes,
@@ -117,6 +118,7 @@ def get_u_turn_border(origin_lane, destination_lane, all_lanes, border_type='lef
                                                          destination='to_intersection',
                                                          crosswalk_width=0.0
                                                          )
+
     shorten_destination_border = shorten_border_for_crosswalk(destination_border,
                                                               destination_lane['name'],
                                                               all_lanes,

@@ -12,7 +12,7 @@ import shapely.geometry as geom
 import nvector as nv
 from lane import add_space_for_crosswalk
 from border import cut_border_by_polygon, get_turn_angle, to_rad, extend_vector, get_compass, \
-    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan
+    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan, is_almost_parallel
 from log import get_logger
 
 
@@ -26,7 +26,8 @@ def shorten_border_for_crosswalk(input_border,
                                  lanes,
                                  crosswalk_width=10,
                                  destination='from_intersection',
-                                 exclude_links=True):
+                                 exclude_links=True,
+                                 ):
     """
     Remove the portion of the input border overlapping with any crosswalk crossing the input border.
     Scan all lanes with street names other than the street the input border belongs to,
@@ -36,6 +37,7 @@ def shorten_border_for_crosswalk(input_border,
     :param lanes: list of dictionaries
     :param crosswalk_width: float
     :param destination: string
+    :param exclude_links: True if exclude links, False otherwise
     :return: list of coordinates
     """
     border = copy.deepcopy(input_border)
@@ -49,6 +51,14 @@ def shorten_border_for_crosswalk(input_border,
             continue
         if exclude_links and 'link' in l['name']:
             continue
+        if 'median' in l:
+            border_type = 'median'
+        else:
+            border_type = 'left_border'
+        if is_almost_parallel(border, l[border_type]):
+            logger.debug("Excluding %s because it is almost parallel" % l['name'])
+            continue
+
         lb, rb = add_space_for_crosswalk(l, crosswalk_width=crosswalk_width)
         coord = lb + rb[::-1]
         polygon = geom.Polygon(coord)
@@ -72,9 +82,9 @@ def construct_turn_arc_with_initial_angle(origin_border,
         return None
 
     from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
-                                                      vector1[1][1], vector1[1][0])
+                                                                 vector1[1][1], vector1[1][0])
     from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
-                                                           vector2[1][1], vector2[1][0])
+                                                                      vector2[1][1], vector2[1][0])
 
     bearing1 = get_compass(vector1[1], vector1[0])
     bearing2 = get_compass(vector2[0], vector2[1])
@@ -124,9 +134,9 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
         return None
 
     from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
-                                                      vector1[1][1], vector1[1][0])
+                                                                 vector1[1][1], vector1[1][0])
     from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
-                                                           vector2[1][1], vector2[1][0])
+                                                                      vector2[1][1], vector2[1][0])
 
     bearing1 = get_compass(vector1[1], vector1[0])
     bearing2 = get_compass(vector2[0], vector2[1])

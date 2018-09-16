@@ -56,7 +56,7 @@ def get_border_length(border):
     :return: length in meters
     """
     if border and len(border) > 1:
-        return sum([get_distance_between_points(border[i-1], border[i]) for i in range(1,len(border))])
+        return sum([get_distance_between_points(border[i-1], border[i]) for i in range(1, len(border))])
     return 0
 
 
@@ -383,6 +383,22 @@ def get_angle_between_bearings(bearing1, bearing2):
     if angle >= 180.0:
         angle -= 360.0
     return angle
+
+
+def is_almost_parallel(border1, border2, threshold=30.0):
+    """
+    Check if two borders are approximately parallel
+    :param border1: list of coordinates
+    :param border2: list of coordinates
+    :param threshold: float in degrees
+    :return: True if angle is less then treshold, False otherwise
+    """
+    bearing = get_compass(border1[0], border1[-1])
+    if abs(get_angle_between_bearings(get_compass(border2[0], border2[-1]), bearing)) < threshold \
+            or abs(get_angle_between_bearings(get_compass(border2[-1], border2[0]), bearing)) < threshold:
+        return True
+
+    return False
 
 
 def set_lane_bearing(lanes):
