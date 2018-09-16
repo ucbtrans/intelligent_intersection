@@ -8,7 +8,7 @@
 
 
 from intersection import get_intersection_data, plot_lanes
-from street import insert_street_names, get_list_of_street_data
+from street import insert_street_names
 from guideway import get_left_turn_guideways, get_right_turn_guideways, plot_guideways, \
     get_through_guideways, get_bicycle_left_turn_guideways, get_u_turn_guideways, relative_cut
 from city import get_city_name_from_address
