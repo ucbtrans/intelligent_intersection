@@ -158,26 +158,30 @@ def get_simulated_crosswalk(street_data, streets, width=1.8):
                                                 street_data['name'],
                                                 streets,
                                                 crosswalk_width=2,
-                                                destination='to_intersection'
+                                                destination='to_intersection',
+                                                exclude_parallel=False
                                                 )
     left_border = shorten_border_for_crosswalk(street_data['left_border'],
                                                street_data['name'],
                                                streets,
                                                crosswalk_width=2,
-                                               destination='to_intersection'
+                                               destination='to_intersection',
+                                               exclude_parallel=False
                                                )
 
     right_border2 = shorten_border_for_crosswalk(street_data['right_border'],
                                                  street_data['name'],
                                                  streets,
                                                  crosswalk_width=2 + width,
-                                                 destination='to_intersection'
+                                                 destination='to_intersection',
+                                                 exclude_parallel=False
                                                  )
     left_border2 = shorten_border_for_crosswalk(street_data['left_border'],
                                                 street_data['name'],
                                                 streets,
                                                 crosswalk_width=2 + width,
-                                                destination='to_intersection'
+                                                destination='to_intersection',
+                                                exclude_parallel=False
                                                 )
     bearing = get_compass(right_border[0], right_border[-1])
     crosswalk = {

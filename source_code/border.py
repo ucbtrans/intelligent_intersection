@@ -49,6 +49,17 @@ def get_distance_between_points(point1, point2):
     return great_circle_vec_check_for_nan(point1[1], point1[0], point2[1], point2[0])
 
 
+def get_distance_from_point_to_line(point, coordinates):
+    """
+    Get distance from a point to a line
+    :param point: tuple of coordinates
+    :param coordinates: list of coordinates
+    :return: float in meters
+    """
+    line = geom.LineString(coordinates)
+    return get_distance_between_points(point, list(line.interpolate(line.project(geom.Point(point))).coords)[0])
+
+
 def get_border_length(border):
     """
     Calculate border length

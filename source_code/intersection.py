@@ -7,10 +7,12 @@
 #######################################################################
 
 import osmnx as ox
+import copy
 from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes
 from meta import set_meta_data
 from matplotlib.patches import Polygon
-from path_way import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, set_direction
+from path_way import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, \
+    set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
 from street import select_close_nodes, repeat_street_split, get_list_of_streets
@@ -118,7 +120,7 @@ def get_street_data(x_data, city_data):
                                       infrastructure='way["highway"]',
                                       network_type='drive'
                                       )
-
+    x_data['raw_data'] = copy.deepcopy(intersection_jsons)
     intersection_paths = [e for e in intersection_jsons[0]['elements'] if e['type'] == 'way']
     add_nodes_to_dictionary([e for e in intersection_jsons[0]['elements'] if e['type'] == 'node'],
                             nodes_dict,
@@ -138,7 +140,7 @@ def get_street_data(x_data, city_data):
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    cleaned_intersection_paths = clean_paths(cropped_paths, x_data['streets'])
+    cleaned_intersection_paths = sorted(clean_paths(cropped_paths, x_data['streets']), key=lambda p: p['id'])
     node_subset = get_node_subset(intersection_jsons, cleaned_intersection_paths, nodes_dict)
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
@@ -162,6 +164,7 @@ def get_railway_data(x_data, city_data):
     railway_jsons = get_box_data(x_data, city_data['raw_data'], network_type='all', infrastructure='way["railway"]')
 
     railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
+    x_data['railway_paths'] = copy.deepcopy(railway_paths)
     referenced_nodes = {}
     referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
     split_railway_paths = split_railways(remove_subways(railway_paths), referenced_nodes)
@@ -177,7 +180,7 @@ def get_railway_data(x_data, city_data):
                                                   x_data['crop_radius']
                                                   )
     set_direction(cropped_paths, x_data, nodes_dict)
-    return cropped_paths
+    return sorted(cropped_paths, key=lambda p: p['id'])
 
 
 def get_footway_data(x_data, city_data):
@@ -196,6 +199,8 @@ def get_footway_data(x_data, city_data):
                      and 'foot' in e['tags']['highway']
                      ]
 
+    x_data['footway_paths'] = copy.deepcopy(footway_paths)
+
     add_nodes_to_dictionary([e for e in footway_jsons[0]['elements'] if e['type'] == 'node'],
                             nodes_dict,
                             paths=footway_paths
@@ -208,7 +213,7 @@ def get_footway_data(x_data, city_data):
                                                   x_data['crop_radius']
                                                   )
     set_direction(cropped_paths, x_data, nodes_dict)
-    return cropped_paths
+    return sorted(cropped_paths, key=lambda p: p['id'])
 
 
 def get_public_transit_data(x_data, city_data):
@@ -259,7 +264,6 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
     merged_lanes = merge_lanes(lanes, city_data['nodes'])
 
-    intersection_data['raw_data'] = raw_data
     intersection_data['paths'] = cleaned_intersection_paths
     intersection_data['lanes'] = lanes
     intersection_data['merged_lanes'] = merged_lanes
@@ -279,7 +283,7 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
     intersection_data['footway'] = get_footway_data(intersection_data, city_data)
 
-    intersection_data['street_data'] = get_list_of_streets(intersection_data['merged_lanes'])
+    intersection_data['street_data'] = get_list_of_streets(intersection_data)
     crosswalks = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
     intersection_data['crosswalks'] = crosswalks + get_simulated_crosswalks(intersection_data['street_data'],
                                                                             crosswalks,
@@ -425,7 +429,7 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
             e['nodes'] = cropped_node_list
 
-    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 0 and e['length'] > 5.0]
+    return [e for e in elements if e['type'] == 'node' or len(e['nodes']) > 0]
 
 
 def set_font_size(ax, font_size=14):

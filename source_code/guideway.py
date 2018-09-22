@@ -283,10 +283,12 @@ def get_crosswalk_to_crosswalk_distance_along_guideway(guideway_data, crosswalks
     :param crosswalks: list of crosswalks dictionaries
     :return: float in meters
     """
-    origin_crosswalks = [c for c in crosswalks if c['name'] == guideway_data['origin_lane']['name']
+    origin_crosswalks = [c for c in crosswalks
+                         if (c['simulated'] == 'no' or c['name'] == guideway_data['origin_lane']['name'])
                          and crosswalk_intersects_median(c, guideway_data['origin_lane']['median'])
                          ]
-    destination_crosswalks = [c for c in crosswalks if c['name'] == guideway_data['destination_lane']['name']
+    destination_crosswalks = [c for c in crosswalks
+                              if (c['simulated'] == 'no' or c['name'] == guideway_data['destination_lane']['name'])
                               and crosswalk_intersects_median(c, guideway_data['destination_lane']['median'])
                               ]
 

@@ -8,7 +8,8 @@
 
 
 import copy
-from border import get_distance_between_nodes, get_compass_rhumb, get_border_length, get_lane_bearing
+from border import get_distance_between_nodes, get_compass_rhumb, get_border_length, get_lane_bearing, \
+    get_distance_from_point_to_line
 from turn import shorten_border_for_crosswalk
 from railway import split_track_by_node_index
 from lane import get_most_right_lane, get_most_left_lane, get_sorted_lane_subset, get_lane_index_from_right, \
@@ -25,12 +26,12 @@ def insert_street_names(city_data):
     :param city_data: dictionary
     :return: dictionary
     """
-    for path_data in city_data['paths']:
-        if 'name' in path_data['tags'] and path_data['tags']['name'] != 'no_name':
-            for node_id in path_data['nodes']:
+    for p_d in city_data['paths']:
+        if 'tags' in p_d and 'railway' not in p_d['tags'] and 'name' in p_d['tags'] and p_d['tags']['name'] != 'no_name':
+            for node_id in p_d['nodes']:
                 if 'street_name' not in city_data['nodes'][node_id]:
                     city_data['nodes'][node_id]['street_name'] = set()
-                city_data['nodes'][node_id]['street_name'].add(path_data['tags']['name'])
+                city_data['nodes'][node_id]['street_name'].add(p_d['tags']['name'])
 
     return city_data
 
@@ -42,12 +43,12 @@ def add_street_names_to_nodes(paths, nodes_dict):
      :param nodes_dict: node dictionary
      :return: None
      """
-    for path in paths:
-        if 'name' in path['tags'] and path['tags']['name'] != 'no_name':
-            for node_id in path['nodes']:
+    for p_d in paths:
+        if 'tags' in p_d and 'railway' not in p_d['tags'] and 'name' in p_d['tags'] and p_d['tags']['name'] != 'no_name':
+            for node_id in p_d['nodes']:
                 if 'street_name' not in nodes_dict[node_id]:
                     nodes_dict[node_id]['street_name'] = set()
-                nodes_dict[node_id]['street_name'].add(path['tags']['name'])
+                nodes_dict[node_id]['street_name'].add(p_d['tags']['name'])
 
 
 def select_close_nodes(nodes_d, nodes, too_far=50.0):
@@ -123,6 +124,8 @@ def split_streets(paths, nodes_dict, streets):
                         split_paths.append(path1)
                         split_paths.append(path2)
                         split_occurred = True
+                        logger.debug("Cut path %r into %r and %r" % (path_data['id'], path1['id'], path2['id']))
+                        logger.debug("Cut %s by node %r" % (path_data['tags']['name'], n))
                         break
 
         if cut_flag == 'no':
@@ -149,7 +152,7 @@ def repeat_street_split(paths, nodes_dict, streets, n=20):
     return split_paths
 
 
-def get_lanes_close_to_the_intersection(lanes, crosswalk_width=1.82):
+def get_lanes_close_to_the_intersection(x_data, crosswalk_width=1.82):
     """
     Get a subset of lanes that are adjacent to the intersection center for construction of crosswalks.
     Lanes that ends at a distance to the center are excluded.
@@ -158,10 +161,23 @@ def get_lanes_close_to_the_intersection(lanes, crosswalk_width=1.82):
     :return: list of lane dictionaries
     """
     close_lanes = []
-    for lane_data in lanes:
+    for lane_data in x_data['merged_lanes']:
+        if [n for n in lane_data['nodes'] if n in x_data['x_nodes']]:
+            close_lanes.append(lane_data)
+            continue
+        dist = get_distance_from_point_to_line((x_data['center_x'], x_data['center_y']),
+                                           lane_data['median']
+                                           )
+        logger.debug("Distance from center to %d %s is %r" % (lane_data['id'], lane_data['name'], dist))
+        if get_distance_from_point_to_line((x_data['center_x'], x_data['center_y']),
+                                           lane_data['median']
+                                           ) < 4*crosswalk_width:
+            close_lanes.append(lane_data)
+            continue
+
         median = shorten_border_for_crosswalk(lane_data['median'],
                                               lane_data['name'],
-                                              lanes,
+                                              x_data['merged_lanes'],
                                               crosswalk_width=5*crosswalk_width,
                                               destination=lane_data['direction']
                                               )
@@ -200,7 +216,7 @@ def get_street_by_name_and_bearing(lanes, name, bearing):
         border_list.append(lane_data['right_border'])
 
     if len(border_list) == 0:
-        logger.warning('Failed to create street %s %r' % (name, bearing))
+        logger.debug('Failed to create street %s %r' % (name, bearing))
         return None
 
     right_border = border_list[-1]
@@ -224,7 +240,7 @@ def get_street_by_name_and_bearing(lanes, name, bearing):
 
     street_data['bearing'] = get_lane_bearing(street_data)
     street_data['compass'] = get_compass_rhumb(street_data['bearing'])
-    logger.debug('Created %s %s' % (name, street_data['compass']))
+    logger.debug('Created %s %s %r' % (name, street_data['compass'], bearing))
     return street_data
 
 
@@ -254,7 +270,7 @@ def get_to_intersection_bearing(lanes, name):
     return None
 
 
-def get_list_of_streets(lanes):
+def get_list_of_streets(x_data):
     """
     Get list of street dictionaries.  
     Definition of a street: combined area of lanes with same street name, 
@@ -262,19 +278,27 @@ def get_list_of_streets(lanes):
     :param lanes: list of lane dictionaries
     :return: list of street dictionaries
     """
-    close_lanes = get_lanes_close_to_the_intersection(lanes)
+    close_lanes = get_lanes_close_to_the_intersection(x_data)
+    if len(close_lanes) == 0:
+        logger.warning('List of close lanes is empty')
+
     list_of_street_data = []
     for name in get_street_names_from_lanes(close_lanes):
         bearing = get_to_intersection_bearing(close_lanes, name)
         if bearing is None:
+            logger.warning('Bearing is None %s' % name)
             continue
 
         street_data = get_street_by_name_and_bearing(close_lanes, name, bearing)
         if street_data is not None:
             list_of_street_data.append(street_data)
+        else:
+            logger.warning('Street %s is None' % name)
 
         street_data = get_street_by_name_and_bearing(close_lanes, name, (bearing + 180.0) % 360.0)
         if street_data is not None:
             list_of_street_data.append(street_data)
+        else:
+            logger.debug('Opposite street %s is None' % name)
 
     return list_of_street_data

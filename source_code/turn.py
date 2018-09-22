@@ -12,7 +12,7 @@ import shapely.geometry as geom
 import nvector as nv
 from lane import add_space_for_crosswalk
 from border import cut_border_by_polygon, get_turn_angle, to_rad, extend_vector, get_compass, \
-    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan, is_almost_parallel
+    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan, get_angle_between_bearings
 from log import get_logger
 
 
@@ -27,6 +27,7 @@ def shorten_border_for_crosswalk(input_border,
                                  crosswalk_width=10,
                                  destination='from_intersection',
                                  exclude_links=True,
+                                 exclude_parallel=True
                                  ):
     """
     Remove the portion of the input border overlapping with any crosswalk crossing the input border.
@@ -55,9 +56,19 @@ def shorten_border_for_crosswalk(input_border,
             border_type = 'median'
         else:
             border_type = 'left_border'
-        if is_almost_parallel(border, l[border_type]):
-            logger.debug("Excluding %s because it is almost parallel" % l['name'])
-            continue
+
+        bearing_delta = abs(get_angle_between_bearings(get_compass(l[border_type][-2], l[border_type][-1]),
+                                                       get_compass(input_border[0], input_border[-1])
+                                                       )
+                            )
+        if bearing_delta > 90.0:
+            bearing_delta = (180.0 - bearing_delta) % 180.0
+        if bearing_delta < 30.0:
+            if exclude_parallel:
+                logger.debug("Processing %s, excluding %s for shortening: almost parallel %r"
+                             % (street_name, l['name'], bearing_delta)
+                             )
+                continue
 
         lb, rb = add_space_for_crosswalk(l, crosswalk_width=crosswalk_width)
         coord = lb + rb[::-1]
@@ -128,7 +139,7 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
     intersection_point, vector1, vector2 = get_turn_angle(origin_border, destination_border)
 
     if intersection_point is None:
-        logger.debug('Origin %r' % destination_border)
+        logger.debug('Origin %r' % origin_border)
         logger.debug('Destin %r' % destination_border)
         logger.debug('Cannot find intersection point')
         return None

@@ -849,13 +849,13 @@ def merge_lanes(lanes, nodes_dict):
     for lane in [l for l in lanes if l['name'] == 'no_name']:
         merged_lanes.append(add_lane(lane, merged_lane=None))
 
-    names = set([l['name'] for l in lanes if l['name'] != 'no_name'])
+    names = sorted(set([l['name'] for l in lanes if l['name'] != 'no_name']))
 
     for name in names:
         ids = sorted(set([l['lane_id'] for l in lanes if l['name'] == name]))
 
         for lane_id in ids:
-            directions = set([l['direction'] for l in lanes if l['lane_id'] == lane_id and l['name'] == name])
+            directions = sorted(set([l['direction'] for l in lanes if l['lane_id'] == lane_id and l['name'] == name]))
 
             for direction in directions:
                 similar_lanes = [l for l in lanes
