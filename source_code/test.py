@@ -8,6 +8,27 @@ import sys
 import api
 import matplotlib as plt
 from kml_routines import KML
+import pickle
+import json
+import yaml
+from shapely.geometry.polygon import Polygon
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry import mapping, shape
+
+
+
+
+class SetEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, Polygon):
+            return mapping(obj)
+        elif isinstance(obj, MultiPolygon):
+            return mapping(obj)
+
+        return json.JSONEncoder.default(self, obj)
+
 
 
 
@@ -63,39 +84,36 @@ def main(argv):
     my_kml.save(kml_file)
 
 
-    main_idx = ['[416208098]-[554701, 470102]']
-    c_idx = ['503335189', '503335191']
-    g_idx = ['[416208100]-[554701, 470102]', '[416208100]-[810501, 50102]', '[416208100]-[416210123, 25927195001]']
-    r_idx = ['[729401]-[940102]', '[756701]-[670102]']
-    b_idx = ['[25927195000]-[810501, 50102]', '[416208100]-[554701, 470102]']
+    main_idx = [1101]
+    c_idx = [35, 36, 37]
+    g_idx = [1301, 1007, 1714, 1202]
+    r_idx = [2321, 2422]
+    b_idx = [3225, 3229]
 
     main_gw, my_cw, my_gw, my_rw, my_bw = [], [], [], [], []
     bz_gw_id = 0
 
     # crosswalks
     for cw in crosswalks:
-        my_id = "{}".format(cw['path_id'])
-        if my_id in c_idx:
+        if cw['id'] in c_idx:
             my_cw.append(cw)
 
     for gw in guideways:
         my_id = "{}-{}".format(gw['origin_lane']['path_id'], gw['destination_lane']['path_id'])
 
-        if my_id in main_idx:
+        if gw['id'] in main_idx:
             main_gw.append(gw)
             continue
 
-        if gw['type'] == 'drive' and my_id in g_idx:
+        if gw['type'] == 'drive' and gw['id'] in g_idx:
             my_gw.append(gw)
-            if my_id == g_idx[0]:
-                bz_gw_id = gw['id']
             continue
 
-        if gw['type'] == 'railway' and my_id in r_idx:
+        if gw['type'] == 'railway' and gw['id'] in r_idx:
             my_rw.append(gw)
             continue
 
-        if gw['type'] == 'bicycle' and my_id in b_idx:
+        if gw['type'] == 'bicycle' and gw['id'] in b_idx:
             my_bw.append(gw)
             continue
 
@@ -110,8 +128,30 @@ def main(argv):
     point_of_view = (0.1, 0.5)
     blind_zone = api.get_blind_zone(point_of_view, main_gw[0], my_cz, blocking_guideways, guideways)
 
+    data = {'main_gw': main_gw[0],
+            'vehicle_gw': my_gw,
+            'bicycle_gw': my_bw,
+            'rail_gw': my_rw,
+            'crosswalks': crosswalks,
+            'conflict_zones': conflict_zones,
+            'blind_zones': [blind_zone]}
+    fname = "intersection_data"
+
+
     fig = api.get_conflict_zone_image(conflict_zones, x_section)
     fig.savefig("conflict_zones.jpg")
+
+    with open(fname+".pickle", 'wb') as fp:
+        pickle.dump(data, fp)
+        fp.close()
+
+    with open(fname + ".json", 'w') as fp:
+        json.dump(data, fp, cls=SetEncoder)
+        fp.close()
+
+    with open(fname + ".yaml", 'w') as fp:
+        yaml.dump(data, fp)
+        fp.close()
 
     #fig = api.get_blind_zone_image(blind_zone, main_gw[0], x_section, blocks=blocking_guideways)
     #fig.savefig("blind_zone.jpg")

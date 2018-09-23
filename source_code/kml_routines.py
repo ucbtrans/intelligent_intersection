@@ -5,6 +5,7 @@ KML export routines.
 
 import sys
 import simplekml
+from shapely.geometry.multipolygon import MultiPolygon
 
 
 
@@ -38,8 +39,7 @@ class KML:
             name = "({}) {} {} - {} {} ({})".format(k, gw['origin_lane']['name'], gw['origin_lane']['compass'],
                                                     gw['destination_lane']['name'], gw['destination_lane']['compass'],
                                                     gw['direction'])
-            description = "ID: {}-{}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['origin_lane']['path_id'],
-                                                                                                             gw['destination_lane']['path_id'],
+            description = "ID: {}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['id'],
                                                                                                              gw['origin_lane']['name'],
                                                                                                              gw['origin_lane']['compass'],
                                                                                                              gw['origin_lane']['lane_id'],
@@ -82,8 +82,7 @@ class KML:
             name = "({}) {} {} - {} {} ({})".format(k, gw['origin_lane']['name'], gw['origin_lane']['compass'],
                                                     gw['destination_lane']['name'], gw['destination_lane']['compass'],
                                                     gw['direction'])
-            description = "ID: {}-{}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['origin_lane']['path_id'],
-                                                                                                             gw['destination_lane']['path_id'],
+            description = "ID: {}\nApproach: {} {} (lane {})\nExit: {} {} (lane {})\nDirection: {}\nType: {}".format(gw['id'],
                                                                                                              gw['origin_lane']['name'],
                                                                                                              gw['origin_lane']['compass'],
                                                                                                              gw['origin_lane']['lane_id'],
@@ -128,7 +127,7 @@ class KML:
         k = 0
         for cw in cw_list:
             name = "({}) {}: {} {} ({} m)".format(k, cw['lane_type'], cw['name'], cw['compass'], cw['width'])
-            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['path_id'], cw['name'], cw['compass'], cw['width'], cw['type'])
+            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['id'], cw['name'], cw['compass'], cw['width'], cw['type'])
             mg = self.kml.newmultigeometry()
             mg.name = name
             mg.description = description
@@ -161,7 +160,7 @@ class KML:
         k = 0
         for cw in cw_list:
             name = "({}) {}: {} {} ({} m)".format(k, cw['lane_type'], cw['name'], cw['compass'], cw['width'])
-            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['path_id'], cw['name'], cw['compass'], cw['width'], cw['type'])
+            description = "ID: {}\nName: {} {} \nWidth: {} m\nType: {}".format(cw['id'], cw['name'], cw['compass'], cw['width'], cw['type'])
             mg = self.kml.newmultigeometry()
             mg.name = name
             mg.description = description
@@ -200,12 +199,35 @@ class KML:
             mg = self.kml.newmultigeometry()
             mg.name = name
             mg.description = description
+
+            my_poly = cz['polygon']
+            if isinstance(my_poly, MultiPolygon):
+                multi = list(my_poly)
+                for p in multi:
+                    pol = mg.newpolygon()
+                    pol.style.linestyle.width = 1
+                    pol.style.linestyle.color = color
+                    pol.style.polystyle.color = color
+
+                    poly = p.exterior.coords.xy
+                    sz = len(poly[0])
+
+                    coords = []
+                    for i in range(sz):
+                        coords.append((poly[0][i], poly[1][i], self.elevation))
+
+                    pol.outerboundaryis = coords
+                    pol.altitudemode = simplekml.AltitudeMode.clamptoground
+
+                k += 1
+                continue
+
             pol = mg.newpolygon()
             pol.style.linestyle.width = 1
             pol.style.linestyle.color = color
             pol.style.polystyle.color = color
 
-            poly = cz['polygon'].exterior.coords.xy
+            poly = my_poly.exterior.coords.xy
             sz = len(poly[0])
 
             coords = []
@@ -238,6 +260,33 @@ class KML:
             mg = self.kml.newmultigeometry()
             mg.name = name
             mg.description = description
+
+            my_poly = bz['polygon']
+            if isinstance(my_poly, MultiPolygon):
+                multi = list(my_poly)
+                for p in multi:
+                    pol = mg.newpolygon()
+                    pol.style.linestyle.width = 1
+                    pol.style.linestyle.color = color
+                    pol.style.polystyle.color = color
+
+                    poly = p.exterior.coords.xy
+                    sz = len(poly[0])
+
+                    coords = []
+                    for i in range(sz):
+                        coords.append((poly[0][i], poly[1][i], self.elevation))
+
+                    pol.outerboundaryis = coords
+                    pol.altitudemode = simplekml.AltitudeMode.clamptoground
+
+                pnt = mg.newpoint()
+                pnt.name = "Point of View {} in Guideway {}".format(bz['point'], bz['guideway_id'])
+                pnt.coords = [(bz['geo_point'][0], bz['geo_point'][1], self.elevation)]
+
+                k += 1
+                continue
+
             pol = mg.newpolygon()
             pol.style.linestyle.width = 1
             pol.style.linestyle.color = color
