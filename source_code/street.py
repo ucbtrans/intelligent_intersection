@@ -301,4 +301,4 @@ def get_list_of_streets(x_data):
         else:
             logger.debug('Opposite street %s is None' % name)
 
-    return list_of_street_data
+    return sorted(list_of_street_data, key=lambda p: p['name'] + p['compass'])

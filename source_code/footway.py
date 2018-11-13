@@ -64,7 +64,10 @@ def get_crosswalk_from_path(path_data, nodes_dict, width=1.8):
     else:
         crosswalk['right_border'] = None
 
-    crosswalk['median'] = shift_list_of_nodes(crosswalk['left_border'], [width / 2.0] * len(crosswalk['left_border']))
+    if crosswalk['left_border'] is not None:
+        crosswalk['median'] = shift_list_of_nodes(crosswalk['left_border'], [width / 2.0] * len(crosswalk['left_border']))
+    else:
+        crosswalk['median'] = None
 
     add_node_tags_to_lane(crosswalk, nodes_dict)
     insert_referenced_nodes(crosswalk, nodes_dict)
@@ -183,7 +186,7 @@ def get_simulated_crosswalk(street_data, streets, width=1.8):
                                                 destination='to_intersection',
                                                 exclude_parallel=False
                                                 )
-    bearing = get_compass(right_border[0], right_border[-1])
+
     crosswalk = {
         'lane_id': '1C',
         'name': street_data['name'],
@@ -192,8 +195,6 @@ def get_simulated_crosswalk(street_data, streets, width=1.8):
         'left_border': [right_border2[-1], left_border2[-1]],
         'median': shift_vector([right_border[-1], left_border[-1]], -width/2.0),
         'path_id': 0,
-        'bearing': bearing,
-        'compass': get_compass_rhumb(bearing),
         'path': [],
         'lane_type': 'crosswalk',
         'direction': 'undefined',
@@ -202,7 +203,9 @@ def get_simulated_crosswalk(street_data, streets, width=1.8):
         'width': width,
         'type': 'footway'
     }
-
+    bearing = get_compass(crosswalk['right_border'][0], crosswalk['right_border'][-1])
+    crosswalk['bearing'] = bearing
+    crosswalk['compass'] = get_compass_rhumb(bearing),
     crosswalk['length'] = get_border_length(crosswalk['median'])
     logger.debug('Created crosswalk for street %s %s' % (street_data['name'], street_data['compass']))
 
