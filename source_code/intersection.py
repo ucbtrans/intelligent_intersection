@@ -8,21 +8,21 @@
 
 import osmnx as ox
 import copy
-from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes
+from lane import get_lanes, merge_lanes, shorten_lanes, get_bicycle_lanes, insert_distances
 from meta import set_meta_data
 from matplotlib.patches import Polygon
-from path_way import add_borders_to_paths, split_bidirectional_paths, clean_paths, remove_zero_length_paths, \
+from path_way import add_borders_to_paths, split_bidirectional_paths, clean_paths, \
+    remove_zero_length_paths, \
     set_direction
 from node import get_nodes_dict, get_center, get_node_subset, get_intersection_nodes, \
     add_nodes_to_dictionary, get_node_dict_subset_from_list_of_lanes, create_a_node_from_coordinates
 from street import select_close_nodes, repeat_street_split, get_list_of_streets
 from railway import split_railways, remove_subways
-from footway import get_crosswalks, get_simulated_crosswalks
+from footway import get_crosswalks, get_simulated_crosswalks, insert_distances_to_the_center
 from correction import manual_correction, correct_paths
 from border import border_within_box, get_box, get_border_length, great_circle_vec_check_for_nan
 from data import get_box_from_xml, get_box_data
 from log import get_logger, dictionary_to_log
-
 
 logger = get_logger()
 track_symbol = {
@@ -44,7 +44,8 @@ def get_street_structure(city_name):
     :return: a tuple of list of paths and a nodes dictionary
     """
     city_boundaries = ox.gdf_from_place(city_name)
-    city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union, network_type="drive")
+    city_paths_nodes = ox.osm_net_download(city_boundaries['geometry'].unary_union,
+                                           network_type="drive")
     nodes_dict = get_nodes_dict(city_paths_nodes)
     paths = [p for p in city_paths_nodes[0]['elements'] if p['type'] != 'node']
     return paths, nodes_dict
@@ -62,7 +63,8 @@ def create_intersection(street_tuple, data, size=500.0, crop_radius=150.0):
     x_nodes = select_close_nodes(data['nodes'], get_intersection_nodes(data['paths'], street_tuple))
 
     if x_nodes is None or len(x_nodes) < 1:
-        logger.error('Unable to find common nodes referenced in all streets %r' % ', '.join(street_tuple))
+        logger.error(
+            'Unable to find common nodes referenced in all streets %r' % ', '.join(street_tuple))
         return None
 
     u, v = get_center(x_nodes, data['nodes'])
@@ -85,7 +87,7 @@ def create_intersection(street_tuple, data, size=500.0, crop_radius=150.0):
         'crop_radius': crop_radius,
         'x_nodes': x_nodes,
         'nodes': {}
-        }
+    }
 
     logger.info('Creating Intersection ' + dictionary_to_log(x_data))
     return x_data
@@ -97,12 +99,15 @@ def get_max_intersecting_node_distance(x_data):
     :param x_data: intersection dictionary
     :return: float distance
     """
-    nodes = [n for n in x_data['nodes'] if len(x_data['nodes'][n]['street_name'] & x_data['streets']) > 1]
+    nodes = [n for n in x_data['nodes'] if
+             len(x_data['nodes'][n]['street_name'] & x_data['streets']) > 1]
     if len(nodes) > 1:
         x0 = x_data['center_x']
         y0 = x_data['center_y']
-        dist = [great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x']) for n in nodes]
-        return sum(dist)/len(dist)
+        dist = [
+            great_circle_vec_check_for_nan(y0, x0, x_data['nodes'][n]['y'], x_data['nodes'][n]['x'])
+            for n in nodes]
+        return sum(dist) / len(dist)
     else:
         return 0.0
 
@@ -140,13 +145,14 @@ def get_street_data(x_data, city_data):
                                                   x_data['center_y'],
                                                   x_data['crop_radius']
                                                   )
-    cleaned_intersection_paths = sorted(clean_paths(cropped_paths, x_data['streets']), key=lambda p: p['id'])
+    cleaned_intersection_paths = sorted(clean_paths(cropped_paths, x_data['streets']),
+                                        key=lambda p: p['id'])
     node_subset = get_node_subset(intersection_jsons, cleaned_intersection_paths, nodes_dict)
     intersection_selection = [{'version': intersection_jsons[0]['version'],
                                'osm3s': intersection_jsons[0]['osm3s'],
                                'generator': intersection_jsons[0]['generator'],
                                'elements': node_subset
-                               + cleaned_intersection_paths
+                                           + cleaned_intersection_paths
                                }
                               ]
 
@@ -161,12 +167,14 @@ def get_railway_data(x_data, city_data):
     :return: list of railway paths 
     """
     nodes_dict = city_data['nodes']
-    railway_jsons = get_box_data(x_data, city_data['raw_data'], network_type='all', infrastructure='way["railway"]')
+    railway_jsons = get_box_data(x_data, city_data['raw_data'], network_type='all',
+                                 infrastructure='way["railway"]')
 
     railway_paths = [e for e in railway_jsons[0]['elements'] if e['type'] == 'way']
     x_data['railway_paths'] = copy.deepcopy(railway_paths)
     referenced_nodes = {}
-    referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict, referenced_nodes)
+    referenced_nodes = get_node_dict_subset_from_list_of_lanes(x_data['merged_lanes'], nodes_dict,
+                                                               referenced_nodes)
     split_railway_paths = split_railways(remove_subways(railway_paths), referenced_nodes)
     add_nodes_to_dictionary([e for e in railway_jsons[0]['elements'] if e['type'] == 'node'],
                             nodes_dict,
@@ -254,12 +262,14 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     if street_tuple is None:
         return None
 
-    intersection_data = create_intersection(street_tuple, city_data, size=size, crop_radius=crop_radius)
+    intersection_data = create_intersection(street_tuple, city_data, size=size,
+                                            crop_radius=crop_radius)
     if intersection_data is None:
         logger.error('Invalid intersection %r, %r' % (', '.join(street_tuple), city_data['name']))
         return None
 
-    cleaned_intersection_paths, cropped_intersection, raw_data = get_street_data(intersection_data, city_data)
+    cleaned_intersection_paths, cropped_intersection, raw_data = get_street_data(intersection_data,
+                                                                                 city_data)
 
     lanes = get_lanes(cleaned_intersection_paths, city_data['nodes'])
     merged_lanes = merge_lanes(lanes, city_data['nodes'])
@@ -269,36 +279,49 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
     intersection_data['merged_lanes'] = merged_lanes
     intersection_data['cropped_intersection'] = cropped_intersection
     intersection_data['railway'] = get_railway_data(intersection_data, city_data)
-    intersection_data['rail_tracks'] = get_lanes(intersection_data['railway'], city_data['nodes'], width=2.0)
-    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_tracks'], city_data['nodes'])
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['rail_tracks'],
-                                                                         city_data['nodes'],
-                                                                         nodes_subset=intersection_data['nodes']
-                                                                         )
+    intersection_data['rail_tracks'] = get_lanes(intersection_data['railway'], city_data['nodes'],
+                                                 width=2.0)
+    intersection_data['merged_tracks'] = merge_lanes(intersection_data['rail_tracks'],
+                                                     city_data['nodes'])
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(
+        intersection_data['rail_tracks'],
+        city_data['nodes'],
+        nodes_subset=intersection_data['nodes']
+        )
     intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['lanes'],
                                                                          city_data['nodes'],
-                                                                         nodes_subset=intersection_data['nodes']
+                                                                         nodes_subset=
+                                                                         intersection_data['nodes']
                                                                          )
-    intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths, city_data['nodes'])
-    intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'], city_data['nodes'])
+    intersection_data['cycleway_lanes'] = get_bicycle_lanes(cleaned_intersection_paths,
+                                                            city_data['nodes'])
+    intersection_data['merged_cycleways'] = merge_lanes(intersection_data['cycleway_lanes'],
+                                                        city_data['nodes'])
     intersection_data['footway'] = get_footway_data(intersection_data, city_data)
 
     intersection_data['street_data'] = get_list_of_streets(intersection_data)
     crosswalks = get_crosswalks(intersection_data['footway'], city_data['nodes'], width=1.8)
-    intersection_data['crosswalks'] = crosswalks + get_simulated_crosswalks(intersection_data['street_data'],
-                                                                            crosswalks,
-                                                                            width=1.8
-                                                                            )
-    intersection_data['public_transit_nodes'] = get_public_transit_data(intersection_data, city_data)
+    intersection_data['crosswalks'] = crosswalks + get_simulated_crosswalks(
+        intersection_data['street_data'],
+        crosswalks,
+        width=1.8
+        )
+    insert_distances_to_the_center(intersection_data)
 
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['cycleway_lanes'],
-                                                                         city_data['nodes'],
-                                                                         nodes_subset=intersection_data['nodes']
-                                                                         )
-    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(intersection_data['footway'],
-                                                                         city_data['nodes'],
-                                                                         nodes_subset=intersection_data['nodes']
-                                                                         )
+    intersection_data['public_transit_nodes'] = get_public_transit_data(intersection_data,
+                                                                        city_data)
+
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(
+        intersection_data['cycleway_lanes'],
+        city_data['nodes'],
+        nodes_subset=intersection_data['nodes']
+        )
+    intersection_data['nodes'] = get_node_dict_subset_from_list_of_lanes(
+        intersection_data['footway'],
+        city_data['nodes'],
+        nodes_subset=intersection_data['nodes']
+        )
+
 
     set_meta_data(intersection_data['merged_lanes']
                   + intersection_data['merged_tracks']
@@ -307,8 +330,15 @@ def get_intersection_data(street_tuple, city_data, size=500.0, crop_radius=150.0
                   intersection_data
                   )
 
+    insert_all_distances(intersection_data)
     logger.info('Intersection Created')
     return intersection_data
+
+
+def insert_all_distances(intersection_data):
+    insert_distances(intersection_data,
+                     intersection_data['merged_lanes'] + intersection_data['merged_tracks'] +
+                     intersection_data['merged_cycleways'] + intersection_data['crosswalks'])
 
 
 def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):
@@ -332,19 +362,20 @@ def crop_selection(selection, x0, y0, nodes_dict=None, radius=150.0):
                      'generator': s['generator'],
                      'elements': s['elements']
                      }
-        s_cropped['element'] = remove_elements_beyond_radius(s_cropped['elements'], nodes_dict, x0, y0, radius)
+        s_cropped['element'] = remove_elements_beyond_radius(s_cropped['elements'], nodes_dict, x0,
+                                                             y0, radius)
         cropped_selection.append(s_cropped)
 
     return cropped_selection
 
 
 def smart_crop(elements, nodes_dict, x0, y0, radius):
-
     for e in elements:
         if e['type'] != 'node':
             cropped_node_list = []
             for n in e['nodes']:
-                dist = great_circle_vec_check_for_nan(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
+                dist = great_circle_vec_check_for_nan(y0, x0, nodes_dict[n]['y'],
+                                                      nodes_dict[n]['x'])
                 if dist <= radius:
                     cropped_node_list.append(n)
             if 0 < len(cropped_node_list) < len(e['nodes']):
@@ -379,7 +410,8 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
             cropped_node_list = []
             for n in e['nodes']:
-                dist = great_circle_vec_check_for_nan(y0, x0, nodes_dict[n]['y'], nodes_dict[n]['x'])
+                dist = great_circle_vec_check_for_nan(y0, x0, nodes_dict[n]['y'],
+                                                      nodes_dict[n]['x'])
                 if dist <= radius:
                     cropped_node_list.append(n)
 
@@ -395,7 +427,9 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
 
                 if len(e['left_border']) < 1 or len(e['right_border']) < 1:
                     e['nodes'] = []
-                    logger.debug('Unable to obtain the portion of the path %d within radius. Skipping.' % e['id'])
+                    logger.debug(
+                        'Unable to obtain the portion of the path %d within radius. Skipping.' % e[
+                            'id'])
                     continue
 
                 if 'name' in e['tags']:
@@ -412,7 +446,8 @@ def remove_elements_beyond_radius(elements, nodes_dict, x0, y0, radius):
                 yy = nodes_dict[cropped_node_list[-1]]['y']
                 xx = nodes_dict[cropped_node_list[-1]]['x']
                 if great_circle_vec_check_for_nan(yy, xx, y, x) > 5.0:
-                    cropped_node_list.append(create_a_node_from_coordinates((x,y), nodes_dict, street_name)['osmid'])
+                    cropped_node_list.append(
+                        create_a_node_from_coordinates((x, y), nodes_dict, street_name)['osmid'])
 
                 if 'tags' in e and 'split' in e['tags'] and e['tags']['split'] == 'no':
                     x = (e['left_border'][0][0] + e['right_border'][0][0]) / 2.0
@@ -436,7 +471,8 @@ def set_font_size(ax, font_size=14):
     """
     Set font size
     """
-    for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
+    for item in ([ax.title, ax.xaxis.label,
+                  ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(font_size)
 
 
@@ -447,7 +483,8 @@ def get_polygon_from_lane(lane,
                           linestyle='dashed',
                           joinstyle='round',
                           fill=True,
-                          hatch=None
+                          hatch=None,
+                          debug = None
                           ):
     """
     Get a polygon from a lane
@@ -458,12 +495,24 @@ def get_polygon_from_lane(lane,
         elif lane['direction'] == 'from_intersection':
             fc = '#006600'
 
-    if lane['left_shaped_border'] is not None and lane['right_shaped_border'] is not None and 'L' in lane['lane_id']:
-        polygon_sequence = lane['left_shaped_border'] + lane['right_shaped_border'][::-1]
+    if debug is not None:
+        left = "left_" + debug
+        right = "right_" + debug
+        if left not in lane:
+            logger.debug("%s not found in %d %s" % (left, lane["id"], lane["name"]))
+        if right not in lane:
+            logger.debug("%s not found in %d %s" % (right, lane["id"], lane["name"]))
+        if left in lane and right in lane:
+            polygon_sequence = lane[left] + lane[right][::-1]
+        else:
+            polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
     else:
-        polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
+        if lane['left_shaped_border'] is not None and lane['right_shaped_border'] is not None and 'L' in lane['lane_id']:
+            polygon_sequence = lane['left_shaped_border'] + lane['right_shaped_border'][::-1]
+        else:
+            polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
 
-    polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
+        polygon_sequence = lane['left_border'] + lane['right_border'][::-1]
 
     return Polygon(polygon_sequence,
                    closed=True,
@@ -493,6 +542,7 @@ def plot_lanes(lanes,
                alpha=1.0,
                fill=True,
                hatch=None,
+               debug = None
                ):
     """
     Plot lanes for existing street plot
@@ -543,7 +593,8 @@ def plot_lanes(lanes,
                                            fc=fcolor,
                                            fill=fill,
                                            hatch=track_hatch,
-                                           linestyle=linestyle,)
+                                           linestyle=linestyle,
+                                           debug=debug)
                      )
 
     return fig, ax
@@ -594,7 +645,8 @@ def graph_from_jsons(response_jsons, network_type='all_private', simplify=True,
 
     if clean_periphery and simplify:
 
-        g_buffered = ox.create_graph(response_jsons, name=name, retain_all=True, network_type=network_type)
+        g_buffered = ox.create_graph(response_jsons, name=name, retain_all=True,
+                                     network_type=network_type)
 
         # simplify the graph topology
         g = ox.simplify_graph(g_buffered)

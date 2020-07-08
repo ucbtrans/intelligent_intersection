@@ -1,0 +1,16 @@
+How to Use Intersection API
+
+1.	 Get a list of states:
+curl https://iit-intersections.s3-us-west-1.amazonaws.com/USA/state_list.txt
+
+2.	Get a list of cities for a state
+curl https://iit-intersections.s3-us-west-1.amazonaws.com/USA/CA/city_list.txt
+
+3.	Get a list of intersection for a city
+ curl https://iit-intersections.s3-us-west-1.amazonaws.com/USA/CA/Los_Gatos/intersection_list.txt
+
+4.	 Get an intersection
+curl https://iit-intersections.s3-us-west-1.amazonaws.com/USA/CA/Los_Gatos/Adrian_Place-x-Westchester_Drive.json
+
+5.	Get this document
+curl https://iit-intersections.s3-us-west-1.amazonaws.com/readme.txt 

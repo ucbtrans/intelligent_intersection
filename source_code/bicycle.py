@@ -66,7 +66,25 @@ def get_bicycle_lane_location(path_data):
         bicycle_forward_location = None
         bicycle_backward_location = 'right'
 
-    # More cases to be added
+    # Case T1 bicycle=use_sidepath highway=cycleway + oneway=yes
+    if key_value_check([('bicycle', 'use_sidepath')], path_data):
+        if key_value_check([('oneway', 'no')], path_data):
+            bicycle_forward_location = 'right'
+            bicycle_backward_location = 'right'
+        else:
+            bicycle_forward_location = 'right'
+            bicycle_backward_location = None
+
+    # Case T2  cycleway=track or  cycleway:right=track + cycleway:right:oneway=no
+    if key_value_check([('cycleway', 'track')], path_data) or key_value_check([('cycleway:right', 'track')], path_data):
+        bicycle_forward_location = None
+        bicycle_backward_location = 'right'
+        if key_value_check([('cycleway:right:oneway', 'no')], path_data):
+            bicycle_forward_location = 'right'
+            bicycle_backward_location = 'right'
+        else:
+            bicycle_forward_location = 'right'
+            bicycle_backward_location = None
 
     return {'bicycle_forward_location': bicycle_forward_location,
             'bicycle_backward_location': bicycle_backward_location

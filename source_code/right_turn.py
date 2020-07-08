@@ -11,6 +11,7 @@ import shapely.geometry as geom
 from border import cut_border_by_distance, extend_vector, extend_both_sides_of_a_border
 from lane import get_lane_index_from_right, get_turn_type, intersects
 from log import get_logger
+from turn import is_turn_allowed
 
 
 logger = get_logger()
@@ -23,6 +24,9 @@ def is_right_turn_allowed(lane_data, all_lanes):
     :param all_lanes: list of dictionaries
     :return: True if right turn permitted, False otherwise
     """
+
+    if not is_turn_allowed(lane_data):
+        return False
 
     if 'right' in lane_data['lane_type'] or 'R ' in lane_data['lane_id']:
         return True
@@ -137,7 +141,7 @@ def get_right_turn_border(origin_border, link_border, destination_border):
     return list(origin_line1.coords) + link_border[1:-1] + list(line2.coords)
 
 
-def get_destination_lanes_for_right_turn(origin_lane, all_lanes):
+def get_destination_lanes_for_right_turn(origin_lane, all_lanes, min_len=21.0):
     """
     Identifying destination lanes (possibly more than one).
     Assuming that the origin and destination lanes must have the same lane index from right,
@@ -162,4 +166,5 @@ def get_destination_lanes_for_right_turn(origin_lane, all_lanes):
             and destination_index == get_lane_index_from_right(l)
             and intersects(origin_lane, l, all_lanes)
             and get_turn_type(origin_lane, l) == 'right_turn'
+            and ("length" not in l or l["length"] > min_len)
             ]

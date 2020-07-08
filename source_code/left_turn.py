@@ -7,6 +7,7 @@
 #######################################################################
 
 from lane import get_lane_index_from_left, intersects, get_turn_type, is_lane_crossing_another_street
+from turn import is_turn_allowed
 
 
 def is_left_turn_allowed(lane_data):
@@ -15,6 +16,8 @@ def is_left_turn_allowed(lane_data):
     :param lane_data: lane dictionary
     :return: boolean
     """
+    if not is_turn_allowed(lane_data):
+        return False
     if lane_data['direction'] != 'to_intersection':
         return False
     if 'link' in lane_data['name']:
@@ -31,7 +34,7 @@ def is_left_turn_allowed(lane_data):
     return False
 
 
-def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
+def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict, min_len=21.0):
     """
     Identifying destination lanes (possibly more than one).
     Assuming that the origin and destination lanes must have the same lane index from left,
@@ -56,8 +59,9 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
                 and l['direction'] == 'from_intersection'
                 and intersects(origin_lane, l, all_lanes)
                 and get_turn_type(origin_lane, l) == 'left_turn'
-                and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
+                #and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
                 and 'link' not in l['name']
+                and ("length" not in l or l["length"] > min_len)
                 ]
 
     destination_index = get_lane_index_from_left(origin_lane)
@@ -70,5 +74,6 @@ def get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
             and intersects(origin_lane, l, all_lanes)
             and get_turn_type(origin_lane, l) == 'left_turn'
             and 'link' not in l['name']
+            and ("length" not in l or l["length"] > min_len)
             #and is_lane_crossing_another_street(origin_lane, l['name'], nodes_dict)
             ]

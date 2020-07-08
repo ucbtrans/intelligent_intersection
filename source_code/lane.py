@@ -14,7 +14,7 @@ import math
 import shapely.geometry as geom
 from border import shift_list_of_nodes, get_incremental_points, extend_vector, \
     cut_border_by_polygon, set_lane_bearing, get_angle_between_bearings, extend_both_sides_of_a_border, \
-    get_border_length
+    get_border_length, get_distance_from_point_to_line
 from path_way import get_num_of_lanes, count_lanes, reverse_direction
 from bicycle import key_value_check, get_bicycle_lane_location, is_shared
 from log import get_logger, dictionary_to_log
@@ -866,9 +866,12 @@ def merge_lanes(lanes, nodes_dict):
                                  ]
 
                 for similar_lane in similar_lanes:
+                    if not isinstance(similar_lane['path'],dict):
+                        continue
                     bearing = similar_lane['path']['bearing']
                     next_lanes = [l for l in similar_lanes
-                                  if similar_lane['nodes'][-1] == l['nodes'][0]
+                                  if isinstance(l['path'],dict)
+                                  and similar_lane['nodes'][-1] == l['nodes'][0]
                                   and abs(get_angle_between_bearings(l['path']['bearing'], bearing)) < 60.0
                                   ]
                     if len(next_lanes) == 0:
@@ -880,7 +883,8 @@ def merge_lanes(lanes, nodes_dict):
                             similar_lane['next'] = None
 
                     prev_lanes = [l for l in similar_lanes
-                                  if similar_lane['nodes'][0] == l['nodes'][-1]
+                                  if isinstance(l['path'],dict)
+                                  and similar_lane['nodes'][0] == l['nodes'][-1]
                                   and abs(get_angle_between_bearings(l['path']['bearing'], bearing)) < 60.0
                                   ]
                     if len(prev_lanes) == 0:
@@ -891,9 +895,12 @@ def merge_lanes(lanes, nodes_dict):
                         else:
                             similar_lane['prev'] = None
 
-                for start_lane in [l for l in similar_lanes if l['prev'] is None]:
+                for start_lane in [l for l in similar_lanes if "prev" in l and l['prev'] is None]:
+
                     merged_lane = add_lane(start_lane, merged_lane=None)
+
                     nxt = start_lane['next']
+
                     while nxt is not None:
                         next_lane = [l for l in similar_lanes if l['path_id'] == nxt][0]
                         merged_lane = add_lane(next_lane, merged_lane=merged_lane)
@@ -975,9 +982,9 @@ def is_lane_crossing_another_street(lane_data, another_street, nodes_dict):
     :return: True if crosses, False otherwise
     """
     for n in lane_data['nodes']:
-        if 'street_name' not in nodes_dict[n]:
+        if n not in nodes_dict or 'street_name' not in nodes_dict[n]:
             continue
-        if another_street in nodes_dict[n]['street_name']:
+        if n in nodes_dict and another_street in nodes_dict[n]['street_name']:
             return True
     return False
 
@@ -1052,3 +1059,30 @@ def is_opposite_lane_exist(lane_data, lanes):
         return True
     else:
         return False
+
+
+def insert_distance_to_center(x_data, lane_data):
+    if "median" in lane_data:
+        border = "median"
+    elif "left_border" in lane_data:
+        border = "left_border"
+    else:
+        border = None
+
+    if border is not None:
+        dist = get_distance_from_point_to_line((x_data['center_x'], x_data['center_y']),
+                                           lane_data[border])
+    else:
+        dist = 0
+
+    lane_data["distance_to_center"] = dist
+    if "id" in lane_data:
+        l_id = lane_data["id"]
+    else:
+        l_id = -1
+    logger.debug("Lane %d distance %r from the intersection" % (l_id, dist))
+
+
+def insert_distances(x_data, all_lanes):
+    for l in all_lanes:
+        insert_distance_to_center(x_data, l)

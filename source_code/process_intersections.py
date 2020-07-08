@@ -196,7 +196,7 @@ def generate_intersection_list(args):
             cnt_f += 1
 
         new_prct = 100 * idx / sz
-        print(cs, cnt_s, cnt_n, cnt_o, cnt_f, idx, sz, new_prct, prct)
+        print(cs, cnt_s, cnt_n, cnt_o, 'Fail=%d'%cnt_f, meta['diameter'], idx, sz, new_prct, prct)
         if new_prct - prct >= 1:
             prct = new_prct
             if debug:
@@ -359,7 +359,7 @@ def main(argv):
     debug = True
 
     args = {'city_name': city_name, 'data_dir': data_dir, 'crop_radius': crop_radius, 'debug': debug}
-    #generate_intersection_list(args)
+    generate_intersection_list(args)
 
     if False:
         return

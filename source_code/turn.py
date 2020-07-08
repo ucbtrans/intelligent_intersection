@@ -12,13 +12,30 @@ import shapely.geometry as geom
 import nvector as nv
 from lane import add_space_for_crosswalk
 from border import cut_border_by_polygon, get_turn_angle, to_rad, extend_vector, get_compass, \
-    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan, get_angle_between_bearings
+    shift_by_bearing_and_distance, drop_small_edges, great_circle_vec_check_for_nan, \
+    get_angle_between_bearings, reduce_line_by_distance, get_border_length, cut_border_by_point
 from log import get_logger
-
 
 logger = get_logger()
 
 nv_frame = nv.FrameE(a=6371e3, f=0)
+
+
+def is_turn_allowed(lane_data, max_dist=50.0):
+    if "id" in lane_data:
+        l_id = lane_data["id"]
+    else:
+        l_id = -1
+
+    if "distance_to_center" not in lane_data:
+        logger.debug("Distance is not in the lane %d" % l_id)
+        return True
+    elif lane_data["distance_to_center"] < max_dist:
+        return True
+    else:
+        logger.debug("Lane %d is far away from the intersection: %r meters" % (
+        l_id, lane_data["distance_to_center"]))
+        return False
 
 
 def shorten_border_for_crosswalk(input_border,
@@ -27,7 +44,9 @@ def shorten_border_for_crosswalk(input_border,
                                  crosswalk_width=10,
                                  destination='from_intersection',
                                  exclude_links=True,
-                                 exclude_parallel=True
+                                 exclude_parallel=True,
+                                 max_reduction=12.0,
+                                 origin=True
                                  ):
     """
     Remove the portion of the input border overlapping with any crosswalk crossing the input border.
@@ -42,6 +61,8 @@ def shorten_border_for_crosswalk(input_border,
     :return: list of coordinates
     """
     border = copy.deepcopy(input_border)
+    original_length = get_border_length(border)
+
     if destination == 'from_intersection':
         multi_string_index = -1
     else:
@@ -57,10 +78,18 @@ def shorten_border_for_crosswalk(input_border,
         else:
             border_type = 'left_border'
 
+        a = tuple(l[border_type][-2])
+        b = tuple(l[border_type][-1])
+        c = tuple(input_border[0])
+        d = tuple(input_border[-1])
+        bearing_delta = abs(get_angle_between_bearings(get_compass(a, b), get_compass(c, d)))
+
+        """
         bearing_delta = abs(get_angle_between_bearings(get_compass(l[border_type][-2], l[border_type][-1]),
                                                        get_compass(input_border[0], input_border[-1])
                                                        )
                             )
+        """
         if bearing_delta > 90.0:
             bearing_delta = (180.0 - bearing_delta) % 180.0
         if bearing_delta < 30.0:
@@ -78,55 +107,28 @@ def shorten_border_for_crosswalk(input_border,
             border = temp
             border = drop_small_edges(border)
 
+    delta_len = original_length - get_border_length(border)
+    if delta_len > max_reduction:
+        logger.debug("Reduction is too large %r" % delta_len)
+        border = copy.deepcopy(input_border)
+        temp = reduce_line_by_distance(border, max_reduction, at_the_end=origin)
+        border = temp
+        border = drop_small_edges(border)
+
     return border
 
 
-def construct_turn_arc_with_initial_angle(origin_border,
-                                          destination_border,
-                                          initial_angle=15.0,
-                                          number_of_points=12,
-                                          turn_direction=-1.0
-                                          ):
-    intersection_point, vector1, vector2 = get_turn_angle(origin_border, destination_border)
-
-    if intersection_point is None:
+def get_common_point(origin_lane, destination_lane):
+    lst = [n for n in origin_lane["nodes"] if n in destination_lane["nodes"]]
+    if lst and "nodes_dict" in origin_lane:
+        node = origin_lane["nodes_dict"][str(lst[0])]
+        return tuple([node["x"], node["y"]])
+    else:
         return None
 
-    from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
-                                                                 vector1[1][1], vector1[1][0])
-    from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
-                                                                      vector2[1][1], vector2[1][0])
 
-    bearing1 = get_compass(vector1[1], vector1[0])
-    bearing2 = get_compass(vector2[0], vector2[1])
-    angle = ((turn_direction*(bearing2 - bearing1) + 360) % 360)
-    sin1 = math.sin(to_rad(180.0 - angle))
-
-    l_dest = from_destination_to_intersection
-    z = l_dest * sin1 / (sin1 + math.sin(to_rad(initial_angle)))
-    l_origin = z * math.cos(to_rad(initial_angle)) + (l_dest - z) * math.cos(to_rad(180.0 - angle))
-
-    if from_origin_to_intersection > l_origin:
-        #  Drive along the origin vector past the intersection
-        last_origin_point = extend_vector(vector1, length=l_origin, backward=False, relative=False)[1]
-    else:
-        # Start turning immediately
-        last_origin_point = vector1[1]
-
-    azimuth = (get_compass(intersection_point, last_origin_point) - initial_angle + 360) % 360
-    point = nv_frame.GeoPoint(latitude=last_origin_point[1], longitude=last_origin_point[0], degrees=True)
-    result, _azimuthb = point.geo_point(distance=100.0, azimuth=azimuth, degrees=True)
-    first_orin_point = (result.longitude_deg, result.latitude_deg)
-    angled_origin_border = [first_orin_point, last_origin_point]
-
-    return construct_turn_arc(angled_origin_border,
-                              destination_border,
-                              number_of_points=number_of_points,
-                              turn_direction=turn_direction
-                              )
-
-
-def construct_turn_arc(origin_border, destination_border, number_of_points=12, turn_direction=-1.0):
+def construct_turn_arc(origin_border, destination_border, number_of_points=12, turn_direction=-1.0,
+                       lane=None):
     """
     Construct a turn arc
     :param origin_border: list of coordinates
@@ -144,14 +146,22 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
         logger.debug('Cannot find intersection point')
         return None
 
-    from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
+    from_origin_to_intersection = great_circle_vec_check_for_nan(intersection_point[1],
+                                                                 intersection_point[0],
                                                                  vector1[1][1], vector1[1][0])
-    from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1], intersection_point[0],
+    from_destination_to_intersection = great_circle_vec_check_for_nan(intersection_point[1],
+                                                                      intersection_point[0],
                                                                       vector2[1][1], vector2[1][0])
 
+    #logger.debug("Vectors 1 %r" % vector1)
+    #logger.debug("Vectors 2 %r" % vector2)
+    if lane is not None:
+        lane["left_vector"] = vector1
+        lane["right_vector"] = vector2
+    # logger.debug("Intersection point %r" % intersection_point)
     bearing1 = get_compass(vector1[1], vector1[0])
-    bearing2 = get_compass(vector2[0], vector2[1])
-    angle = ((turn_direction*(bearing2 - bearing1) + 360) % 360)
+    bearing2 = get_compass(vector2[0], tuple(vector2[1]))
+    angle = ((turn_direction * (bearing2 - bearing1) + 360) % 360)
 
     if from_origin_to_intersection < from_destination_to_intersection:
         distance_to_starting_point = from_origin_to_intersection
@@ -161,21 +171,32 @@ def construct_turn_arc(origin_border, destination_border, number_of_points=12, t
         dist_delta = from_origin_to_intersection - from_destination_to_intersection
 
     radius = distance_to_starting_point / math.tan(to_rad(angle / 2.0))
-    shift = [turn_direction * 2.0 * radius * (math.sin(to_rad(angle / 2.0 * i / float(number_of_points)))) ** 2
+    if radius < 0.0:
+        logger.error("Negative radius %r" % radius)
+        logger.debug("from_origin_to_intersection %r" % from_origin_to_intersection)
+        logger.debug("from_destination_to_intersection %r" % from_destination_to_intersection)
+        return None
+    else:
+        logger.debug("Radius %r" % radius)
+
+    shift = [turn_direction * 2.0 * radius * (
+        math.sin(to_rad(angle / 2.0 * i / float(number_of_points)))) ** 2
              for i in range(0, number_of_points + 1)
              ]
 
     vec = [origin_border[-1], intersection_point]
     vector = [extend_vector(vec,
-                            length=dist_delta + radius * (math.sin(to_rad(angle * i / float(number_of_points)))),
+                            length=dist_delta + radius * (
+                                math.sin(to_rad(angle * i / float(number_of_points)))),
                             backward=False
                             )[1]
               for i in range(0, number_of_points + 1)
               ]
 
-    return [shift_by_bearing_and_distance(vector[i], shift[i], vec, bearing_delta=turn_direction*90.0)
-            for i in range(0, number_of_points + 1)
-            ]
+    return [
+        shift_by_bearing_and_distance(vector[i], shift[i], vec, bearing_delta=turn_direction * 90.0)
+        for i in range(0, number_of_points + 1)
+        ]
 
 
 def get_turn_border(origin_lane,
@@ -195,6 +216,8 @@ def get_turn_border(origin_lane,
     :param use_shaped_border: True if apply a shaped border for turning lane, otherwise False
     :return: list of coordinates
     """
+    logger.debug("Start %s border, origin %s, dest %s " % (
+    border_type, origin_lane["name"], destination_lane["name"]))
     shaped_border = border_type + '_shaped_border'
     non_shaped_border = border_type + '_border'
 
@@ -213,7 +236,13 @@ def get_turn_border(origin_lane,
     if turn_direction > 0:
         crosswalk_width = origin_lane['crosswalk_width']
     else:
-        crosswalk_width = 5*origin_lane['crosswalk_width']
+        crosswalk_width = 5 * origin_lane['crosswalk_width']
+
+    lane_x_point = get_common_point(origin_lane, destination_lane)
+    if lane_x_point is not None:
+        logger.debug("Common point found %s" % str(lane_x_point))
+        destination_border = cut_border_by_point(destination_border, lane_x_point, ind=-1)
+        origin_border = cut_border_by_point(origin_border, lane_x_point, ind=0)
 
     shorten_origin_border = shorten_border_for_crosswalk(origin_border,
                                                          origin_lane['name'],
@@ -225,22 +254,31 @@ def get_turn_border(origin_lane,
                                                               destination_lane['name'],
                                                               all_lanes,
                                                               destination='from_intersection',
-                                                              crosswalk_width=crosswalk_width
+                                                              crosswalk_width=crosswalk_width,
+                                                              origin=False
                                                               )
+    origin_lane[border_type + "_" + "shorten_origin_border"] = shorten_origin_border
+    destination_lane[border_type + "_" + "shorten_destination_border"] = shorten_destination_border
 
     if turn_direction < 0:
         turn_arc = construct_turn_arc(shorten_origin_border,
                                       shorten_destination_border,
                                       turn_direction=turn_direction,
+                                      lane=origin_lane
                                       )
     else:
         turn_arc = construct_turn_arc(shorten_origin_border,
                                       shorten_destination_border,
                                       turn_direction=turn_direction,
+                                      lane=origin_lane
                                       )
 
     if turn_arc is None:
-        logger.debug('Turn arc failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
+        logger.debug('Turn arc failed. Origin id %d, Dest id %d' % (
+        origin_lane['id'], destination_lane['id']))
         return None
+
+    origin_lane[border_type + "_" + "origin_arc"] = turn_arc
+    destination_lane[border_type + "_" + "destination_arc"] = turn_arc
 
     return shorten_origin_border + turn_arc[1:-1] + shorten_destination_border

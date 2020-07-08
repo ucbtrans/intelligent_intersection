@@ -8,9 +8,13 @@
 
 
 import copy
+import time
+from random import seed
+from random import randint
 from border import get_intersection_with_circle
 from street import add_street_names_to_nodes
 
+seed(int(time.time()*1000.0)%1000000)
 
 def get_nodes_dict(city_paths_nodes, nodes_dict={}):
     """
@@ -224,7 +228,7 @@ def create_a_new_node_from_existing_one(node_data, nodes_dict, within_selection=
     if 'street_name' in node_data:
         new_node['street_name'] = copy.deepcopy(node_data['street_name'])
     for i in range(1, 1000000):
-        new_id = node_data['osmid'] * 100 + i
+        new_id = node_data['osmid'] * 1000 + randint(0, 1000)
         if new_id not in nodes_dict:
             new_node['osmid'] = new_id
             break
@@ -245,10 +249,11 @@ def create_a_node_from_coordinates(point, nodes_dict, street_name=None):
     new_node = {'x': point[0], 'y': point[1], 'street_name': street_name}
 
     for i in range(1, 1000000):
-        if i not in nodes_dict:
-            new_node['osmid'] = i
+        rand_id = randint(100000, 10000000)
+        if rand_id not in nodes_dict:
+            new_node['osmid'] = rand_id
             break
 
-    nodes_dict[i] = new_node
+    nodes_dict[rand_id] = new_node
 
     return new_node

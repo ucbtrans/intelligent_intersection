@@ -165,13 +165,10 @@ def get_lanes_close_to_the_intersection(x_data, crosswalk_width=1.82):
         if [n for n in lane_data['nodes'] if n in x_data['x_nodes']]:
             close_lanes.append(lane_data)
             continue
-        dist = get_distance_from_point_to_line((x_data['center_x'], x_data['center_y']),
-                                           lane_data['median']
-                                           )
+        dist = get_distance_from_point_to_line((x_data['center_x'], x_data['center_y']), lane_data['median'])
         logger.debug("Distance from center to %d %s is %r" % (lane_data['id'], lane_data['name'], dist))
-        if get_distance_from_point_to_line((x_data['center_x'], x_data['center_y']),
-                                           lane_data['median']
-                                           ) < 4*crosswalk_width:
+
+        if dist < 4*crosswalk_width:
             close_lanes.append(lane_data)
             continue
 
@@ -244,6 +241,20 @@ def get_street_by_name_and_bearing(lanes, name, bearing):
     return street_data
 
 
+def insert_tags_to_streets(x):
+    streets = x["street_data"]
+    all_lanes = x["merged_lanes"]
+    for s in streets:
+        if "tags" not in s:
+            s["tags"] = {}
+        for l in all_lanes:
+            if l["id"] in s["lane_ids"] and "path" in l:
+                for p in l["path"]:
+                    if "tags" in p:
+                        for t in p["tags"]:
+                            s["tags"][t] = p["tags"][t]
+
+
 def get_street_names_from_lanes(lanes):
     """
     Get a set of street names from all lanes
@@ -301,4 +312,10 @@ def get_list_of_streets(x_data):
         else:
             logger.debug('Opposite street %s is None' % name)
 
+    insert_street_ids(list_of_street_data)
     return sorted(list_of_street_data, key=lambda p: p['name'] + p['compass'])
+
+
+def insert_street_ids(streets):
+    for i,s in enumerate(streets):
+        s["id"] = i

@@ -7,6 +7,7 @@
 #######################################################################
 
 import copy
+from random import randint
 
 
 def split_railways(rail_tracks, referenced_nodes):
@@ -48,8 +49,8 @@ def split_track_by_node_index(track_data, i):
     track2 = copy.deepcopy(track_data)
     track1['nodes'] = track_data['nodes'][:i+1]
     track2['nodes'] = track_data['nodes'][i:]
-    track1['id'] = ((track_data['id']) % 10000)*100 + 1
-    track2['id'] = ((track_data['id']) % 10000)*100 + 2
+    track1['id'] = ((track_data['id']) % 100000)*100000 + randint(0, 100000)
+    track2['id'] = ((track_data['id']) % 100000)*100000 + randint(100000, 200000)
     if 'original_id' not in track_data:
         track1['original_id'] = track_data['id']
         track2['original_id'] = track_data['id']
@@ -83,3 +84,75 @@ def remove_subways(tracks):
         tracks_without_subway.append(t)
 
     return tracks_without_subway
+
+
+def plot_lanes(lanes,
+               fig=None,
+               ax=None,
+               cropped_intersection=None,
+               fig_height=15,
+               fig_width=15,
+               axis_off=False,
+               edge_linewidth=1,
+               margin=0.02,
+               linestyle='dashed',
+               bgcolor='#CCFFE5',
+               edge_color='#FF9933',
+               fcolor='#808080',
+               alpha=1.0,
+               fill=True,
+               hatch=None,
+               ):
+    """
+    Plot lanes for existing street plot
+    :param lanes:
+    :param fig:
+    :param ax:
+    :param cropped_intersection:
+    :param fig_height:
+    :param fig_width:
+    :param axis_off:
+    :param edge_linewidth:
+    :param margin:
+    :param bgcolor:
+    :param edge_color:
+    :param alpha:
+    :return:
+    """
+
+    if fig is None or ax is None:
+        if cropped_intersection is None:
+            return None, None
+
+        g1 = graph_from_jsons(cropped_intersection, retain_all=True, simplify=False)
+        fig, ax = ox.plot_graph(g1, fig_height=fig_height,
+                                fig_width=fig_width,
+                                axis_off=axis_off,
+                                edge_linewidth=edge_linewidth,
+                                margin=margin,
+                                bgcolor=bgcolor,
+                                edge_color=edge_color,
+                                show=False
+                                )
+
+    for lane_data in lanes:
+        if hatch is None and 'rail' in lane_data['lane_type']:
+            track_hatch = track_symbol[lane_data['compass']]
+        else:
+            track_hatch = hatch
+
+        if 'rail' in lane_data['lane_type']:
+            lane_edge_color = '#000000'
+        else:
+            lane_edge_color = edge_color
+
+        ax.add_patch(get_polygon_from_lane(lane_data,
+                                           alpha=alpha,
+                                           ec=lane_edge_color,
+                                           fc=fcolor,
+                                           fill=fill,
+                                           hatch=track_hatch,
+                                           linestyle=linestyle, )
+                     )
+
+    return fig, ax

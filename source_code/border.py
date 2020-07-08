@@ -277,6 +277,26 @@ def cut_line_by_relative_distance(coordinates, relative_distance):
     return list(reduced_line.coords)
 
 
+def reduce_line_by_distance(border, distance, at_the_end=True):
+
+    cur_len = get_border_length(border)
+    if cur_len <= distance:
+        logger.error("the border is too short.  Current: %r, reduction: %r" % (cur_len, distance))
+        return border
+
+    relative_distance = (cur_len - distance)/cur_len
+    if at_the_end:
+        line = geom.LineString(border)
+    else:
+        line = geom.LineString(border[::-1])
+    point = line.interpolate(relative_distance, normalized=True)
+    reduced_line = cut_border_by_distance(line, line.project(point))[0]
+    if at_the_end:
+        return list(reduced_line.coords)
+    else:
+        return list(reduced_line.coords)[::-1]
+
+
 def cut_border_by_point(border, point_coordinate, ind=0):
     if len(border) < 2:
         return []
@@ -306,22 +326,25 @@ def get_compass(x, y):
     return get_compass_bearing(x[::-1], y[::-1])
 
 
-def get_compass_bearing(point_a, point_b):
+def get_compass_bearing(a, b):
     """
     Calculates the bearing between two points.
     The formulae used is the following:
         θ = atan2(sin(Δlong).cos(lat2),
                   cos(lat1).sin(lat2) − sin(lat1).cos(lat2).cos(Δlong))
     :Parameters:
-      - `point_a: The tuple representing the latitude/longitude for the
+      - `a: The tuple representing the latitude/longitude for the
         first point. Latitude and longitude must be in decimal degrees
-      - `point_b: The tuple representing the latitude/longitude for the
+      - `b: The tuple representing the latitude/longitude for the
         second point. Latitude and longitude must be in decimal degrees
     :Returns:
       The bearing in degrees
     :Returns Type:
       float
     """
+
+    point_a = tuple(a)
+    point_b = tuple(b)
     if (type(point_a) != tuple) or (type(point_b) != tuple):
         raise TypeError("Only tuples are supported as arguments")
 

@@ -19,7 +19,6 @@ from blind import get_blind_zone_data, plot_sector, normalized_to_geo
 from correction import add_missing_highway_tag
 from log import get_logger
 
-
 logger = get_logger()
 
 
@@ -40,7 +39,7 @@ def get_city(city_name):
         'raw_data': None,
         'from_file': 'no',
         'paths': [p for p in city_paths_nodes[0]['elements'] if p['type'] == 'way'],
-        'nodes': get_nodes_dict(city_paths_nodes),
+        'nodes': get_nodes_dict(city_paths_nodes, nodes_dict={}),
         'relations': [p for p in city_paths_nodes[0]['elements'] if p['type'] == 'relation']
     }
 
@@ -66,7 +65,7 @@ def get_selection(file_name):
         'raw_data': selection,
         'from_file': 'yes',
         'paths': [p for p in selection[0]['elements'] if p['type'] == 'way'],
-        'nodes': get_nodes_dict(selection),
+        'nodes': get_nodes_dict(selection, nodes_dict={}),
         'relations': [p for p in selection[0]['elements'] if p['type'] == 'relation']
     }
 
@@ -122,14 +121,16 @@ def get_intersecting_streets(city_data):
     all_streets = get_streets(city_data)
 
     for node_id in city_data['nodes']:
-        if 'street_name' in city_data['nodes'][node_id] and len(city_data['nodes'][node_id]['street_name']) > 1:
+        if 'street_name' in city_data['nodes'][node_id] and len(
+                city_data['nodes'][node_id]['street_name']) > 1:
             valid_street_name = True
             for street_name in city_data['nodes'][node_id]['street_name']:
                 if street_name not in all_streets:
                     valid_street_name = False
                     break
             if valid_street_name:
-                intersecting_streets.add(tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
+                intersecting_streets.add(
+                    tuple(sorted(list(city_data['nodes'][node_id]['street_name']))))
 
     multiples = [x for x in intersecting_streets if len(x) > 2]
     duplicates = set()
@@ -157,7 +158,8 @@ def get_intersection(street_tuple, city_data, size=500.0, crop_radius=150.0):
         logger.error('City data is None')
         return None
     try:
-        intersection_data = get_intersection_data(street_tuple, city_data, size=size, crop_radius=crop_radius)
+        intersection_data = get_intersection_data(street_tuple, city_data, size=size,
+                                                  crop_radius=crop_radius)
     except Exception as e:
         logger.exception('Exception %r, %s, %r' % (street_tuple, city_data['name'], e))
         return None
@@ -194,7 +196,8 @@ def get_intersections(list_of_addresses, size=500.0, crop_radius=150.0):
         for x_tuple in get_intersection_tuples_by_address(cities[city_name], address):
             if x_tuple is None:
                 continue
-            intersection_data = get_intersection(x_tuple, cities[city_name], size=size, crop_radius=crop_radius)
+            intersection_data = get_intersection(x_tuple, cities[city_name], size=size,
+                                                 crop_radius=crop_radius)
             if intersection_data is not None:
                 result.append(intersection_data)
 
@@ -255,7 +258,7 @@ def get_street_data_list(intersection_data):
     return intersection_data['street_data']
 
 
-def get_street_image(street_data_list, intersection_data, fc='#FFCCCC', alpha=1.0):
+def get_street_image(street_data_list, intersection_data, fc='#FFCCCC', ec='b', alpha=1.0):
     """
     Get an image of streets for the intersection
     :param street_data_list: list of street data dictionaries
@@ -263,7 +266,7 @@ def get_street_image(street_data_list, intersection_data, fc='#FFCCCC', alpha=1.
     :param alpha: transparency between 0 and 1
     :return: image
     """
-    return get_guideway_image(street_data_list, intersection_data, fc=fc, alpha=alpha)
+    return get_guideway_image(street_data_list, intersection_data, fc=fc, ec=ec, alpha=alpha)
 
 
 def get_crosswalks(intersection_data):
@@ -343,7 +346,8 @@ def get_guideway_by_approach_id(intersection_data, approach_id):
     :return: list of guideways
     """
 
-    return [g for g in get_guideways(intersection_data, guideway_type='all') if g['origin_lane']['id'] == approach_id]
+    return [g for g in get_guideways(intersection_data, guideway_type='all') if
+            g['origin_lane']['id'] == approach_id]
 
 
 def get_guideway_by_exit_id(intersection_data, exit_id):
@@ -353,7 +357,8 @@ def get_guideway_by_exit_id(intersection_data, exit_id):
     :param exit_id: integer
     :return: list of guideways
     """
-    return [g for g in get_guideways(intersection_data, guideway_type='all') if g['destination_lane']['id'] == exit_id]
+    return [g for g in get_guideways(intersection_data, guideway_type='all') if
+            g['destination_lane']['id'] == exit_id]
 
 
 def get_intersection_image(intersection_data, alpha=1.0):
@@ -448,6 +453,7 @@ def get_guideways(intersection_data, guideway_type='all'):
     if 'vehicle' in guideway_type and 'left' in guideway_type \
             or (guideway_type == 'all vehicle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s vehicle guideways' % guideway_type)
         guideways.extend(get_left_turn_guideways(intersection_data['merged_lanes'],
                                                  intersection_data['nodes'],
                                                  )
@@ -455,24 +461,29 @@ def get_guideways(intersection_data, guideway_type='all'):
     if 'vehicle' in guideway_type and 'right' in guideway_type \
             or (guideway_type == 'all vehicle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s  vehicle guideways' % guideway_type)
         guideways.extend(get_right_turn_guideways(intersection_data['merged_lanes']))
 
     if 'vehicle' in guideway_type and 'through' in guideway_type \
             or (guideway_type == 'all vehicle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s vehicle guideways' % guideway_type)
         guideways.extend(get_through_guideways(intersection_data['merged_lanes']))
 
     if 'vehicle' in guideway_type and 'u-turn' in guideway_type \
             or (guideway_type == 'all vehicle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s vehicle guideways' % guideway_type)
         guideways.extend(get_u_turn_guideways(intersection_data['merged_lanes'], intersection_data))
 
     if 'rail' in guideway_type or (guideway_type == 'all'):
+        logger.debug('Starting %s rail guideways' % guideway_type)
         guideways.extend(get_through_guideways(intersection_data['merged_tracks']))
 
     if ('bicycle' in guideway_type and 'left' in guideway_type) \
             or (guideway_type == 'all bicycle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s - adding left bicycle guideways' % guideway_type)
         guideways.extend(get_bicycle_left_turn_guideways(intersection_data['merged_cycleways'],
                                                          intersection_data['nodes']
                                                          )
@@ -481,11 +492,13 @@ def get_guideways(intersection_data, guideway_type='all'):
     if ('bicycle' in guideway_type and 'right' in guideway_type) \
             or (guideway_type == 'all bicycle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s - adding right bicycle guideways' % guideway_type)
         guideways.extend(get_right_turn_guideways(intersection_data['merged_cycleways']))
 
     if ('bicycle' in guideway_type and 'through' in guideway_type) \
             or (guideway_type == 'all bicycle') \
             or (guideway_type == 'all'):
+        logger.debug('Starting %s - adding through bicycle guideways' % guideway_type)
         guideways.extend(get_through_guideways(intersection_data['merged_cycleways']))
 
     return guideways
@@ -625,7 +638,8 @@ def get_conflict_zones(guideway_data, all_guideways=None, intersection_data=None
     if all_guideways is None:
         if intersection_data is None:
             return []
-        all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(intersection_data)
+        all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(
+            intersection_data)
 
     return get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict)
 
@@ -641,10 +655,12 @@ def get_all_conflict_zones(intersection_data, all_guideways=[]):
     all_conflict_zones = []
 
     if not all_guideways:
-        all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(intersection_data)
+        all_guideways = get_guideways(intersection_data, guideway_type='all') + get_crosswalks(
+            intersection_data)
     polygons_dict = {}
     for guideway_data in all_guideways:
-        all_conflict_zones.extend(get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict))
+        all_conflict_zones.extend(
+            get_conflict_zones_per_guideway(guideway_data, all_guideways, polygons_dict))
 
     return all_conflict_zones
 
@@ -684,7 +700,8 @@ def get_single_conflict_zone_image(conflict_zone, intersection_data, alpha=1.0):
                          linestyle='solid'
                          )
 
-    conflict_zone_fig, conflict_zone_ax = plot_conflict_zone(conflict_zone, fig=fig, ax=ax, alpha=alpha)
+    conflict_zone_fig, conflict_zone_ax = plot_conflict_zone(conflict_zone, fig=fig, ax=ax,
+                                                             alpha=alpha)
 
     return conflict_zone_fig
 
@@ -724,7 +741,8 @@ def get_conflict_zone_image(conflict_zones, intersection_data, alpha=1.0):
                          linestyle='solid'
                          )
 
-    conflict_zone_fig, conflict_zone_ax = plot_conflict_zones(conflict_zones, fig=fig, ax=ax, alpha=alpha)
+    conflict_zone_fig, conflict_zone_ax = plot_conflict_zones(conflict_zones, fig=fig, ax=ax,
+                                                              alpha=alpha)
 
     return conflict_zone_fig
 
@@ -748,7 +766,8 @@ def get_geo_coordinates(point_of_view, guideway_data, conflict_zone=None):
     return normalized_to_geo(point_of_view, guideway_data, conflict_zone=conflict_zone)
 
 
-def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guideways, all_guideways):
+def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guideways,
+                   all_guideways):
     """
     Get a blind zone
     :param point_of_view: normalized coordinates along the current guideway: (x,y), where x and y within [0.0,1.0]
@@ -774,14 +793,15 @@ def get_blind_zone(point_of_view, current_guideway, conflict_zone, blocking_guid
                                               )
     except Exception as e:
         logger.error('Blind zone exception: point %r, guideway %d, conflict zone %r'
-                         % (point_of_view, current_guideway['id'], conflict_zone['id']))
+                     % (point_of_view, current_guideway['id'], conflict_zone['id']))
         logger.exception('Exception: %r' % e)
         return None
 
     return blind_zone_data
 
 
-def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0, fc='r', ec='r'):
+def get_blind_zone_image(blind_zone, current_guideway, intersection_data, blocks=None, alpha=1.0,
+                         fc='r', ec='r'):
     """
     Get an image of a list of conflict zones in PNG format
     :param blind_zone: blind zone dictionary

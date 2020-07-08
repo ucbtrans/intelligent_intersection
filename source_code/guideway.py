@@ -9,9 +9,11 @@
 
 
 import copy
-from border import get_bicycle_border, cut_line_by_relative_distance, cut_border_by_point, get_border_length
+from border import get_bicycle_border, cut_line_by_relative_distance, cut_border_by_point, \
+    get_border_length
 from matplotlib.patches import Polygon
-from right_turn import get_right_turn_border, get_link, get_link_destination_lane, is_right_turn_allowed, \
+from right_turn import get_right_turn_border, get_link, get_link_destination_lane, \
+    is_right_turn_allowed, \
     get_destination_lanes_for_right_turn
 from left_turn import is_left_turn_allowed, get_destination_lanes_for_left_turn
 from through import is_through_allowed, get_destination_lane
@@ -19,7 +21,6 @@ from u_turn import is_u_turn_allowed, get_destination_lanes_for_u_turn, get_u_tu
 from turn import get_turn_border
 from log import get_logger, dictionary_to_log
 from footway import crosswalk_intersects_median, get_crosswalk_to_crosswalk_distance
-
 
 logger = get_logger()
 
@@ -36,12 +37,26 @@ def get_bicycle_left_turn_guideways(all_lanes, nodes_dict):
     through_guideways = get_through_guideways(all_lanes)
 
     for origin_lane in all_lanes:
+        logger.debug("Allowed %r: %s %s %s" % (is_left_turn_allowed(origin_lane),
+                                               origin_lane["lane_type"],
+                                               origin_lane["direction"],
+                                               origin_lane["name"]
+                                               )
+                     )
+
+        # ll = [(l["name"], l["direction"]) for l in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict) ]
+        # logger.debug("%r" % ll)
+
         if is_left_turn_allowed(origin_lane):
-            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
-                origin_candidates = [g for g in through_guideways if g['origin_lane']['id'] == origin_lane['id']]
+            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes,
+                                                                        nodes_dict):
+                origin_candidates = [g for g in through_guideways if
+                                     g['origin_lane']['id'] == origin_lane['id']]
                 destination_candidates = [g for g in through_guideways
                                           if g['destination_lane']['id'] == destination_lane['id']
                                           ]
+                logger.debug('Number of candidates: origin %d, destination %d' % (
+                    len(origin_candidates), len(destination_candidates)))
                 if origin_candidates and destination_candidates:
                     logger.debug('Origin Lane ' + dictionary_to_log(origin_candidates[0]))
                     logger.debug('Destin Lane ' + dictionary_to_log(destination_candidates[0]))
@@ -85,9 +100,11 @@ def get_bicycle_left_guideway(origin_lane, destination_lane, origin_through, des
         'direction': 'left',
         'origin_lane': origin_lane,
         'destination_lane': destination_lane,
-        'left_border':  get_bicycle_border(origin_through['left_border'], destination_through['left_border']),
-        'median':       get_bicycle_border(origin_through['median'], destination_through['median']),
-        'right_border': get_bicycle_border(origin_through['right_border'], destination_through['right_border'])
+        'left_border': get_bicycle_border(origin_through['left_border'],
+                                          destination_through['left_border']),
+        'median': get_bicycle_border(origin_through['median'], destination_through['median']),
+        'right_border': get_bicycle_border(origin_through['right_border'],
+                                           destination_through['right_border'])
     }
 
 
@@ -103,10 +120,12 @@ def get_left_turn_guideways(all_lanes, nodes_dict):
     for origin_lane in all_lanes:
         if is_left_turn_allowed(origin_lane):
             logger.debug('Origin Lane ' + dictionary_to_log(origin_lane))
-            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes, nodes_dict):
+            for destination_lane in get_destination_lanes_for_left_turn(origin_lane, all_lanes,
+                                                                        nodes_dict):
                 logger.debug('Destin Lane ' + dictionary_to_log(destination_lane))
                 try:
-                    guideway_data = get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type='left')
+                    guideway_data = get_direct_turn_guideway(origin_lane, destination_lane,
+                                                             all_lanes, turn_type='left')
                     set_guideway_id(guideway_data)
                 except Exception as e:
                     logger.exception(e)
@@ -127,7 +146,7 @@ def create_right_turn_guideway(origin_lane, all_lanes):
     :param all_lanes: list of dictionary
     :return: dictionary
     """
-
+    logger.info('Starting right turn guideway')
     guideway = {
         'direction': 'right',
         'origin_lane': origin_lane,
@@ -137,7 +156,8 @@ def create_right_turn_guideway(origin_lane, all_lanes):
     if link_lane is None:
         destination_lanes = get_destination_lanes_for_right_turn(origin_lane, all_lanes)
         if len(destination_lanes) > 0:
-            return get_direct_turn_guideway(origin_lane, destination_lanes[0], all_lanes, turn_type='right')
+            return get_direct_turn_guideway(origin_lane, destination_lanes[0], all_lanes,
+                                            turn_type='right')
         else:
             return None
 
@@ -171,10 +191,12 @@ def create_right_turn_guideway(origin_lane, all_lanes):
                                                      destination_lane['right_border']
                                                      )
     if guideway['left_border'] is None:
-        logger.debug('Left border for the linked right turn is None. Origin id %d' % origin_lane['id'])
+        logger.debug(
+            'Left border for the linked right turn is None. Origin id %d' % origin_lane['id'])
         return None
     if guideway['right_border'] is None:
-        logger.debug('Right border for the linked right turn is None. Origin id %d' % origin_lane['id'])
+        logger.debug(
+            'Right border for the linked right turn is None. Origin id %d' % origin_lane['id'])
         return None
 
     return guideway
@@ -187,14 +209,25 @@ def get_through_guideway(origin_lane, destination_lane):
     :param destination_lane: dictionary
     :return: dictionary
     """
-    return {
-        'direction': 'through',
-        'origin_lane': origin_lane,
-        'destination_lane': destination_lane,
-        'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'][1:],
-        'median': origin_lane['median'][:-1] + destination_lane['median'][1:],
-        'right_border': origin_lane['right_border'][:-1] + destination_lane['right_border'][1:]
-    }
+    logger.info('Starting through guideway')
+    if origin_lane['nodes'][-1] == destination_lane['nodes'][0]:
+        return {
+            'direction': 'through',
+            'origin_lane': origin_lane,
+            'destination_lane': destination_lane,
+            'left_border': origin_lane['left_border'] + destination_lane['left_border'][1:],
+            'median': origin_lane['median'] + destination_lane['median'][1:],
+            'right_border': origin_lane['right_border'] + destination_lane['right_border'][1:]
+        }
+    else:
+        return {
+            'direction': 'through',
+            'origin_lane': origin_lane,
+            'destination_lane': destination_lane,
+            'left_border': origin_lane['left_border'][:-1] + destination_lane['left_border'][1:],
+            'median': origin_lane['median'][:-1] + destination_lane['median'][1:],
+            'right_border': origin_lane['right_border'][:-1] + destination_lane['right_border'][1:]
+        }
 
 
 def get_u_turn_guideways(all_lanes, x_data):
@@ -276,30 +309,38 @@ def get_through_guideways(all_lanes):
     return guideways
 
 
-def get_crosswalk_to_crosswalk_distance_along_guideway(guideway_data, crosswalks):
+def get_crosswalk_to_crosswalk_distance_along_guideway(guideway_data, crosswalks,
+                                                       max_distance=50.0):
     """
     Calculate max distance between crosswalks along a guideway
     :param guideway_data: guideway dictionary
     :param crosswalks: list of crosswalks dictionaries
     :return: float in meters
     """
-    origin_crosswalks = [c for c in crosswalks
-                         if (c['simulated'] == 'no' or c['name'] == guideway_data['origin_lane']['name'])
+    nearest_crosswalks = [c for c in crosswalks if
+                          "distance_to_center" not in c or c["distance_to_center"] < max_distance]
+    origin_crosswalks = [c for c in nearest_crosswalks
+                         if (c['simulated'] == 'no' or c['name'] == guideway_data['origin_lane'][
+            'name'])
                          and crosswalk_intersects_median(c, guideway_data['origin_lane']['median'])
                          ]
-    destination_crosswalks = [c for c in crosswalks
-                              if (c['simulated'] == 'no' or c['name'] == guideway_data['destination_lane']['name'])
-                              and crosswalk_intersects_median(c, guideway_data['destination_lane']['median'])
+    destination_crosswalks = [c for c in nearest_crosswalks
+                              if (c['simulated'] == 'no' or c['name'] ==
+                                  guideway_data['destination_lane']['name'])
+                              and crosswalk_intersects_median(c, guideway_data['destination_lane'][
+            'median'])
                               ]
 
     if len(origin_crosswalks) == 0:
         logger.warning('Unable to find origin crosswalks for %s guideway %d %s'
-                       % (guideway_data['direction'], guideway_data['id'], guideway_data['origin_lane']['name'])
+                       % (guideway_data['direction'], guideway_data['id'],
+                          guideway_data['origin_lane']['name'])
                        )
         return -3
     if len(destination_crosswalks) == 0:
         logger.warning('Unable to find destination crosswalks for %s guideway %d %s'
-                       % (guideway_data['direction'], guideway_data['id'], guideway_data['destination_lane']['name'])
+                       % (guideway_data['direction'], guideway_data['id'],
+                          guideway_data['destination_lane']['name'])
                        )
         return -4
 
@@ -320,6 +361,7 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
     :return: dictionary
     """
 
+    logger.debug('Starting direct turn guideway')
     if turn_type == 'right':
         if not is_right_turn_allowed(origin_lane, all_lanes):
             logger.debug('Right turn not allowed. Origin id %d' % origin_lane['id'])
@@ -344,7 +386,8 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
                                   turn_direction=turn_direction
                                   )
     if left_border is None:
-        logger.debug('Left border failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
+        logger.debug('Left border failed. Origin id %d, Dest id %d' % (
+            origin_lane['id'], destination_lane['id']))
         return None
 
     right_border = get_turn_border(origin_lane,
@@ -354,7 +397,8 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
                                    turn_direction=turn_direction
                                    )
     if right_border is None:
-        logger.debug('Right border failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
+        logger.debug('Right border failed. Origin id %d, Dest id %d' % (
+            origin_lane['id'], destination_lane['id']))
         return None
 
     median = get_turn_border(origin_lane,
@@ -364,7 +408,8 @@ def get_direct_turn_guideway(origin_lane, destination_lane, all_lanes, turn_type
                              turn_direction=turn_direction
                              )
     if median is None:
-        logger.debug('Median failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
+        logger.debug(
+            'Median failed. Origin id %d, Dest id %d' % (origin_lane['id'], destination_lane['id']))
         return None
 
     guideway['left_border'] = left_border
@@ -439,7 +484,7 @@ def set_guideway_id(g):
     """
 
     if g is not None:
-        g['id'] = 100*g['origin_lane']['id'] + g['destination_lane']['id']
+        g['id'] = 100 * g['origin_lane']['id'] + g['destination_lane']['id']
         if g['origin_lane']['lane_type'] == 'cycleway':
             g['type'] = 'bicycle'
         elif 'rail' in g['origin_lane']['lane_type']:
@@ -464,7 +509,8 @@ def get_polygon_from_guideway(guideway_data,
     """
 
     if reduced:
-        polygon_sequence = guideway_data['reduced_left_border'] + guideway_data['reduced_right_border'][::-1]
+        polygon_sequence = guideway_data['reduced_left_border'] + guideway_data[
+                                                                      'reduced_right_border'][::-1]
     else:
         polygon_sequence = guideway_data['left_border'] + guideway_data['right_border'][::-1]
 
@@ -489,7 +535,7 @@ def plot_guideways(guideways, fig=None, ax=None, cropped_intersection=None,
                    alpha=1.0,
                    fc='y',
                    ec='w'
-                        ):
+                   ):
     """
     Plot lanes for existing street plot
     :param guideways:
@@ -512,7 +558,8 @@ def plot_guideways(guideways, fig=None, ax=None, cropped_intersection=None,
         return None, None
 
     for guideway_data in guideways:
-        if 'destination_lane' in guideway_data and guideway_data['destination_lane']['lane_type'] == 'cycleway':
+        if 'destination_lane' in guideway_data and guideway_data['destination_lane'][
+            'lane_type'] == 'cycleway':
             fcolor = '#00FF00'
             ecolor = '#00FF00'
         else:

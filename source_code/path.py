@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 #######################################################################
 #
-#   This module provides path/way level functions
+#   This module provides path level functions
 #
 #######################################################################
 
 from border import shift_list_of_nodes, shift_border, get_compass_bearing, get_compass_rhumb, \
-    great_circle_vec_check_for_nan, cut_border_by_point
-from random import randint
+    great_circle_vec_check_for_nan
 import copy
 
 
@@ -24,11 +23,7 @@ def get_num_of_lanes(path_data):
     if 'lanes:forward' in path_data['tags']:
         return int(path_data['tags']['lanes:forward'])
     if 'lanes' in path_data['tags']:
-        if isinstance(path_data['tags']['lanes'], str):
-            temp = path_data['tags']['lanes'].split(";")[-1]
-            return int(temp)
-        else:
-            return int(path_data['tags']['lanes'])
+        return int(path_data['tags']['lanes'])
 
     return 1
 
@@ -69,7 +64,6 @@ def add_borders_to_path(path_data, nodes_dict, width=3.048):
     """
 
     path_data = remove_nodes_without_coordinates(path_data, nodes_dict)
-
     if len(path_data['nodes']) < 2:
         path_data['left_border'] = None
         path_data['right_border'] = None
@@ -129,7 +123,7 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0,
     forward_path = copy.deepcopy(path_data)
     forward_path['tags']['split'] = 'yes'
     forward_path['tags']['oneway'] = 'yes'
-    forward_path['id'] = forward_path['id']* 100000 + randint(0, 100000)
+    forward_path['id'] = forward_path['id']*100
 
     if 'lanes' in path_data['tags'] \
             and 'lanes:forward' not in path_data['tags'] \
@@ -155,12 +149,9 @@ def split_bidirectional_path(path_data, nodes_dict, space_between_direction=1.0,
 
     backward_path = copy.deepcopy(path_data)
     backward_path['tags']['split'] = 'yes'
-    backward_path['id'] = backward_path['id']* 100000 + randint(100000, 200000)
+    backward_path['id'] = backward_path['id'] * 100 + 1
     backward_path['tags']['oneway'] = 'yes'
     backward_path['nodes'] = backward_path['nodes'][::-1]
-    if 'original_id' not in path_data:
-        backward_path['original_id'] = path_data['id']
-        forward_path['original_id'] = path_data['id']
 
     if 'turn:lanes:backward' in path_data['tags']:
         backward_path['tags']['turn:lanes'] = path_data['tags']['turn:lanes:backward']
@@ -297,10 +288,6 @@ def set_direction(paths, x_data, nodes_dict):
             p['tags']['direction'] = 'from_intersection'
             continue
 
-        if 'tags' in p and 'highway' in p['tags'] and 'link' in p['tags']['highway']:
-            p['tags']['direction'] = 'to_intersection'
-            continue
-
         distance_to_center0 = great_circle_vec_check_for_nan(y, x, nodes_dict[p['nodes'][0]]['y'],
                                                   nodes_dict[p['nodes'][0]]['x'])
         distance_to_center1 = great_circle_vec_check_for_nan(y, x,
@@ -352,26 +339,3 @@ def reverse_direction(direction):
         return 'to_intersection'
     else:
         return direction
-
-
-def cut_path_by_relative_distance(path_data, point_coordinate, nodes_dict):
-    """
-    Cut path into two pieces by point in between nodes
-    :param path_data: path dictionary
-    :param point_coordinate: tuple of coordinates
-    :param nodes_dict: node dictionary
-    :return: list of paths
-    """
-    original = [(nodes_dict[n]['x'], nodes_dict[n]['y']) for n in path_data['nodes']]
-    part1 = cut_border_by_point(original, point_coordinate, 0)
-    part2 = cut_border_by_point(original, point_coordinate, -1)
-    if len(part1) < 2 or len(part2) < 2:
-        return [path_data]
-
-    path_data1 = copy.deepcopy(path_data)
-    path_data2 = copy.deepcopy(path_data)
-
-    path_data1['nodes'] = path_data['nodes'][:len(part1)-1]
-    path_data2['nodes'] = path_data['nodes'][len(part1):]
-
-    return [path_data1, path_data2]
